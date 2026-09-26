@@ -1,0 +1,27 @@
+# Build output (the shared cache lives outside the repo; see AGENTS.md)
+/target/
+target/
+
+# Secrets and local environment
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+deploy/keycloak/realm-kampus.json
+deploy/keycloak/.env
+
+# Local runtime state
+/data/audit/
+*.jsonl.tmp
+
+# Tool-specific instruction files are not allowed (AGENTS.md is the only one).
+CLAUDE.md
+
+# Editors / OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db

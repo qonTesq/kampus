@@ -1,0 +1,82 @@
+schema: spec-driven
+
+context: |
+  kampus is a self-hosted, policy-controlled campus connector. Planning sources of
+  truth are campus-ai-connector-report.md sections 3-6, 8 and 9, and handoff.md.
+  This plan covers software only: the Rust server, its configuration and served
+  interfaces, including POST /device/bind. Exclude Pi code, voice clients, NFC
+  wiring, audio, printing, real university SSO integration, and stretch tools.
+  Rust stack is fixed: rmcp 3.4, exact patch pinned with Cargo.lock, axum, tokio,
+  reqwest, serde, jsonwebtoken, scraper, prost. Vendor matching rmcp docs/examples.
+  Workspace: kampus-core, kampus-libcal, kampus-banner, kampus-transit,
+  kampus-hours, kampus-canvas, kampus-device, and kampus binary, invoked as
+  kampus serve. MCP stays at the outer layer; modules return plain data types.
+  A module is one folder with module.yaml and a compile-time registration.
+  Adapter traits are per vendor/domain, never per school. Humans review and
+  freeze contracts before module implementation; changes require human sign-off.
+  Serve MCP 2026-07-28 and 2025-11-25 over Streamable HTTP with legacy sessions.
+  Keycloak >=26.6 handles OAuth 2.1/PKCE. kampus validates signature, expiry,
+  issuer, audience and azp, and serves path-inserted protected-resource metadata.
+  Deploy one binary beside Keycloak behind Caddy and stable HTTPS. Share one
+  build cache across worktrees. No Cloudflare Workers port or new auth server.
+  Nothing school-specific belongs in code. school.yaml selects vendor settings,
+  hosts, locations, terms, aliases and timezone; policy.yaml maps school tiers
+  and role x tool x data class x client rules. Temple is the reference; SJU is a
+  required second running instance of the same binary, with isolated state.
+  Seven tools only: find_study_room, book_study_room, confirm_booking, search_courses,
+  next_departures, my_deadlines, library_hours. Policy runs on every call before
+  data access, including cache hits and booking confirmation. Never hide tools.
+  Public is enabled by default. Internal maps to Sensitive at Temple. Sensitive
+  needs an enabled rule AND an approved pre-registered confidential workspace
+  client, keyed by validated azp. DCR/CIMD and devices remain unapproved.
+  Unauthenticated callers are guest/unapproved. Confidential has no modules.
+  Personal/student data is synthetic only: no real grades, iCal feeds or OWLcards.
+  Real public vendor responses ARE required. Canvas and booking are sandbox-only;
+  Flight replay is labeled with capture time. Production cannot reach mock code.
+  Never forward a kampus login token upstream; no shared admin token or pasted
+  personal access tokens. Production Canvas token vault is future work, not a
+  hackathon implementation. Device service credentials are a narrow exception
+  for public data and short-lived synthetic user binding, never Sensitive access.
+  Store no student records. Audit metadata only: salted user hash, azp, tool,
+  class, decision, rule and latency, with stated retention. No arguments/content.
+  Results use structuredContent and outputSchema, bounded HTML-stripped text,
+  and no scraped/user-written free text alongside Sensitive fields. Read tools
+  use readOnlyHint. book_study_room is a Public read-only proposal with
+  destructiveHint=false; confirm_booking accepts only confirmation_id, uses
+  destructiveHint=true, rooms:book scope and per-user limits. Both require student
+  role; confirmation rechecks policy and identity. Cache public reads and limit upstream traffic.
+  Admin is localhost-only. Device binding uses a separate Pi-only credential,
+  device-scoped allowlisted synthetic stickers, 120-second expiry and an
+  unapproved device client. A vendor-facing device token cannot bind a user.
+  Clock is America/New_York, Sep 26-27 2026: setup/contracts by Sat 5 PM;
+  login and tested no-login fallback by Sat 7 PM; seven tools and full checkpoint
+  by midnight; SJU and admin polish by Sun 2 AM; rest 2-4:30 AM; review to 7 AM;
+  feature freeze, three 180-second rehearsals and backup recording by 10 AM.
+  Separate STRETCH tiger-audit-sink starts only after the midnight checkpoint
+  passes and depends only on auth-policy-audit. Nothing depends on it. Off by
+  default; local audit remains authoritative. Background Tiger Cloud replication
+  uses bounded file fallback, a 24-hour retention policy and hourly aggregate.
+  Core demo never waits for or depends on Tiger. Secrets stay outside school.yaml.
+  Schema also runs on self-hosted TimescaleDB; Rust uses sqlx or tokio-postgres.
+
+rules:
+  proposal:
+    - Keep each change owned by one agent with explicit files, dependencies and non-goals.
+    - Preserve the seven required tools, policy switch and second school; exclude hardware and stretch features except the separately gated tiger-audit-sink change.
+  design:
+    - Specify contract fields, failure behavior, ownership boundaries and integration registration points.
+    - Record ambiguous report details as explicit assumptions for human contract review; do not reopen settled decisions.
+    - Keep mocks sandbox-only and real public fixture capture separate from synthetic Sensitive data.
+    - Avoid unnecessary abstraction and unrequested dependencies; name narrowly necessary support dependencies for review.
+  specs:
+    - Use SHALL or MUST requirements and WHEN/THEN scenarios, including denial, upstream failure and privacy cases.
+    - Every tool must specify data class, input/output schema, annotations, call-time authorization, sanitization, caching and rate limits.
+    - Never hide schemas by policy, forward login tokens, log arguments or content, silently turn errors into empty success, hardcode school URLs, expose production mocks, mirror raw APIs, or test only invented mocks.
+  tasks:
+    - Use numbered checkbox tasks of at most two hours, preferably 15-60 minutes, with concrete acceptance evidence.
+    - Implement first against recorded real public responses, then add behavioral tests in the same change before merge; never defer tests to another change.
+    - Put login bad-token tests immediately after login works, before other auth work and the Saturday 7 PM go/no-go.
+    - Use recorded real responses for vendor contract tests; use explicitly synthetic fixtures only for Canvas, booking and controlled identity/security cases.
+    - Every change must pass cargo check --workspace and cargo clippy --workspace --all-targets before merge, plus its relevant tests; sandbox changes also check the sandbox feature build.
+    - Respect frozen contracts and disjoint ownership; shared manifests, lockfile and registry changes go through the foundation integrator.
+    - Include a forbidden-pattern review and privacy/output-schema evidence before merge. Do not write Rust or AGENTS.md during this planning task.
