@@ -1,32 +1,35 @@
 //! `kampus serve --school <school.yaml> --policy <policy.yaml>`
 //! `kampus check --school <school.yaml> --policy <policy.yaml>`
+//! Optional: `--audit <file.jsonl>` (default `data/audit/<school_id>.jsonl`).
 
 use std::path::PathBuf;
 use std::process::ExitCode;
 
-use kampus::App;
+use kampus::{App, AppOptions};
 use kampus_core::config::{Env, PolicyConfig, SchoolConfig};
 use tokio_util::sync::CancellationToken;
 use tracing_subscriber::EnvFilter;
 
-const USAGE: &str = "usage: kampus <serve|check> --school <school.yaml> --policy <policy.yaml>";
+const USAGE: &str = "usage: kampus <serve|check> --school <school.yaml> --policy <policy.yaml> [--audit <file.jsonl>]";
 
 #[derive(Debug)]
 struct Args {
     command: String,
     school: PathBuf,
     policy: PathBuf,
+    audit: Option<PathBuf>,
 }
 
 fn parse_args() -> Option<Args> {
     let mut args = std::env::args().skip(1);
     let command = args.next()?;
-    let (mut school, mut policy) = (None, None);
+    let (mut school, mut policy, mut audit) = (None, None, None);
     while let Some(flag) = args.next() {
         let value = args.next().map(PathBuf::from);
         match flag.as_str() {
             "--school" => school = value,
             "--policy" => policy = value,
+            "--audit" => audit = Some(value?),
             _ => return None,
         }
     }
@@ -34,6 +37,7 @@ fn parse_args() -> Option<Args> {
         command,
         school: school?,
         policy: policy?,
+        audit,
     })
 }
 
@@ -56,8 +60,14 @@ async fn main() -> ExitCode {
         .and_then(|school| PolicyConfig::load(&args.policy).map(|policy| (school, policy)));
     let app = match built
         .map_err(kampus::AppError::from)
-        .and_then(|(school, policy)| App::build(school, policy, &Env::process()))
-    {
+        .and_then(|(school, policy)| {
+            let options = AppOptions {
+                keys: None,
+                audit_path: args.audit.clone(),
+                policy_path: Some(args.policy.clone()),
+            };
+            App::build_with(school, policy, &Env::process(), options)
+        }) {
         Ok(app) => app,
         Err(error) => {
             tracing::error!("startup refused: {error}");

@@ -17,7 +17,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use aws_lc_rs::rand::SystemRandom;
 use aws_lc_rs::rsa::KeySize;
 use aws_lc_rs::signature::{KeyPair as _, RSA_PKCS1_SHA256, RsaKeyPair};
-use kampus::App;
+use kampus::{App, AppOptions};
 use kampus_core::auth::KeySource;
 use kampus_core::config::{AuthMode, Env, PolicyConfig, SchoolConfig};
 use serde_json::{Value, json};
@@ -131,6 +131,12 @@ fn expired() -> String {
 
 // ---- server -----------------------------------------------------------------
 
+fn audit_path() -> std::path::PathBuf {
+    static NEXT: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+    let n = NEXT.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+    std::env::temp_dir().join(format!("kampus-auth-test-{}-{n}.jsonl", std::process::id()))
+}
+
 struct Server {
     base: String,
     client: reqwest::Client,
@@ -153,7 +159,12 @@ async fn spawn(mode: AuthMode) -> Server {
         sandbox_compiled: false,
     };
     let keys = KeySource::from_jwks_json(&realm_key().jwks()).unwrap();
-    let app = App::build_with_keys(school, policy, &env, Some(keys)).unwrap();
+    let options = AppOptions {
+        keys: Some(keys),
+        audit_path: Some(audit_path()),
+        policy_path: None,
+    };
+    let app = App::build_with(school, policy, &env, options).unwrap();
     let cancel = CancellationToken::new();
     let router = app.router(cancel.child_token());
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();

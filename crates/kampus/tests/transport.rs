@@ -13,7 +13,7 @@
 use std::path::Path;
 
 use axum::Router;
-use kampus::App;
+use kampus::{App, AppOptions};
 use kampus_core::config::{AuthMode, Env, PolicyConfig, SchoolConfig};
 use serde_json::{Value, json};
 use tokio_util::sync::CancellationToken;
@@ -31,7 +31,15 @@ fn app() -> App {
         has_var: &|_| true,
         sandbox_compiled: false,
     };
-    App::build(school, policy, &env).unwrap()
+    let options = AppOptions {
+        audit_path: Some(std::env::temp_dir().join(format!(
+            "kampus-transport-{}-{:?}.jsonl",
+            std::process::id(),
+            std::thread::current().id()
+        ))),
+        ..AppOptions::default()
+    };
+    App::build_with(school, policy, &env, options).unwrap()
 }
 
 struct Server {

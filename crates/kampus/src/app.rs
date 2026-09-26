@@ -2,6 +2,7 @@
 
 use std::collections::BTreeSet;
 use std::net::SocketAddr;
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use axum::Router;
@@ -9,10 +10,12 @@ use axum::extract::Request;
 use axum::http::StatusCode;
 use axum::middleware::{self, Next};
 use axum::response::{IntoResponse, Response};
+use kampus_core::audit::{JsonlAudit, PRUNE_INTERVAL, SubjectHasher};
 use kampus_core::auth::{AuthSettings, Authenticator, KeySource};
 use kampus_core::config::{ConfigError, Env, PolicyConfig, SchoolConfig};
-use kampus_core::contracts::{ModuleInit, RegistryError, ToolRegistry};
-use kampus_core::dispatch::Dispatcher;
+use kampus_core::contracts::{AuditError, ModuleInit, RegistryError, ToolRegistry};
+use kampus_core::dispatch::{CallerLimits, Dispatcher, Security};
+use kampus_core::policy::{PolicyEngine, PolicyRevision};
 use kampus_core::runtime::SharedRuntime;
 use rmcp::model::ProtocolVersion;
 use rmcp::transport::streamable_http_server::session::local::LocalSessionManager;
@@ -37,6 +40,8 @@ pub enum AppError {
     UnknownModule(String),
     #[error("cannot build the realm key client")]
     KeyClient,
+    #[error("cannot open the audit log {path}")]
+    Audit { path: PathBuf },
     #[error("cannot listen on {addr}: {source}")]
     Listen {
         addr: SocketAddr,
@@ -44,13 +49,26 @@ pub enum AppError {
     },
 }
 
+/// Runtime inputs that are not part of `school.yaml`/`policy.yaml`.
+#[derive(Debug, Default)]
+pub struct AppOptions {
+    /// Signing keys; `None` fetches them through the issuer's discovery document.
+    pub keys: Option<KeySource>,
+    /// Audit log; defaults to `data/audit/<school_id>.jsonl`.
+    pub audit_path: Option<PathBuf>,
+    /// Where the admin page persists policy edits; `None` disables saving.
+    pub policy_path: Option<PathBuf>,
+}
+
 /// A fully validated server instance for one school.
 #[derive(Debug)]
 pub struct App {
     init: ModuleInit,
-    policy: Arc<PolicyConfig>,
+    policy: Arc<PolicyEngine>,
+    audit: Arc<JsonlAudit>,
     dispatcher: Arc<Dispatcher>,
     auth: Arc<Authenticator>,
+    policy_path: Option<PathBuf>,
 }
 
 impl App {
@@ -61,17 +79,16 @@ impl App {
         policy: PolicyConfig,
         env: &Env<'_>,
     ) -> Result<Self, AppError> {
-        Self::build_with_keys(school, policy, env, None)
+        Self::build_with(school, policy, env, AppOptions::default())
     }
 
-    /// [`App::build`] with an explicit signing-key source. `None` fetches keys
-    /// through the configured issuer's discovery document; tests pass a
-    /// locally generated key set.
-    pub fn build_with_keys(
+    /// [`App::build`] with explicit runtime inputs (tests pass local keys
+    /// and a temporary audit path).
+    pub fn build_with(
         school: SchoolConfig,
         policy: PolicyConfig,
         env: &Env<'_>,
-        keys: Option<KeySource>,
+        options: AppOptions,
     ) -> Result<Self, AppError> {
         school.validate(env)?;
         let init = ModuleInit {
@@ -94,7 +111,7 @@ impl App {
             .flat_map(|t| t.descriptor.scopes.iter().cloned())
             .collect();
         let settings = AuthSettings::from_school(&init.school, scopes);
-        let keys = match keys {
+        let keys = match options.keys {
             Some(keys) => keys,
             None => KeySource::Discovery {
                 client: kampus_core::runtime::upstream_client_builder()
@@ -105,15 +122,48 @@ impl App {
             },
         };
         let auth = Arc::new(Authenticator::new(settings, keys));
-        let dispatcher = Arc::new(Dispatcher::new(
-            init.school.school.id.clone(),
+
+        let school_id = init.school.school.id.clone();
+        let audit_path = options
+            .audit_path
+            .unwrap_or_else(|| PathBuf::from(format!("data/audit/{school_id}.jsonl")));
+        let audit = JsonlAudit::open(&audit_path, policy.audit.retention_hours)
+            .and_then(|audit| audit.prune(chrono::Utc::now()).map(|_| audit))
+            .map_err(|AuditError| AppError::Audit { path: audit_path })?;
+        let audit = Arc::new(audit);
+        let hasher = match std::env::var(&policy.audit.salt_env) {
+            Ok(salt) if !salt.is_empty() => SubjectHasher::new(&school_id, salt.as_bytes()),
+            _ => {
+                tracing::warn!(
+                    env = %policy.audit.salt_env,
+                    "audit salt unset; using a per-process random salt"
+                );
+                SubjectHasher::ephemeral(&school_id).map_err(|AuditError| AppError::Audit {
+                    path: audit.path().to_owned(),
+                })?
+            }
+        };
+        let security = Security {
+            limits: CallerLimits::new(&policy.limits),
+            policy: Arc::new(PolicyEngine::new(policy)),
+            audit: Arc::clone(&audit) as _,
+            hasher,
+            identity: None,
+            enabled_modules: init.school.modules.iter().cloned().collect(),
+        };
+        let policy = Arc::clone(&security.policy);
+        let dispatcher = Arc::new(Dispatcher::with_security(
+            school_id,
             Arc::new(registry),
+            security,
         ));
         Ok(Self {
             init,
-            policy: Arc::new(policy),
+            policy,
+            audit,
             dispatcher,
             auth,
+            policy_path: options.policy_path,
         })
     }
 
@@ -121,8 +171,14 @@ impl App {
         &self.init.school
     }
 
-    pub fn policy(&self) -> &PolicyConfig {
-        &self.policy
+    /// The active policy revision (swapped atomically by the admin page).
+    pub fn policy(&self) -> Arc<PolicyRevision> {
+        self.policy.current()
+    }
+
+    /// Where policy edits are persisted, if saving is enabled.
+    pub fn policy_path(&self) -> Option<&std::path::Path> {
+        self.policy_path.as_deref()
     }
 
     pub fn tool_names(&self) -> Vec<String> {
@@ -163,6 +219,21 @@ impl App {
             .await
             .map_err(|source| AppError::Listen { addr, source })?;
         tracing::info!(%addr, school = %self.init.school.school.id, "kampus listening");
+        let audit = Arc::clone(&self.audit);
+        let prune_cancel = cancel.clone();
+        tokio::spawn(async move {
+            let mut every = tokio::time::interval(PRUNE_INTERVAL);
+            loop {
+                tokio::select! {
+                    () = prune_cancel.cancelled() => return,
+                    _ = every.tick() => {
+                        if audit.prune(chrono::Utc::now()).is_err() {
+                            tracing::error!("audit retention pruning failed");
+                        }
+                    }
+                }
+            }
+        });
         let router = self.router(cancel.child_token());
         axum::serve(listener, router)
             .with_graceful_shutdown(async move { cancel.cancelled().await })
