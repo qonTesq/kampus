@@ -1,0 +1,92 @@
+# Temple University: the reference school (school.yaml version 1).
+# Values come from campus-ai-connector-report.md section 4 (verified 2026-09-26).
+# Secrets are never written here; *_env fields name environment variables.
+#
+# server/auth below are LOCAL DEVELOPMENT values. For the VM, set
+#   server.resource_url: https://<KAMPUS_DOMAIN>/mcp
+#   auth.issuer:         https://<AUTH_DOMAIN>/realms/kampus
+# (hosts ending in .invalid are rejected at startup as unfilled placeholders).
+version: 1
+
+school:
+  id: temple
+  display_name: Temple University
+  timezone: America/New_York
+
+server:
+  resource_url: http://127.0.0.1:8080/mcp
+  listen: 127.0.0.1:8080
+  admin_listen: 127.0.0.1:8081
+
+auth:
+  mode: oauth
+  issuer: http://127.0.0.1:8180/realms/kampus
+  audience: kampus-temple
+  roles_claim: realm_access.roles
+
+modules: [rooms, courses, transit, library_hours, deadlines]
+
+sandbox:
+  enabled: false
+
+mascot:
+  name: Owl
+  persona: A friendly campus owl. Answers in one or two short sentences.
+
+libcal:
+  enabled: true
+  base_url: https://charlesstudy.temple.edu
+  locations:
+    - id: "8404"
+      name: Charles Library
+      aliases: [Charles, Charles Library, main library]
+  default_location: "8404"
+  booking_simulation: false
+
+banner:
+  enabled: true
+  base_url: https://prd-xereg.temple.edu/StudentRegistrationSsb/ssb
+  default_term: "202636"
+  allowed_terms: ["202636"]
+
+hours:
+  enabled: true
+  libraries:
+    - id: charles
+      name: Charles Library
+      url: https://library.temple.edu/hours
+      parser:
+        profile: temple-library-hours
+        selectors: {}
+      aliases: [Charles, main library]
+  default_library: charles
+
+transit:
+  enabled: true
+  providers:
+    - id: septa_rail
+      kind: septa_arrivals
+      base_url: https://www3.septa.org
+    - id: septa_gtfs
+      kind: gtfs_static
+    - id: flight
+      kind: transloc_relay
+      base_url: https://flight.transloc.com
+      service_window: { start: "18:00:00", end: "02:00:00" }
+  stops:
+    - id: Temple University
+      name: Temple University Station
+      provider: septa_rail
+      aliases: [Temple, Temple Station, Temple University Station]
+    - id: "53"
+      name: Cecil B Moore Av & Broad St
+      provider: septa_gtfs
+      aliases: [Cecil B Moore, Cecil B. Moore, Cecil B Moore Station]
+  routes:
+    - id: B1
+      provider: septa_gtfs
+      aliases: [B, the B, BSL, Broad Street Line, orange line]
+  # The transit owner adds gtfs_subset_path and gtfs_validity (taken from the
+  # published septadev/GTFS release) once the campus subset is built.
+
+devices: []

@@ -26,9 +26,10 @@ tools:
     output_schema:
       type: object
       additionalProperties: false
-      required: [message]
+      required: [message, caller]
       properties:
         message: { type: string, maxLength: 160 }
+        caller: { enum: [user, device, guest] }
 ";
 
 #[derive(Debug)]
@@ -53,7 +54,11 @@ impl Module for Acceptance {
         ctx: &'a CallContext,
     ) -> BoxFuture<'a, Result<ToolSuccess, ToolError>> {
         Box::pin(async move {
-            let data = json!({ "message": format!("hello from kampus ({})", ctx.school_id) });
+            // `caller` shows identity is taken per request, never from the session.
+            let data = json!({
+                "message": format!("hello from kampus ({})", ctx.school_id),
+                "caller": ctx.principal.auth_kind,
+            });
             Ok(ToolSuccess {
                 data,
                 provenance: Provenance::live(ctx.now),

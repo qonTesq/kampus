@@ -19,6 +19,9 @@ pub use error::{ErrorCode, ToolError};
 pub use identity::{AuthKind, CallContext, Principal};
 pub use module::{BoxFuture, Module, ModuleInit, ToolSuccess, parse_args};
 pub use registry::{RegisteredTool, RegistryError, ToolRegistry};
+#[cfg(test)]
+mod tests;
+
 pub use security::{
     AuditDecision, AuditError, AuditEvent, AuditSink, Authorizer, Decision, IdentityResolver,
     ResolvedIdentity,

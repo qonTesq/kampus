@@ -1,4 +1,4 @@
-use scraper::{Html, Node};
+use scraper::{ElementRef, Html, Node};
 
 /// Elements whose text is never user-visible content.
 const HIDDEN: &[&str] = &[
@@ -41,21 +41,31 @@ pub fn clean_text(raw: &str, max_chars: usize) -> String {
 fn html_text(raw: &str) -> String {
     let fragment = Html::parse_fragment(raw);
     let mut out = String::with_capacity(raw.len());
-    for node in fragment.tree.root().descendants() {
-        match node.value() {
-            Node::Text(text) => {
-                let hidden = node
-                    .ancestors()
-                    .any(|a| matches!(a.value(), Node::Element(e) if HIDDEN.contains(&e.name())));
-                if !hidden {
-                    out.push_str(text);
+    collect_text(fragment.root_element(), &mut out);
+    out
+}
+
+/// Visible text in document order; block elements separate words.
+fn collect_text(element: ElementRef<'_>, out: &mut String) {
+    for child in element.children() {
+        match child.value() {
+            Node::Text(text) => out.push_str(text),
+            Node::Element(e) if HIDDEN.contains(&e.name()) => {}
+            Node::Element(e) => {
+                let block = BREAKS.contains(&e.name());
+                if block {
+                    out.push(' ');
+                }
+                if let Some(child) = ElementRef::wrap(child) {
+                    collect_text(child, out);
+                }
+                if block {
+                    out.push(' ');
                 }
             }
-            Node::Element(e) if BREAKS.contains(&e.name()) => out.push(' '),
             _ => {}
         }
     }
-    out
 }
 
 /// Keep at most `limit` items (bounded by [`super::limits::LIST_MAX`]) and
