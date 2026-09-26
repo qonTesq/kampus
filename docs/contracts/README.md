@@ -1,0 +1,84 @@
+# kampus contracts (proposed for freeze, 2026-09-26)
+
+**Status: awaiting human freeze.** Once frozen, any change needs a human. Source of truth: `crates/kampus-core/src/contracts/` and `crates/kampus-core/src/config/`; this page is the field reference.
+
+## module.yaml (version 1)
+
+| Field | Type | Rule |
+|---|---|---|
+| `version` | `1` | other values are rejected |
+| `id` | string | unique; matches the `school.yaml` `modules` entry |
+| `tools[].name` | `[a-z0-9_]{1,64}` | unique across all modules |
+| `tools[].title`, `description` | string | shown to assistants |
+| `tools[].data_class` | `public\|internal\|sensitive` | `confidential` is rejected (no modules) |
+| `tools[].roles` | set of `student\|faculty\|staff\|guest\|admin` | non-empty; policy narrows it further |
+| `tools[].write` | bool | true only for a destructive confirmation |
+| `tools[].confirms` | tool name | required when `write`; must name a read-only tool in the same module |
+| `tools[].scopes` | set of strings | required token scopes (e.g. `rooms:book`) |
+| `tools[].readOnlyHint` / `destructiveHint` | bool | read: `true`/`false`; write: `false`/`true`; otherwise registration fails |
+| `tools[].input_schema` | JSON Schema, `type: object` | arguments are validated before dispatch |
+| `tools[].output_schema` | JSON Schema, `type: object` | schema of `data`; the published MCP `outputSchema` is the envelope union around it |
+
+`Operation` is derived from the descriptor: `write` → `confirm`; a tool named by some `confirms` → `propose`; otherwise `read`.
+
+## Result envelope (`structuredContent`)
+
+```json
+{ "status": "ok", "data": { ... },
+  "meta": { "school_id": "temple", "source_kind": "live|scheduled|replay|sandbox",
+            "fetched_at": "RFC3339", "as_of": "RFC3339", "stale": false,
+            "replay_captured_at": "RFC3339 (optional)", "sandbox": false } }
+{ "status": "error",
+  "error": { "code": "...", "message": "safe text", "retryable": false, "retry_after_seconds": 5 } }
+```
+
+`isError` is true for the error envelope. The compatibility text content is the same JSON, serialized. Error codes: `invalid_arguments`, `authentication_required`, `permission_denied`, `rate_limited`, `upstream_unavailable`, `upstream_invalid_response`, `unsupported_source`, `confirmation_expired`, `confirmation_invalid`, `configuration_error`, `audit_unavailable`. Messages never contain raw upstream bodies, echoed arguments or tokens. An unknown tool is a JSON-RPC error. HTTP credential failures (401/403) belong to the auth middleware.
+
+## Rust interfaces (`kampus_core::contracts`)
+
+| Contract | Signature (abridged) | Notes |
+|---|---|---|
+| `Module` | `descriptor() -> &ModuleDescriptor`; `call(tool, args: Value, &CallContext) -> BoxFuture<Result<ToolSuccess, ToolError>>` | runs after policy; no tokens |
+| module entry | `pub fn module(&ModuleInit) -> Result<Arc<dyn Module>, RegistryError>` | `ModuleInit { school: Arc<SchoolConfig>, runtime: Arc<SharedRuntime> }` |
+| `ToolSuccess` | `{ data: Value, provenance: Provenance }` | `ToolSuccess::new(&typed, provenance)` |
+| `CallContext` | `school_id, principal, request_id, now, policy_version: u64, binding_generation: Option<u64>` | server-built only |
+| `Principal` | `subject, azp: Option, roles: BTreeSet<Role>, scopes, auth_kind: user\|device\|guest, device_id` | `Principal::guest()`; no bearer token |
+| `Authorizer::evaluate` | `(&CallContext, &ToolDescriptor, Operation) -> Decision { allowed, rule_id, effective_class, policy_version }` | sync; runs before cache/provider |
+| `IdentityResolver::resolve` | `(&Principal, now) -> ResolvedIdentity { principal, binding_generation }` | never upgrades trust |
+| `AuditSink::record` | `(&AuditEvent) -> BoxFuture<Result<(), AuditError>>` | failure blocks data release |
+| `AuditEvent` | `timestamp, school_id, user_hash, azp, tool, data_class, decision, rule, latency_ms, policy_version` | no arguments or content fields exist |
+| `RoomProvider::find` | `(&RoomQuery{location_id,start,end,min_capacity,limit}) -> ProviderResult<Vec<Room>>` | `Room{room_id,name,capacity,description,slots}` |
+| `BookingProvider::confirm` | `(&BookingProposal, &Principal) -> ProviderResult<BookingReceipt{receipt_id,sandbox,submitted}>` | sandbox only |
+| `CourseProvider::search` | `(&CourseQuery{term,subject,query,page,page_size}) -> ProviderResult<CoursePage>` | |
+| `TransitProvider::departures` | `(&DepartureQuery{stop_id,route_id,at,limit}) -> ProviderResult<Departures>` | `timing: live\|scheduled\|replay` |
+| `HoursProvider::hours` | `(&HoursQuery{library_id,date}) -> ProviderResult<LibraryDay>` | `status: open\|closed\|unknown` |
+| `DeadlineProvider::list` | `(&DeadlineQuery{synthetic_user_id,from,to,limit}) -> ProviderResult<Deadlines>` | fixed fields only |
+
+`ProviderResult<T> = Result<Sourced<T>{value, provenance}, ToolError>`. Adapters are per vendor, never per school.
+
+## school.yaml (version 1)
+
+Required: `version`, `school.{id, display_name, timezone}`, `server.{resource_url, listen, admin_listen}`, `auth.{issuer, audience}` (`mode: oauth|no_login`, default `oauth`; `roles_claim`, default `realm_access.roles`), `modules`. Optional: `sandbox.enabled` (false), `mascot.{name, persona}`, `libcal.{enabled, base_url, locations[{id,name,aliases}], default_location, booking_simulation, limits}`, `banner.{enabled, base_url, default_term, allowed_terms, limits}`, `hours.{enabled, libraries[{id,name,url,parser{profile,selectors},aliases}], default_library, limits}`, `transit.{enabled, providers[{id,kind,base_url,service_window,limits}], stops[{id,name,provider,aliases}], routes[...], gtfs_subset_path, gtfs_validity{start,end}, replay_path}`, `canvas.{enabled, base_url (loopback), service_token_env}`, `devices[{device_id, azp, bind_secret_env, stickers[{uid, subject (synthetic:…), role}]}]`. `limits` is `{requests_per_second: 1, burst: 2, timeout_ms: 5000}`.
+
+Startup errors: unknown fields; a bad timezone; non-https URLs (http only on loopback); credentials in URLs; placeholder hosts (`*.invalid`, `change-me`); a non-loopback `admin_listen`; duplicate IDs; defaults outside their lists; unset `*_env` variables; non-synthetic or admin stickers; `booking_simulation`, `replay_path` or `canvas.enabled` without **both** the `sandbox` build feature and `sandbox.enabled`.
+
+## policy.yaml (version 1)
+
+Required: `version`, `school_id` (must equal `school.id`), `tier_mapping` (all four canonical classes; never mapped downward), `client_registry[{azp, registration: pre_registered_confidential|dcr|cimd|device, approved, workspace}]` (only `pre_registered_confidential` can be approved; every `devices[].azp` must be registered as `device`), `sensitive_enabled`, `rules[{id, effect: allow|deny, roles, tools (names or ["*"]), effective_classes, client_trust: any|approved|unapproved, required_scopes, enabled}]` (unique IDs, known tools, never allow `confidential`), `audit.{retention_hours (1..=720), salt_env}`, `limits` (per minute: user reads 60, guest reads 30, booking proposals 5, confirms 2, device binds 6 per device and 30 per source). Deny wins; unmatched calls deny.
+
+## Proposed numeric defaults (freeze these)
+
+| Item | Default |
+|---|---|
+| title/name, description/note, query | 160 / 500 / 120 characters |
+| list default / hard max | 20 / 50 |
+| serialized response | 32 KiB |
+| cache TTL rooms / courses / rail / hours | 60 s / 15 min / 15 s / 6 h |
+| stale fallback | at most 2 × TTL, labeled `stale: true`, only for retryable errors |
+| upstream | 1 req/s/host, burst 2, 5 s timeout, 1 retry, 10 s call deadline |
+| audit retention | 24 h |
+| booking proposal TTL / device binding | 120 s / 120 s |
+
+## Freeze decision
+
+_Record here: who froze these, when (America/New_York), and any changes requested._
