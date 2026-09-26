@@ -1,0 +1,15 @@
+{
+  "temple_libcal": "https://charlesstudy.temple.edu",
+  "sju_libcal": "https://sju.libcal.com",
+  "location_id": "8404",
+  "banner": "https://prd-xereg.temple.edu/StudentRegistrationSsb/ssb",
+  "term": "202636",
+  "subject": "CIS",
+  "rail": "https://www3.septa.org/api/Arrivals/index.php",
+  "rail_station": "Temple University",
+  "invalid_rail_station": "Cecil B Moore",
+  "hours": "https://library.temple.edu/hours",
+  "flight": "https://flight.transloc.com/Services/JSONPRelay.svc/GetMapVehiclePoints",
+  "gtfs_release_api": "https://api.github.com/repos/septadev/GTFS/releases/latest",
+  "gtfs_stop_ids": ["53", "1277", "32148"]
+}

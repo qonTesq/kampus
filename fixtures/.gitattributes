@@ -1,0 +1,3 @@
+# Preserve recorded bytes and GTFS checksums on every platform.
+*.bin binary
+*.txt -text -diff

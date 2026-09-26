@@ -16,8 +16,8 @@ One agent owns the paths in proposal.md. Human contract freeze precedes module c
 
 - [x] 2.1 Implement dual-version Streamable HTTP skeleton with fail-closed business dispatch, output projection and public cache/limit primitives; demonstrate current and legacy hello-world calls plus bounded sanitized output. Budget 15 min.
 - [x] 2.2 Then add transport, output-cap, stale-label, cache-isolation and fail-closed regression tests; verify both protocol versions offline and document public HTTPS smoke commands and production/sandbox build commands. Budget 10 min.
-- [ ] 2.3 Establish fixture provenance/secret-redaction conventions in fixtures/README.md and assign real LibCal, Banner, SEPTA and hours captures to their owners by 5 PM; verify one sample manifest against the documented format and schedule nighttime Flight capture. Budget 5 min.
-  - Remaining: fixtures/README.md, the capture script and the real LibCal/Banner/SEPTA/hours recordings are not started; Flight capture is not scheduled.
+- [x] 2.3 Establish fixture provenance/secret-redaction conventions in fixtures/README.md and assign real LibCal, Banner, SEPTA and hours captures to their owners by 5 PM; verify one sample manifest against the documented format and schedule nighttime Flight capture. Budget 5 min.
+  - Done shortly after 17:00 on 2026-09-26: fixtures/README.md assigns corpus ownership, lists capture IDs/results, and documents provenance/redaction and re-recording with fixtures/capture.py. Recorded Temple/SJU LibCal, Banner with/without session, SEPTA rail/400, hours, and filtered GTFS from two releases; all 21 manifests/checksums verified. Flight has a manual 18:15 capture slot and command, with nighttime evidence left to public-transit as authorized. Transit handoff notes stop 53 is bus route 3, actual B1 stops are 1277/32148, and the campus stop list still needs expansion by that owner. Hours HTML has one explicitly documented CSRF-token redaction. No Rust changes or builds.
 
 ## 3. Integration and merge gate
 

@@ -1,0 +1,4 @@
+stop_id,stop_code,stop_name,stop_lat,stop_lon,zone_id,stop_url,location_type,parent_station,wheelchair_boarding,level_id
+53,53,Cecil B Moore Av & Broad St,39.978707,-75.157724,1,,0,,1,
+1277,1277,Cecil B. Moore,39.978672,-75.157925,50,,0,,1,
+32148,32148,Cecil B. Moore,39.978663,-75.157842,50,,0,,1,

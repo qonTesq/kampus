@@ -1,0 +1,24 @@
+{
+  "format_version": 1,
+  "kind": "recorded",
+  "captured_at": "2026-09-26T21:05:28.685509+00:00",
+  "source_url": "https://library.temple.edu/hours",
+  "request": {
+    "method": "GET",
+    "form": null,
+    "headers": {
+      "Accept-Encoding": "identity"
+    },
+    "cookies": "omitted"
+  },
+  "license_provenance": "Public vendor response recorded for offline interoperability tests. Upstream retains rights; no additional license is asserted.",
+  "http_status": 200,
+  "content_type": "text/html; charset=utf-8",
+  "body_file": "body.bin",
+  "sha256": "9bd039c1f6a8ac259f2f0a17f2e9c8d652d861a7feb35b7e398f41078e9ea7df",
+  "byte_length": 95474,
+  "original_sha256": "b433f188b93ff85878fce7393cba59aaf8717ed7a59ef2e4c6872a9c339a100d",
+  "redactions": [
+    "HTML csrf-token content"
+  ]
+}

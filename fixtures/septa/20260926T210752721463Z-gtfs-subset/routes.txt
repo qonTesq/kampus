@@ -1,0 +1,3 @@
+route_id,agency_id,route_short_name,route_long_name,route_type,route_url,route_color,route_text_color,route_sort_order,network_id
+B1,1,B1,Broad Street Line Local,1,https://www.septa.org/schedules/B1,F26100,FFFFFF,10021,bus_metro
+3,1,3,33rd-Cecil B. Moore to Frankford TC,3,https://www.septa.org/schedules/3,EF3340,FFFFFF,20030,bus_metro

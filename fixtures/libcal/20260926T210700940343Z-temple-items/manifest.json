@@ -1,0 +1,20 @@
+{
+  "format_version": 1,
+  "kind": "recorded",
+  "captured_at": "2026-09-26T21:07:00.942526+00:00",
+  "source_url": "https://charlesstudy.temple.edu/api/1.1/space/items/8404",
+  "request": {
+    "method": "GET",
+    "form": null,
+    "headers": {
+      "Accept-Encoding": "identity"
+    },
+    "cookies": "omitted"
+  },
+  "license_provenance": "Public vendor response recorded for offline interoperability tests. Upstream retains rights; no additional license is asserted.",
+  "http_status": 200,
+  "content_type": "application/json",
+  "body_file": "body.bin",
+  "sha256": "8a405d9511c73d54e6649ce005e0cf62f8efb20853f85153e7300dae2b22f57f",
+  "byte_length": 8979
+}

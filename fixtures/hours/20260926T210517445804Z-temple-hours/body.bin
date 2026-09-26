@@ -1,0 +1,1906 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    
+
+    <title>Temple University Libraries | Library Hours</title>
+    <meta name="csrf-param" content="authenticity_token" />
+<meta name="csrf-token" content="[REDACTED]" />
+
+    <link rel="stylesheet" href="/assets/application-561f29fc.css" media="all" data-turbo-track="reload" />
+    <link rel="stylesheet" href="/assets/print/application-cca03500.css" media="print" data-turbo-track="reload" />
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Faustina:ital,wght@0,300..800;1,300..800&amp;family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&amp;display=swap" as="style">
+    <link href="https://fonts.googleapis.com/css2?family=Faustina:ital,wght@0,300..800;1,300..800&family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&display=swap"
+          rel="stylesheet">
+          
+    <link rel="icon" type="image/svg" href="/assets/temple-logo-t-box-3e9c5e1e.svg" />
+
+    <script type="importmap" data-turbo-track="reload">{
+  "imports": {
+    "application": "/assets/application-e80b7506.js",
+    "homepage": "/assets/homepage-1987d938.js",
+    "jquery": "/assets/jquery-a46173ae.js",
+    "bootstrap": "/assets/bootstrap-c4519913.js",
+    "selectize": "/assets/selectize-03fea72e.js",
+    "@hotwired/turbo-rails": "/assets/turbo.min-86bf8853.js",
+    "@hotwired/stimulus": "/assets/stimulus.min-7ea3d58b.js",
+    "@hotwired/stimulus-loading": "/assets/stimulus-loading-25917588.js",
+    "@rails/actiontext": "/assets/actiontext.esm-659dec7a.js",
+    "trix": "/assets/vendor/trix-c52bbd61.js",
+    "hotkeys-js": "/assets/vendor/hotkeys-js-a78bac80.js",
+    "stimulus-use": "/assets/vendor/stimulus-use-cc449c02.js",
+    "controllers": "/assets/controllers/index-a596dbcf.js",
+    "administrate-trix": "/assets/src/administrate-trix-c181c593.js",
+    "legacy-libs": "/assets/src/legacy-libs-87091047.js",
+    "src/jquery": "/assets/src/jquery-71c09d14.js",
+    "src/common-libs": "/assets/src/common-libs-5d06796d.js",
+    "controllers/application": "/assets/controllers/application-1b22bc5a.js",
+    "controllers/application/etexts_component_controller": "/assets/controllers/application/etexts_component_controller-379d01f4.js",
+    "controllers/application/form_submissions_controller": "/assets/controllers/application/form_submissions_controller-e2f542fc.js",
+    "controllers/application/people_controller": "/assets/controllers/application/people_controller-1e21ab35.js",
+    "controllers/application/search_form_controller": "/assets/controllers/application/search_form_controller-c2066832.js",
+    "controllers/application/selectize_controller": "/assets/controllers/application/selectize_controller-a957db3c.js",
+    "controllers/application/wpvi_controller": "/assets/controllers/application/wpvi_controller-9e6f8a5b.js",
+    "controllers/common/external_links_controller": "/assets/controllers/common/external_links_controller-eb19fac0.js",
+    "controllers/common/failover_desktop_controller": "/assets/controllers/common/failover_desktop_controller-b63136d6.js",
+    "controllers/common/failover_global_controller": "/assets/controllers/common/failover_global_controller-cddaf447.js",
+    "controllers/common/failover_global_mobile_controller": "/assets/controllers/common/failover_global_mobile_controller-7c521d51.js",
+    "controllers/common/failover_mobile_controller": "/assets/controllers/common/failover_mobile_controller-6c8801b4.js",
+    "controllers/common/jumble_controller": "/assets/controllers/common/jumble_controller-31292f8d.js",
+    "controllers/common/print_controller": "/assets/controllers/common/print_controller-d09c6821.js",
+    "controllers/homepage/carousel_controller": "/assets/controllers/homepage/carousel_controller-f91f0e20.js"
+  }
+}</script>
+<link rel="modulepreload" href="/assets/application-e80b7506.js">
+<link rel="modulepreload" href="/assets/actiontext.esm-659dec7a.js">
+<link rel="modulepreload" href="/assets/vendor/trix-c52bbd61.js">
+<link rel="modulepreload" href="/assets/src/administrate-trix-c181c593.js">
+<link rel="modulepreload" href="/assets/src/legacy-libs-87091047.js">
+<script type="module">import "application"</script>
+    
+    <!-- Google tag (gtag.js) -->
+    <script nonce="gg/62oQwY07CtshB" async src="https://www.googletagmanager.com/gtag/js?id=GTM-5BNMS63"></script>
+    <script nonce="gg/62oQwY07CtshB">
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'GTM-5BNMS63');
+    </script>
+
+  </head>
+
+  <body class="" data-controller="jumble external-links">
+
+  <!-- Google Tag Manager (noscript) -->
+  <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-5BNMS63"
+  height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+  <!-- End Google Tag Manager (noscript) -->
+
+<header>
+  <div class="row d-none d-print-flex">
+    <div class="col-6">
+      <h1>Temple University Libraries</h1>
+    </div>
+    <div class="col-6 text-end">
+      https://library.temple.edu/hours
+    </div>
+  </div>
+
+  <div id="skip-link">
+    <a class="element-invisible" tabindex="0" href="#skiplink_ada">Skip to main content</a><br />
+    <a class="element-invisible" onclick="document.getElementById(&#39;search-block&#39;).focus();" tabindex="0" href="#">Skip to site search</a>
+  </div>
+
+
+
+  
+
+  <div id="header">
+  <div id="header-top" class="container-xl">
+    
+    <div class="row d-print-block mx-0 px-0">
+      <div class="col-12 py-3 logo-container text-start">
+      <h1 class="d-inline">
+      <a class="header-name" id="header-logo" href="/">
+        <img class="header-logo" alt="" src="/assets/temple-logo-t-box-3e9c5e1e.svg" /> 
+        <span>University Libraries</span>
+</a>      </h1>
+        <div id="header-search" class="d-none d-lg-inline float-end d-print-none">
+          <div class="header-search-container">
+  <a class="pe-3" href="https://tuportal.temple.edu">TUportal</a>
+  <a href="/support-the-libraries">Support the Libraries</a>
+  <form action=https://librarysearch.temple.edu/everything id="global-search" name="header-search">
+    <label for="librarySearch" class="visuallyhidden">Search Everything</label>
+    <input type="text" name="q" id="librarySearch" placeholder="Search books, articles, the library website, and more..." autocomplete="off" />
+    <input type="submit" value = "" aria-label="submit search query">
+    <input type="hidden" name="search_field" id="search_field" value="all">
+
+    <ul class="ms-xl-3 text-start">
+      <li><a href="https://librarysearch.temple.edu/books">Books</a></li>
+      <li><a href="https://librarysearch.temple.edu/articles">Articles</a></li>
+      <li><a href="/databases">Databases</a></li>
+    </ul>
+  </form>
+</div>
+
+        </div>
+
+      <div class="d-md-inline float-end mt-4 pe-3 d-lg-none text-end d-print-none">
+        <button id="mobile-search-button" class="navbar-toggler icon-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mobile-search" aria-controls="mobile-search" aria-expanded="false" aria-label="Toggle search form">
+        <span class="navbar-toggler-icon" id="search-toggler-icon">
+          <div class="bar1"></div>
+          <div class="bar2"></div>
+          <div class="bar3"></div>
+        </span>
+      </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+  <div id="wrapper" class="container-xl">
+  </div>
+
+  <div>
+    <div class="container-xl px-0 px-md-3">
+      <div class="row d-none d-sm-none d-md-none d-lg-block" id="main-menu">
+        <div class="nav-container px-lg-2" role="navigation">
+
+    <div class="btn-group dropdown">
+        <button name="button" type="button" id="aboutMenuButton" class="btn btn-lg btn-secondary dropdown-toggle disabled" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false" method="get">About</button>
+        <div class="dropdown-menu" id="about-links">
+          <div class="row">
+            <div class="col-4">
+  <div class="list-group h-100" id="list-tab" role="tablist">
+        <a class="mt-0 p-2 ps-3 multiples active" id="about-welcome-list" data-bs-toggle="list" href="#about-welcome-items" role="tab" aria-controls="home">Welcome</a>
+        <a class="mt-0 p-2 ps-3 multiples" id="about-reports-statistics-list" data-bs-toggle="list" href="#about-reports-statistics-items" role="tab" aria-controls="home">Reports &amp; Statistics</a>
+        <a class="mt-0 p-2 ps-3 multiples" id="about-support-the-libraries-list" data-bs-toggle="list" href="#about-support-the-libraries-items" role="tab" aria-controls="home">Support the Libraries</a>
+        <a class="mt-0 p-2 ps-3 multiples" id="about-policies-guidelines-list" data-bs-toggle="list" href="#about-policies-guidelines-items" role="tab" aria-controls="home">Policies &amp; Guidelines</a>
+        <a class="p-2 ps-3" href="/blogs">Blogs &amp; News</a>
+  </div>
+</div>
+
+<div class="col-8">
+  <div class="tab-content mb-4" id="nav-tabContent">
+    <div class="tab-pane fade active show" id="about-welcome-items" 
+         role="tabpanel" aria-labelledby="about-welcome-list">
+      <h1 class="menu-category mr-4 pb-3"><a href="/categories/welcome">Welcome</a><span>Dean's Welcome, our mission &amp; history, diversity statement</span></h1><ul class="list-unstyled menu-items"><li class="mt-0"><a href="/webpages/Mission-Strategic-Priorities-and-Initiatives">Mission, Strategic Priorities and Initiatives</a></li><li class="mt-0"><a href="/webpages/tulup-diversity-statement">TULUP Diversity Statement</a></li><li class="mt-0"><a href="/webpages/jobs">Employment Opportunities</a></li><li class="mt-0"><a href="/webpages/employment-opportunities-for-temple-students">Employment Opportunities for Temple Students</a></li><li class="mt-0"><a href="/webpages/temple-university-libraries-history">Temple University Libraries History</a></li><li class="mt-0"><a href="/webpages/academic-assembly-of-librarians">Academic Assembly of Librarians</a></li><li class="mt-0"><a href="/webpages/organizational-charts">Organizational Charts</a></li></ul>
+    </div>
+    <div class="tab-pane fade" id="about-reports-statistics-items" 
+         role="tabpanel" aria-labelledby="about-reports-statistics-list">
+      <h1 class="menu-category mr-4 pb-3"><a href="/categories/publications-reports-statistics">Reports &amp; Statistics</a><span>Newsletters, annual reports, statistics</span></h1><ul class="list-unstyled menu-items"><li class="mt-0"><a href="/webpages/annual-report">Annual Report</a></li><li class="mt-0"><a href="/webpages/system-summary">Facts &amp; Figures</a></li><li class="mt-0"><a href="/webpages/speaking-volumes">Speaking Volumes Newsletter</a></li><li class="mt-0"><a href="/webpages/university-budget-summaries">University Budget Summaries</a></li></ul>
+    </div>
+    <div class="tab-pane fade" id="about-support-the-libraries-items" 
+         role="tabpanel" aria-labelledby="about-support-the-libraries-list">
+      <h1 class="menu-category mr-4 pb-3"><a href="/categories/support-the-libraries">Support the Libraries</a><span>Making gifts and donating materials, Student Library Advisory Board</span></h1><ul class="list-unstyled menu-items"><li class="mt-0"><a href="/webpages/donate-books-other-gifts-in-kind">Donate Books &amp; Other Gifts-in-Kind</a></li><li class="mt-0"><a href="/policies/hsl-giving">Giving to the Health Sciences Libraries</a></li><li class="mt-0"><a href="/webpages/Health-Sciences-Student-Library-Advisory-Committee">Health Sciences Student Library Advisory Committee </a></li><li class="mt-0"><a href="https://forms.office.com/pages/responsepage.aspx?id=74FucSK1c0SOMRC9Asz25RaBtEw6SKZHmFKuxD6JtyZUMUdOUURIREZNU1FSRUpRR1NZVDJVR0kyTCQlQCN0PWcu&amp;route=shorturl">Sign up for our mailing list</a></li><li class="mt-0"><a href="/webpages/student-library-advisory-board">Student Library Advisory Board</a></li></ul>
+    </div>
+    <div class="tab-pane fade" id="about-policies-guidelines-items" 
+         role="tabpanel" aria-labelledby="about-policies-guidelines-list">
+      <h1 class="menu-category mr-4 pb-3"><a href="/categories/policies-guidelines">Policies &amp; Guidelines</a><span></span></h1><ul class="list-unstyled menu-items"><li class="mt-0"><a href="/policies/charles-library-exhibit-policies">Charles Library Exhibit Policies</a></li><li class="mt-0"><a href="/policies/confidentiality-of-patron-records">Confidentiality of Patron Records</a></li><li class="mt-0"><a href="/webpages/digital-preservation-policy-framework">Digital Preservation Policy Framework </a></li><li class="mt-0"><a href="/policies/entrance-to-the-university-libraries">Entrance to the University Libraries</a></li><li class="mt-0"><a href="/policies/event-policy">Event Policy</a></li><li class="mt-0"><a href="/policies/request-permission-to-film-in-the-library">Request Permission to Film in the Library</a></li><li class="mt-0"><a href="/policies/standards">Temple University Libraries Community Standards</a></li><li class="mt-0"><a href="/policies/theft-of-library-materials">Theft of Library Materials</a></li><li class="mt-0"><a href="/policies/university-libraries-copyright-policy">University Libraries' Copyright Policy</a></li><li class="mt-0"><a href="/policies/using-electronic-resources-acceptable-use-guidelines">Using Electronic Resources: Acceptable Use Guidelines</a></li><li class="mt-0"><a href="/services/privacy">Virtual Reference Privacy Guidelines</a></li></ul>
+    </div>
+    <div class="tab-pane fade" id="about-blogs-news-items" 
+         role="tabpanel" aria-labelledby="about-blogs-news-list">
+      
+    </div>
+  </div>
+</div>
+
+          </div>
+        </div>
+    </div>
+
+      <div class="btn-group dropdown">
+        <button name="button" type="button" id="visitMenuButton" class="btn btn-lg btn-secondary dropdown-toggle disabled" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false" method="get">Visit &amp; Study</button>
+        <div class="dropdown-menu" id="visit-links">
+          <div class="row">
+            <div class="col-4">
+  <div class="list-group h-100" id="list-tab" role="tablist">
+        <a class="mt-0 p-2 ps-3 multiples active" id="visit-temple-libraries-locations-list" data-bs-toggle="list" href="#visit-temple-libraries-locations-items" role="tab" aria-controls="home">Temple Libraries &amp; Locations</a>
+        <a class="mt-0 p-2 ps-3 multiples" id="visit-study-spaces-list" data-bs-toggle="list" href="#visit-study-spaces-items" role="tab" aria-controls="home">Study Spaces</a>
+        <a class="mt-0 p-2 ps-3 multiples" id="visit-borrowing-list" data-bs-toggle="list" href="#visit-borrowing-items" role="tab" aria-controls="home">Borrowing</a>
+        <a class="mt-0 p-2 ps-3 multiples" id="visit-computers-printing-technology-list" data-bs-toggle="list" href="#visit-computers-printing-technology-items" role="tab" aria-controls="home">Computers, Printing &amp; Technology</a>
+        <a class="mt-0 p-2 ps-3 multiples" id="visit-charles-library-public-spaces-list" data-bs-toggle="list" href="#visit-charles-library-public-spaces-items" role="tab" aria-controls="home">Charles Library Public Spaces</a>
+        <a class="mt-0 p-2 ps-3 multiples" id="visit-visitor-alumni-access-list" data-bs-toggle="list" href="#visit-visitor-alumni-access-items" role="tab" aria-controls="home">Visitor &amp; Alumni Access</a>
+        <a class="p-2 ps-3" href="/events">Events, Exhibits &amp; Workshops</a>
+        <a class="mt-0 p-2 ps-3 multiples" id="visit-explore-charles-library-list" data-bs-toggle="list" href="#visit-explore-charles-library-items" role="tab" aria-controls="home">Explore Charles Library</a>
+        <a class="mt-0 p-2 ps-3 multiples" id="visit-accessibility-services-list" data-bs-toggle="list" href="#visit-accessibility-services-items" role="tab" aria-controls="home">Accessibility Services</a>
+  </div>
+</div>
+
+<div class="col-8">
+  <div class="tab-content mb-4" id="nav-tabContent">
+    <div class="tab-pane fade active show" id="visit-temple-libraries-locations-items" 
+         role="tabpanel" aria-labelledby="visit-temple-libraries-locations-list">
+      <h1 class="menu-category mr-4 pb-3"><a href="/categories/temple-libraries-locations">Temple Libraries &amp; Locations</a><span>Information about our different campus libraries and special collections</span></h1><ul class="list-unstyled menu-items"><li class="mt-0"><a href="/libraries/ambler">Ambler Campus Library in the Ambler Technology Center</a></li><li class="mt-0"><a href="/libraries/blockson">Charles L. Blockson Afro-American Collection</a></li><li class="mt-0"><a href="/libraries/charles-library">Charles Library</a></li><li class="mt-0"><a href="/libraries/ginsburg">Ginsburg Health Sciences Library</a></li><li class="mt-0"><a href="/libraries/japan-campus-library-system">Japan Campus Library System</a></li><li class="mt-0"><a href="/libraries/podiatry">Krausz Library of Podiatric Medicine</a></li><li class="mt-0"><a href="/libraries/law-library">Law Library</a></li><li class="mt-0"><a href="/spaces/lcdss">Loretta C. Duckworth Scholars Studio</a></li><li class="mt-0"><a href="/spaces/scrc-reading-room">Special Collections Research Center</a></li><li class="mt-0"><a href="/libraries/temple-rome-library">Temple Rome Library</a></li></ul>
+    </div>
+    <div class="tab-pane fade" id="visit-study-spaces-items" 
+         role="tabpanel" aria-labelledby="visit-study-spaces-list">
+      <h1 class="menu-category mr-4 pb-3"><a href="/categories/study-spaces">Study Spaces</a><span>Group study rooms, quiet study areas, reservations</span></h1><ul class="list-unstyled menu-items"><li class="mt-0"><a href="/spaces/24-7-study-area">24/7 Study Area</a></li><li class="mt-0"><a href="/spaces/3rd-floor-open-reading-area">3rd Floor Open Reading Area</a></li><li class="mt-0"><a href="/spaces/4th-floor-graduate-and-faculty-study">4th Floor Graduate and Faculty Study</a></li><li class="mt-0"><a href="/spaces/4th-floor-quiet-reading-room">4th Floor Quiet Reading Room</a></li><li class="mt-0"><a href="/spaces/health-sciences-libraries-study-rooms">Health Sciences Libraries Study Rooms</a></li><li class="mt-0"><a href="/spaces/large-group-study-rooms">Large Group Study Rooms</a></li><li class="mt-0"><a href="/spaces/study-rooms-small">Small Group Study Rooms</a></li></ul>
+    </div>
+    <div class="tab-pane fade" id="visit-borrowing-items" 
+         role="tabpanel" aria-labelledby="visit-borrowing-list">
+      <h1 class="menu-category mr-4 pb-3"><a href="/categories/borrowing">Borrowing</a><span>Borrowing books, DVDs, and technology; borrowing from other libraries</span></h1><ul class="list-unstyled menu-items"><li class="mt-0"><a href="/services/borrow-media-equipment">Borrow Media Equipment</a></li><li class="mt-0"><a href="/services/borrow-a-laptop">Borrow a Laptop</a></li><li class="mt-0"><a href="/services/borrow-from-another-library">Borrow from Another Library</a></li><li class="mt-0"><a href="/services/distance-learners-book-delivery">Distance Learners Book Delivery</a></li><li class="mt-0"><a href="/services/document-delivery">Document Delivery </a></li><li class="mt-0"><a href="/services/request-a-purchase">Request a Purchase </a></li><li class="mt-0"><a href="/webpages/self-check">Self Check</a></li></ul>
+    </div>
+    <div class="tab-pane fade" id="visit-computers-printing-technology-items" 
+         role="tabpanel" aria-labelledby="visit-computers-printing-technology-list">
+      <h1 class="menu-category mr-4 pb-3"><a href="/categories/computers-printing-technology">Computers, Printing &amp; Technology</a><span>Accessing and using technology at the Libraries</span></h1><ul class="list-unstyled menu-items"><li class="mt-0"><a href="/services/assistive-technology">Assistive Technology</a></li><li class="mt-0"><a href="/services/borrow-a-laptop">Borrow a Laptop</a></li><li class="mt-0"><a href="/services/charge-your-device">Charge Your Device</a></li><li class="mt-0"><a href="/spaces/community-computer-lab">Community Computer Lab</a></li><li class="mt-0"><a href="/services/printing">Print, Photocopy &amp; Scan</a></li></ul>
+    </div>
+    <div class="tab-pane fade" id="visit-charles-library-public-spaces-items" 
+         role="tabpanel" aria-labelledby="visit-charles-library-public-spaces-list">
+      <h1 class="menu-category mr-4 pb-3"><a href="/categories/charles-library-public-spaces">Charles Library Public Spaces</a><span></span></h1><ul class="list-unstyled menu-items"><li class="mt-0"><a href="/spaces/1st-floor-event-space">1st Floor Event Space</a></li><li class="mt-0"><a href="/spaces/1st-floor-exhibit-space">1st Floor Exhibit Space</a></li><li class="mt-0"><a href="/spaces/24-7-study-area">24/7 Study Area</a></li><li class="mt-0"><a href="/spaces/3rd-floor-open-reading-area">3rd Floor Open Reading Area</a></li><li class="mt-0"><a href="/spaces/4th-floor-quiet-reading-room">4th Floor Quiet Reading Room</a></li><li class="mt-0"><a href="/spaces/room-401">Room 401</a></li><li class="mt-0"><a href="/spaces/stella-s-cafe">Stella's Cafe</a></li><li class="mt-0"><a href="/spaces/terrace">Terrace</a></li></ul>
+    </div>
+    <div class="tab-pane fade" id="visit-visitor-alumni-access-items" 
+         role="tabpanel" aria-labelledby="visit-visitor-alumni-access-list">
+      <h1 class="menu-category mr-4 pb-3"><a href="/categories/visitor-alumni-access">Visitor &amp; Alumni Access</a><span>Information for library visitors and community members</span></h1><ul class="list-unstyled menu-items"><li class="mt-0"><a href="/services/alumni-services">Alumni Services</a></li><li class="mt-0"><a href="/spaces/community-computer-lab">Community Computer Lab</a></li><li class="mt-0"><a href="https://library.temple.edu/policies/1">Entrance to the University Libraries</a></li><li class="mt-0"><a href="/services/get-a-library-card-non-temple">Get a Library Card (Non-Temple)</a></li><li class="mt-0"><a href="/services/group-visit-requests">Group Visit Requests</a></li><li class="mt-0"><a href="/policies/guest-alumni-access-to-computers-online-databases">Guest &amp; Alumni Access to Computers &amp; Online Databases</a></li><li class="mt-0"><a href="/policies/health-sciences-libraries-visitor-policy">Health Sciences Libraries Visitor Policy</a></li><li class="mt-0"><a href="/policies/reciprocal-borrowing-programs">Visiting from Partner Libraries</a></li></ul>
+    </div>
+    <div class="tab-pane fade" id="visit-events-exhibits-workshops-items" 
+         role="tabpanel" aria-labelledby="visit-events-exhibits-workshops-list">
+      
+    </div>
+    <div class="tab-pane fade" id="visit-explore-charles-library-items" 
+         role="tabpanel" aria-labelledby="visit-explore-charles-library-list">
+      <h1 class="menu-category mr-4 pb-3"><a href="/categories/explore-charles">Explore Charles Library</a><span></span></h1><ul class="list-unstyled menu-items"><li class="mt-0"><a href="/webpages/explore-charles">Charles Library: What You Need to Know</a></li><li class="mt-0"><a href="/spaces/charles-in-charge">Automated Storage &amp; Retrieval System (BookBot)</a></li><li class="mt-0"><a href="/spaces/one-stop-assistance-desk">One Stop Assistance Desk</a></li><li class="mt-0"><a href="/webpages/media-coverage">Media Coverage</a></li><li class="mt-0"><a href="/spaces/31">Charles Library Spaces</a></li><li class="mt-0"><a href="/webpages/charles-library-virtual-tour">Charles Library Virtual Tour</a></li><li class="mt-0"><a href="https://alt.library.temple.edu/charles_hunt/">Expedition: Charles Library Scavenger Hunt</a></li><li class="mt-0"><a href="https://library.temple.edu/lcdss">Loretta C. Duckworth Scholars Studio</a></li><li class="mt-0"><a href="/webpages/scrc-intro">Special Collections Research Center</a></li><li class="mt-0"><a href="/webpages/support-charles">Support Charles</a></li></ul>
+    </div>
+    <div class="tab-pane fade" id="visit-accessibility-services-items" 
+         role="tabpanel" aria-labelledby="visit-accessibility-services-list">
+      <h1 class="menu-category mr-4 pb-3"><a href="/categories/accessibility-services">Accessibility Services</a><span></span></h1><ul class="list-unstyled menu-items"><li class="mt-0"><a href="/services/assistance-with-library-materials-and-services">Assistance with Library Materials and Services</a></li><li class="mt-0"><a href="/services/building-accessibility">Building Accessibility</a></li><li class="mt-0"><a href="/services/remediation-of-library-materials">Remediation of Library Materials</a></li><li class="mt-0"><a href="/services/technology-resources">Technology Resources</a></li></ul>
+    </div>
+  </div>
+</div>
+
+          </div>
+        </div>
+    </div>
+
+    <div class="btn-group dropdown">
+        <button name="button" type="button" id="researchMenuButton" class="btn btn-lg btn-secondary dropdown-toggle disabled" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false" method="get">Research Services</button>
+        <div class="dropdown-menu" id="research-links">
+          <div class="row">
+            <div class="col-4">
+  <div class="list-group h-100" id="list-tab" role="tablist">
+        <a class="mt-0 p-2 ps-3 multiples active" id="research-support-for-students-list" data-bs-toggle="list" href="#research-support-for-students-items" role="tab" aria-controls="home">Support for Students</a>
+        <a class="mt-0 p-2 ps-3 multiples" id="research-support-for-instructors-list" data-bs-toggle="list" href="#research-support-for-instructors-items" role="tab" aria-controls="home">Support for Instructors</a>
+        <a class="mt-0 p-2 ps-3 multiples" id="research-support-for-researchers-list" data-bs-toggle="list" href="#research-support-for-researchers-items" role="tab" aria-controls="home">Support for Researchers</a>
+        <a class="mt-0 p-2 ps-3 multiples" id="research-collections-list" data-bs-toggle="list" href="#research-collections-items" role="tab" aria-controls="home">Collections</a>
+        <a class="mt-0 p-2 ps-3 multiples" id="research-grants-fellowships-competitions-list" data-bs-toggle="list" href="#research-grants-fellowships-competitions-items" role="tab" aria-controls="home">Grants, Fellowships &amp; Competitions</a>
+        <a class="p-2 ps-3" href="/workshops">Library Workshops</a>
+  </div>
+</div>
+
+<div class="col-8">
+  <div class="tab-content mb-4" id="nav-tabContent">
+    <div class="tab-pane fade active show" id="research-support-for-students-items" 
+         role="tabpanel" aria-labelledby="research-support-for-students-list">
+      <h1 class="menu-category mr-4 pb-3"><a href="/categories/get-started">Support for Students</a><span>Services and resources to help students succeed in classes, independent research, and beyond </span></h1><ul class="list-unstyled menu-items"><li class="mt-0"><a href="https://guides.temple.edu/overviewcitations">Citation Managers</a></li><li class="mt-0"><a href="https://guides.temple.edu/az.php">Databases</a></li><li class="mt-0"><a href="/services/undergraduate-user-guide">Undergraduate User Guide</a></li><li class="mt-0"><a href="/services/graduate-user-guide">Graduate User Guide</a></li><li class="mt-0"><a href="https://library.temple.edu/etextbooks">Etextbooks Available Through the Libraries</a></li><li class="mt-0"><a href="https://guides.temple.edu/home/courses">Library Course Guides</a></li><li class="mt-0"><a href="https://answers.library.temple.edu/">Library FAQs</a></li><li class="mt-0"><a href="https://guides.temple.edu/?b=s">Library Subject Guides</a></li><li class="mt-0"><a href="/services/sme">Make an Appointment</a></li><li class="mt-0"><a href="/categories/tutorials">Tutorials</a></li></ul>
+    </div>
+    <div class="tab-pane fade" id="research-support-for-instructors-items" 
+         role="tabpanel" aria-labelledby="research-support-for-instructors-list">
+      <h1 class="menu-category mr-4 pb-3"><a href="/categories/support-for-instructors">Support for Instructors</a><span>Learning services for faculty and instructors to support student success</span></h1><ul class="list-unstyled menu-items"><li class="mt-0"><a href="/services/integrate-course-related-research-guides-into-canvas">Add Library Course Guides to Canvas</a></li><li class="mt-0"><a href="/services/affordable-course-materials">Affordable Course Materials</a></li><li class="mt-0"><a href="/services/assignment-design-support">Assignment Design Support</a></li><li class="mt-0"><a href="/services/booking-requests">Booking Requests</a></li><li class="mt-0"><a href="/services/copyright-the-classroom">Copyright &amp; the Classroom</a></li><li class="mt-0"><a href="/services/reserve-materials-for-your-course">Reserve Materials for Your Course</a></li><li class="mt-0"><a href="/services/schedule-a-library-instruction-session">Schedule Library Instruction</a></li><li class="mt-0"><a href="https://guides.temple.edu/streaming">Stream Video to Your Online Course</a></li><li class="mt-0"><a href="/services/syllabus-statement">Syllabus Statement</a></li><li class="mt-0"><a href="/categories/textbook-affordability-project">Textbook Affordability Project</a></li></ul>
+    </div>
+    <div class="tab-pane fade" id="research-support-for-researchers-items" 
+         role="tabpanel" aria-labelledby="research-support-for-researchers-list">
+      <h1 class="menu-category mr-4 pb-3"><a href="/categories/support-for-researchers">Support for Researchers</a><span>Services to assist Temple authors and researchers during all stages of research and publishing</span></h1><ul class="list-unstyled menu-items"><li class="mt-0"><a href="/services/data-sharing-publication">Data Sharing &amp; Publication</a></li><li class="mt-0"><a href="/services/systematic-review-service">Evidence Synthesis and Systematic Reviews</a></li><li class="mt-0"><a href="/services/finding-data">Finding &amp; Citing Data</a></li><li class="mt-0"><a href="/services/support-for-gis-mapping">GIS &amp; Mapping</a></li><li class="mt-0"><a href="/categories/publishing-services">Publishing Services</a></li><li class="mt-0"><a href="/services/qualitative-data-analysis-and-tools">Qualitative Data Analysis &amp; Tools</a></li><li class="mt-0"><a href="/services/data-management-planning">Research Data Management</a></li><li class="mt-0"><a href="/services/research-impact-scholarly-credentials">Research Impact &amp; Scholarly Credentials</a></li><li class="mt-0"><a href="/services/researcher-profiles">Researcher Profiles</a></li><li class="mt-0"><a href="/categories/tuscholarshare">TUScholarShare</a></li></ul>
+    </div>
+    <div class="tab-pane fade" id="research-collections-items" 
+         role="tabpanel" aria-labelledby="research-collections-list">
+      <h1 class="menu-category mr-4 pb-3"><a href="/categories/collections">Collections</a><span>Print and online resources to support the University's education and research needs </span></h1><ul class="list-unstyled menu-items"><li class="mt-0"><a href="/webpages/charles-library-circulating-collections">Charles Library Circulating Collections</a></li><li class="mt-0"><a href="https://digital.library.temple.edu/">Digitized Materials</a></li><li class="mt-0"><a href="/webpages/government-information">Federal Library Depository Program</a></li><li class="mt-0"><a href="/webpages/memberships-consortia">Memberships &amp; Consortia</a></li><li class="mt-0"><a href="/scrc">Special Collections Research Center</a></li><li class="mt-0"><a href="/services/videos-dvds">Videos &amp; DVDs</a></li></ul>
+    </div>
+    <div class="tab-pane fade" id="research-grants-fellowships-competitions-items" 
+         role="tabpanel" aria-labelledby="research-grants-fellowships-competitions-list">
+      <h1 class="menu-category mr-4 pb-3"><a href="/categories/grants-fellowships-competitions">Grants, Fellowships &amp; Competitions</a><span>Award and fellowship opportunities</span></h1><ul class="list-unstyled menu-items"><li class="mt-0"><a href="/services/information-literacy-cross-team-grants">Information Literacy Cross Team Grants</a></li><li class="mt-0"><a href="/services/innovative-teaching-with-makerspace-technology-grant">Innovative Teaching with Makerspace Technology Grant</a></li><li class="mt-0"><a href="https://library.temple.edu/services/faculty-fellowship-program">LCDSS Faculty Fellowship Program</a></li><li class="mt-0"><a href="https://library.temple.edu/services/graduate-extern-program">LCDSS Graduate Extern Program</a></li><li class="mt-0"><a href="https://guides.temple.edu/livingstone">Livingstone Undergraduate Research Awards</a></li><li class="mt-0"><a href="https://library.temple.edu/services/north-broad-press">North Broad Press faculty-authored open textbook grant</a></li><li class="mt-0"><a href="/services/4">Open Access Publishing Fund</a></li><li class="mt-0"><a href="https://library.temple.edu/categories/textbook-affordability-project">Textbook Affordability Project</a></li></ul>
+    </div>
+    <div class="tab-pane fade" id="research-library-workshops-items" 
+         role="tabpanel" aria-labelledby="research-library-workshops-list">
+      
+    </div>
+  </div>
+</div>
+
+          </div>
+        </div>
+    </div>
+
+    <div class="btn-group ml-2">
+      <ul class="list-unstyled d-inline-block">
+      <li class="">
+        <form class="button_to" method="get" action="/contact-us"><button id="contactMenuButton" type="submit" class="btn btn-lg btn-secondary dropdown-toggle disabled">Contact Us</button></form>
+      </li>
+      </ul>
+    </div>
+
+  <ul class="list-unstyled nav-right-links">
+    <li class="nav-right hours-nav active">
+      <a href="/hours">Hours</a>
+    </li>
+    <li class="nav-right chat-nav" id="chat-nav">
+      <a target="_blank" aria-label="opens new tab" href="/chat">Chat</a>
+    </li>
+    <li class="nav-right account-nav">
+      <a href="https://librarysearch.temple.edu/users/account">My Account</a>
+    </li>
+  </ul>
+</div>
+
+      </div>
+
+      <div class="row d-block d-lg-none text-center mx-0 px-0" id="mobile-search-container">
+        <nav class="navbar navbar-expand-lg navbar-dark">
+
+  <div class="collapse navbar-collapse" id="mobile-search" data-controller="failover-mobile">
+    <div class="navbar-nav">
+      <form action=https://librarysearch.temple.edu/everything class="mobile" id="mobile-search-form" data-failover-target="form">
+        <label for="librarySearch" class="visuallyhidden">Search Everything</label>
+        <input type="text" name="q" id="librarySearch" class="mobile" data-failover-target="thequery" placeholder="Search books, articles, the library website, and more..." autocomplete="off" />
+        <input type="submit" class="mobile" data-action="click->failover#updatequery" value = "" aria-label="submit search query">
+        <input type="hidden" name="search_field" id="search_field" value="all">
+      </form>
+      
+      <ul class="text-center">
+        <li><a href="https://librarysearch.temple.edu/books">Books</a></li>
+        <li><a href="https://librarysearch.temple.edu/articles">Articles</a></li>
+        <li><a href="/databases">Databases</a></li>
+      </ul>
+    </div>
+  </div>
+
+</nav>
+
+      </div>
+
+      <div class="row d-block d-lg-none" id="mobile-nav">
+          <nav class="navbar navbar-expand-lg navbar-dark">
+    <button id="menu-button" class="navbar-toggler icon-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mobile-menu" aria-controls="mobile-menu" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon" id="navbar-toggler-icon">
+        <div class="bar1"></div>
+        <div class="bar2"></div>
+        <div class="bar3"></div>
+      </span>
+      <span class="navbar-brand" id="main-navbar-brand">Main Menu</span>
+    </button>
+    <div class="collapse navbar-collapse" id="mobile-menu">
+      <div class="navbar-nav">
+        <div class="row">
+          <div class="col">
+            <a href="/about">About</a>
+          </div>
+        </div>
+        <div class="row">
+          <div class="col">
+            <a href="/visit-study">Visit &amp; Study</a>
+          </div>
+        </div>
+        <div class="row">
+          <div class="col">
+            <a href="/research-services">Research Services</a>
+          </div>
+        </div>
+        <div class="row">
+          <div class="col">
+            <a href="/contact-us">Contact Us</a>
+          </div>
+        </div>
+        <div class="row">
+          <div class="col">
+            <img class="person-icon decorative" alt="" src="/assets/person-79609c93.png" />
+            <a href="https://librarysearch.temple.edu/users/account">My Account</a>
+          </div>
+        </div>
+        <div class="row">
+          <div class="col" id="chat-nav-mobile">
+            <img class="chat-icon decorative" alt="" src="/assets/chat-8c9a1c7c.png" />
+            <a href="/chat">Chat</a>
+          </div>
+        </div>
+        <div class="row">
+          <div class="col">
+            <img class="hours-icon decorative" alt="" src="/assets/hours-d0450e35.png" />
+            <a href="/hours">Hours</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </nav>
+
+      </div>
+      
+    </div>
+  </div>
+
+</div>
+</header>
+
+  <div id="content" role="main">
+    <a href="#" name="skiplink_ada" id="skiplink_ada" aria-label="skip link"></a> 
+    
+    <div class="lcs_slide_out">
+      <a target="_blank" aria-label="opens new tab" href="/chat">Chat</a>
+    </div>
+
+    <div class="date-nav">
+  <div class="container">
+    <div class="row">
+      <div class="col-12 col-lg-3">
+        <h1 class="page-title">Library Hours</h1>
+      </div>
+      <div class="col-12 col-lg-5 text-lg-center date-range">
+          <a href="/hours?date=2026-09-14">&lt;-</a> 
+          Sep 21, 2026 - Sep 27, 2026
+          <a href="/hours?date=2026-09-28">-&gt;</a>
+      </div>
+      <div class="col-12 col-lg-4 text-lg-end today-button-container date-picker">
+        <form aria-label="date picker" action="/hours" accept-charset="UTF-8" method="get">
+          <label class="visually-hidden" for="date">Date</label>
+          <input type="date" name="date" id="date" value="2026-09-26" min="2026-09-26" max="2028-09-26 17:05:30 -0400" />
+          <input type="submit" name="commit" value="Go" data-disable-with="Go" />
+</form>      </div>
+    </div>
+  </div>
+</div>
+
+<div class="container hours">
+  <div class="buildings d-none d-lg-block">
+    <div class="row building-row">
+      <div class="col-12 px-0">
+        <h2 class="red">
+          Charles Library
+        </h2>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-3"></div>
+          <div class="col hours-dates text-center">
+            Mon 21 
+          </div>
+          <div class="col hours-dates text-center">
+            Tue 22 
+          </div>
+          <div class="col hours-dates text-center">
+            Wed 23 
+          </div>
+          <div class="col hours-dates text-center">
+            Thu 24 
+          </div>
+          <div class="col hours-dates text-center">
+            Fri 25 
+          </div>
+          <div class="col hours-dates today day-of-week text-center">
+            Sat 26 
+          </div>
+          <div class="col hours-dates text-center">
+            Sun 27 
+          </div>
+    </div>
+
+        <div class="row hours-row">
+          <div class="col-3 px-0"> 
+            <h3><a href="/libraries/charles-library">Charles Library</a></h3>
+          </div>
+                        <div class="col">
+                          8:00 am - 2:00 am
+                      </div>
+                        <div class="col">
+                          8:00 am - 2:00 am
+                      </div>
+                        <div class="col">
+                          8:00 am - 2:00 am
+                      </div>
+                        <div class="col">
+                          8:00 am - 2:00 am
+                      </div>
+                        <div class="col">
+                          8:00 am - 8:00 pm
+                      </div>
+                        <div class="col today">
+                          9:00 am - 5:00 pm
+                      </div>
+                        <div class="col">
+                          12:00 pm - 2:00 am
+                      </div>
+
+        </div>
+        <div class="row hours-row">
+          <div class="col-3 px-0"> 
+            <h3><a href="/spaces/24-7-study-area">24/7 Study Area</a></h3>
+          </div>
+                        <div class="col">
+                          24 hours
+                      </div>
+                        <div class="col">
+                          24 hours
+                      </div>
+                        <div class="col">
+                          24 hours
+                      </div>
+                        <div class="col">
+                          24 hours
+                      </div>
+                        <div class="col">
+                          24 hours
+                      </div>
+                        <div class="col today">
+                          24 hours
+                      </div>
+                        <div class="col">
+                          24 hours
+                      </div>
+
+        </div>
+        <div class="row hours-row">
+          <div class="col-3 px-0"> 
+            <h3><a href="/spaces/charles-in-charge">Automated Storage &amp; Retrieval System (BookBot)</a></h3>
+          </div>
+                        <div class="col">
+                          8:00 am - 9:45 pm
+                      </div>
+                        <div class="col">
+                          8:00 am - 9:45 pm
+                      </div>
+                        <div class="col">
+                          8:00 am - 9:45 pm
+                      </div>
+                        <div class="col">
+                          8:00 am - 9:45 pm
+                      </div>
+                        <div class="col">
+                          8:00 am - 7:45 pm
+                      </div>
+                        <div class="col today">
+                          9:00 am - 4:45 pm
+                      </div>
+                        <div class="col">
+                          12:00 pm - 9:45 pm
+                      </div>
+
+        </div>
+        <div class="row hours-row">
+          <div class="col-3 px-0"> 
+            <h3><a href="/spaces/community-computer-lab">Community Computer Lab</a></h3>
+          </div>
+                        <div class="col">
+                          9:00 am - 6:45 pm
+                      </div>
+                        <div class="col">
+                          9:00 am - 6:45 pm
+                      </div>
+                        <div class="col">
+                          9:00 am - 6:45 pm
+                      </div>
+                        <div class="col">
+                          9:00 am - 6:45 pm
+                      </div>
+                        <div class="col">
+                          9:00 am - 6:45 pm
+                      </div>
+                        <div class="col today">
+                          10:00 am - 4:45 pm
+                      </div>
+                        <div class="col">
+                          12:00 pm - 6:45 pm
+                      </div>
+
+        </div>
+        <div class="row hours-row">
+          <div class="col-3 px-0"> 
+            <h3><a href="/spaces/lcdss">Loretta C. Duckworth Scholars Studio</a></h3>
+          </div>
+                        <div class="col">
+                          8:30 am - 5:00 pm
+                      </div>
+                        <div class="col">
+                          8:30 am - 5:00 pm
+                      </div>
+                        <div class="col">
+                          8:30 am - 5:00 pm
+                      </div>
+                        <div class="col">
+                          8:30 am - 5:00 pm
+                      </div>
+                        <div class="col">
+                          8:30 am - 5:00 pm
+                      </div>
+                        <div class="col today">
+                          <span class="closed">CLOSED</span>
+                      </div>
+                        <div class="col">
+                          <span class="closed">CLOSED</span>
+                      </div>
+
+        </div>
+        <div class="row hours-row">
+          <div class="col-3 px-0"> 
+            <h3><a href="/spaces/one-stop-assistance-desk">One Stop Assistance Desk</a></h3>
+          </div>
+                        <div class="col">
+                          8:00 am - 1:30 am
+                      </div>
+                        <div class="col">
+                          8:00 am - 1:30 am
+                      </div>
+                        <div class="col">
+                          8:00 am - 1:30 am
+                      </div>
+                        <div class="col">
+                          8:00 am - 1:30 am
+                      </div>
+                        <div class="col">
+                          8:00 am - 8:00 pm
+                      </div>
+                        <div class="col today">
+                          9:00 am - 5:00 pm
+                      </div>
+                        <div class="col">
+                          12:00 pm - 1:30 am
+                      </div>
+
+        </div>
+        <div class="row hours-row">
+          <div class="col-3 px-0"> 
+            <h3><a href="/spaces/scrc-reading-room">Special Collections Research Center</a></h3>
+          </div>
+                        <div class="col">
+                          9:00 am - 5:00 pm
+                      </div>
+                        <div class="col">
+                          9:00 am - 5:00 pm
+                      </div>
+                        <div class="col">
+                          9:00 am - 5:00 pm
+                      </div>
+                        <div class="col">
+                          9:00 am - 5:00 pm
+                      </div>
+                        <div class="col">
+                          9:00 am - 5:00 pm
+                      </div>
+                        <div class="col today">
+                          <span class="closed">CLOSED</span>
+                      </div>
+                        <div class="col">
+                          <span class="closed">CLOSED</span>
+                      </div>
+
+        </div>
+        <div class="row hours-row">
+          <div class="col-3 px-0"> 
+            <h3><a href="/spaces/stella-s-cafe">Stella&#39;s Cafe</a></h3>
+          </div>
+                        <div class="col">
+                          8:00 am - 5:00 pm
+                      </div>
+                        <div class="col">
+                          8:00 am - 5:00 pm
+                      </div>
+                        <div class="col">
+                          8:00 am - 5:00 pm
+                      </div>
+                        <div class="col">
+                          8:00 am - 5:00 pm
+                      </div>
+                        <div class="col">
+                          8:00 am - 4:00 pm
+                      </div>
+                        <div class="col today">
+                          <span class="closed">CLOSED</span>
+                      </div>
+                        <div class="col">
+                          <span class="closed">CLOSED</span>
+                      </div>
+
+        </div>
+        <div class="row hours-row">
+          <div class="col-3 px-0"> 
+            <h3><a href="/spaces/1st-floor-exhibit-space">1st Floor Exhibit Space</a></h3>
+          </div>
+                        <div class="col">
+                          8:00 am - 8:00 pm
+                      </div>
+                        <div class="col">
+                          8:00 am - 8:00 pm
+                      </div>
+                        <div class="col">
+                          8:00 am - 8:00 pm
+                      </div>
+                        <div class="col">
+                          8:00 am - 8:00 pm
+                      </div>
+                        <div class="col">
+                          8:00 am - 8:00 pm
+                      </div>
+                        <div class="col today">
+                          9:00 am - 5:00 pm
+                      </div>
+                        <div class="col">
+                          12:00 pm - 8:00 pm
+                      </div>
+
+        </div>
+    <div class="row building-row">
+      <div class="col-12 px-0">
+        <h2 class="red">
+          Ambler Campus Library in the Ambler Technology Center
+        </h2>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-3"></div>
+          <div class="col hours-dates text-center">
+            Mon 21 
+          </div>
+          <div class="col hours-dates text-center">
+            Tue 22 
+          </div>
+          <div class="col hours-dates text-center">
+            Wed 23 
+          </div>
+          <div class="col hours-dates text-center">
+            Thu 24 
+          </div>
+          <div class="col hours-dates text-center">
+            Fri 25 
+          </div>
+          <div class="col hours-dates today day-of-week text-center">
+            Sat 26 
+          </div>
+          <div class="col hours-dates text-center">
+            Sun 27 
+          </div>
+    </div>
+
+        <div class="row hours-row">
+          <div class="col-3 px-0"> 
+            <h3><a href="/libraries/ambler">Ambler Campus Library in the Ambler Technology Center</a></h3>
+          </div>
+                        <div class="col">
+                          9:00 am - 5:00 pm
+                      </div>
+                        <div class="col">
+                          9:00 am - 5:00 pm
+                      </div>
+                        <div class="col">
+                          9:00 am - 5:00 pm
+                      </div>
+                        <div class="col">
+                          9:00 am - 5:00 pm
+                      </div>
+                        <div class="col">
+                          9:00 am - 5:00 pm
+                      </div>
+                        <div class="col today">
+                          <span class="closed">CLOSED</span>
+                      </div>
+                        <div class="col">
+                          <span class="closed">CLOSED</span>
+                      </div>
+
+        </div>
+    <div class="row building-row">
+      <div class="col-12 px-0">
+        <h2 class="red">
+          Charles L. Blockson Afro-American Collection
+        </h2>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-3"></div>
+          <div class="col hours-dates text-center">
+            Mon 21 
+          </div>
+          <div class="col hours-dates text-center">
+            Tue 22 
+          </div>
+          <div class="col hours-dates text-center">
+            Wed 23 
+          </div>
+          <div class="col hours-dates text-center">
+            Thu 24 
+          </div>
+          <div class="col hours-dates text-center">
+            Fri 25 
+          </div>
+          <div class="col hours-dates today day-of-week text-center">
+            Sat 26 
+          </div>
+          <div class="col hours-dates text-center">
+            Sun 27 
+          </div>
+    </div>
+
+        <div class="row hours-row">
+          <div class="col-3 px-0"> 
+            <h3><a href="/libraries/blockson">Charles L. Blockson Afro-American Collection</a></h3>
+          </div>
+                        <div class="col">
+                          9:00 am - 5:00 pm
+                      </div>
+                        <div class="col">
+                          9:00 am - 5:00 pm
+                      </div>
+                        <div class="col">
+                          9:00 am - 5:00 pm
+                      </div>
+                        <div class="col">
+                          9:00 am - 5:00 pm
+                      </div>
+                        <div class="col">
+                          9:00 am - 5:00 pm
+                      </div>
+                        <div class="col today">
+                          <span class="closed">CLOSED</span>
+                      </div>
+                        <div class="col">
+                          <span class="closed">CLOSED</span>
+                      </div>
+
+          <div class="col-9 offset-3 p-3 text-start hours-note-desktop">
+            <span style="font-family: 'Roboto Condensed';">To visit the Blockson Afro-American  Collection, use the reading room, or if you need research assistance, you must make  a reservation ahead of time by emailing the Librarian Aslaku Berhanu at  <a href="mailto:aberhanu@temple.edu">aberhanu@temple.edu</a>, or by telephoning  her at <strong>215-204-4723</strong>.</span>
+          </div>
+        </div>
+    <div class="row building-row">
+      <div class="col-12 px-0">
+        <h2 class="red">
+          Ginsburg Health Sciences Library
+        </h2>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-3"></div>
+          <div class="col hours-dates text-center">
+            Mon 21 
+          </div>
+          <div class="col hours-dates text-center">
+            Tue 22 
+          </div>
+          <div class="col hours-dates text-center">
+            Wed 23 
+          </div>
+          <div class="col hours-dates text-center">
+            Thu 24 
+          </div>
+          <div class="col hours-dates text-center">
+            Fri 25 
+          </div>
+          <div class="col hours-dates today day-of-week text-center">
+            Sat 26 
+          </div>
+          <div class="col hours-dates text-center">
+            Sun 27 
+          </div>
+    </div>
+
+        <div class="row hours-row">
+          <div class="col-3 px-0"> 
+            <h3><a href="/libraries/ginsburg">Ginsburg Health Sciences Library</a></h3>
+          </div>
+                        <div class="col">
+                          8:00 am - 9:00 pm
+                      </div>
+                        <div class="col">
+                          8:00 am - 9:00 pm
+                      </div>
+                        <div class="col">
+                          8:00 am - 9:00 pm
+                      </div>
+                        <div class="col">
+                          8:00 am - 9:00 pm
+                      </div>
+                        <div class="col">
+                          8:00 am - 9:00 pm
+                      </div>
+                        <div class="col today">
+                          10:00 am - 7:00 pm
+                      </div>
+                        <div class="col">
+                          11:00 am - 7:00 pm
+                      </div>
+
+        </div>
+        <div class="row hours-row">
+          <div class="col-3 px-0"> 
+            <h3><a href="/spaces/ginsburg-innovation-space">Ginsburg Innovation Space</a></h3>
+          </div>
+                        <div class="col">
+                          9:00 am - 5:00 pm
+                      </div>
+                        <div class="col">
+                          9:00 am - 5:00 pm
+                      </div>
+                        <div class="col">
+                          9:00 am - 5:00 pm
+                      </div>
+                        <div class="col">
+                          9:00 am - 5:00 pm
+                      </div>
+                        <div class="col">
+                          9:00 am - 5:00 pm
+                      </div>
+                        <div class="col today">
+                          <span class="closed">CLOSED</span>
+                      </div>
+                        <div class="col">
+                          <span class="closed">CLOSED</span>
+                      </div>
+
+        </div>
+    <div class="row building-row">
+      <div class="col-12 px-0">
+        <h2 class="red">
+          Krausz Library of Podiatric Medicine
+        </h2>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-3"></div>
+          <div class="col hours-dates text-center">
+            Mon 21 
+          </div>
+          <div class="col hours-dates text-center">
+            Tue 22 
+          </div>
+          <div class="col hours-dates text-center">
+            Wed 23 
+          </div>
+          <div class="col hours-dates text-center">
+            Thu 24 
+          </div>
+          <div class="col hours-dates text-center">
+            Fri 25 
+          </div>
+          <div class="col hours-dates today day-of-week text-center">
+            Sat 26 
+          </div>
+          <div class="col hours-dates text-center">
+            Sun 27 
+          </div>
+    </div>
+
+        <div class="row hours-row">
+          <div class="col-3 px-0"> 
+            <h3><a href="/libraries/podiatry">Krausz Library of Podiatric Medicine</a></h3>
+          </div>
+                        <div class="col">
+                          9:00 am - 10:00 pm
+                      </div>
+                        <div class="col">
+                          9:00 am - 10:00 pm
+                      </div>
+                        <div class="col">
+                          9:00 am - 10:00 pm
+                      </div>
+                        <div class="col">
+                          9:00 am - 10:00 pm
+                      </div>
+                        <div class="col">
+                          9:00 am - 5:00 pm
+                      </div>
+                        <div class="col today">
+                          9:00 am - 3:30 pm
+                      </div>
+                        <div class="col">
+                          12:30 pm - 6:30 pm
+                      </div>
+
+        </div>
+    <div class="row building-row">
+      <div class="col-12 px-0">
+        <h2 class="red">
+          Online
+        </h2>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-3"></div>
+          <div class="col hours-dates text-center">
+            Mon 21 
+          </div>
+          <div class="col hours-dates text-center">
+            Tue 22 
+          </div>
+          <div class="col hours-dates text-center">
+            Wed 23 
+          </div>
+          <div class="col hours-dates text-center">
+            Thu 24 
+          </div>
+          <div class="col hours-dates text-center">
+            Fri 25 
+          </div>
+          <div class="col hours-dates today day-of-week text-center">
+            Sat 26 
+          </div>
+          <div class="col hours-dates text-center">
+            Sun 27 
+          </div>
+    </div>
+
+        <div class="row hours-row">
+          <div class="col-3 px-0"> 
+            <h3><a href="/services/chat-with-a-librarian">Chat with a librarian</a></h3>
+          </div>
+                        <div class="col">
+                          24 hours
+                      </div>
+                        <div class="col">
+                          24 hours
+                      </div>
+                        <div class="col">
+                          24 hours
+                      </div>
+                        <div class="col">
+                          24 hours
+                      </div>
+                        <div class="col">
+                          24 hours
+                      </div>
+                        <div class="col today">
+                          24 hours
+                      </div>
+                        <div class="col">
+                          24 hours
+                      </div>
+
+        </div>
+  </div>
+
+  <div class="mobile-buildings d-block d-lg-none">
+
+    <div class="row building-row">
+      <div class="col-12">
+        <h2 class="red">
+          Charles Library
+        </h2>
+      </div>
+    </div>
+
+    <div class="row hours-row">
+      <div class="col-12"> 
+        <h3><a href="/libraries/charles-library">Charles Library</a></h3>
+      </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Mon, Sep 21</div>
+                        <div class="col-8">8:00 am - 2:00 am</div>
+                    </div>
+                  </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Tue, Sep 22</div>
+                        <div class="col-8">8:00 am - 2:00 am</div>
+                    </div>
+                  </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Wed, Sep 23</div>
+                        <div class="col-8">8:00 am - 2:00 am</div>
+                    </div>
+                  </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Thu, Sep 24</div>
+                        <div class="col-8">8:00 am - 2:00 am</div>
+                    </div>
+                  </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Fri, Sep 25</div>
+                        <div class="col-8">8:00 am - 8:00 pm</div>
+                    </div>
+                  </div>
+                      <div class="col-12 today">
+                      <div class="row hours-fix">
+                        <div class="col-4">Sat, Sep 26</div>
+                        <div class="col-8">9:00 am - 5:00 pm</div>
+                    </div>
+                  </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Sun, Sep 27</div>
+                        <div class="col-8">12:00 pm - 2:00 am</div>
+                    </div>
+                  </div>
+
+        </div>
+    <div class="row hours-row">
+      <div class="col-12"> 
+        <h3><a href="/spaces/24-7-study-area">24/7 Study Area</a></h3>
+      </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Mon, Sep 21</div>
+                        <div class="col-8">24 hours</div>
+                    </div>
+                  </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Tue, Sep 22</div>
+                        <div class="col-8">24 hours</div>
+                    </div>
+                  </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Wed, Sep 23</div>
+                        <div class="col-8">24 hours</div>
+                    </div>
+                  </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Thu, Sep 24</div>
+                        <div class="col-8">24 hours</div>
+                    </div>
+                  </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Fri, Sep 25</div>
+                        <div class="col-8">24 hours</div>
+                    </div>
+                  </div>
+                      <div class="col-12 today">
+                      <div class="row hours-fix">
+                        <div class="col-4">Sat, Sep 26</div>
+                        <div class="col-8">24 hours</div>
+                    </div>
+                  </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Sun, Sep 27</div>
+                        <div class="col-8">24 hours</div>
+                    </div>
+                  </div>
+
+        </div>
+    <div class="row hours-row">
+      <div class="col-12"> 
+        <h3><a href="/spaces/charles-in-charge">Automated Storage &amp; Retrieval System (BookBot)</a></h3>
+      </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Mon, Sep 21</div>
+                        <div class="col-8">8:00 am - 9:45 pm</div>
+                    </div>
+                  </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Tue, Sep 22</div>
+                        <div class="col-8">8:00 am - 9:45 pm</div>
+                    </div>
+                  </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Wed, Sep 23</div>
+                        <div class="col-8">8:00 am - 9:45 pm</div>
+                    </div>
+                  </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Thu, Sep 24</div>
+                        <div class="col-8">8:00 am - 9:45 pm</div>
+                    </div>
+                  </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Fri, Sep 25</div>
+                        <div class="col-8">8:00 am - 7:45 pm</div>
+                    </div>
+                  </div>
+                      <div class="col-12 today">
+                      <div class="row hours-fix">
+                        <div class="col-4">Sat, Sep 26</div>
+                        <div class="col-8">9:00 am - 4:45 pm</div>
+                    </div>
+                  </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Sun, Sep 27</div>
+                        <div class="col-8">12:00 pm - 9:45 pm</div>
+                    </div>
+                  </div>
+
+        </div>
+    <div class="row hours-row">
+      <div class="col-12"> 
+        <h3><a href="/spaces/community-computer-lab">Community Computer Lab</a></h3>
+      </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Mon, Sep 21</div>
+                        <div class="col-8">9:00 am - 6:45 pm</div>
+                    </div>
+                  </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Tue, Sep 22</div>
+                        <div class="col-8">9:00 am - 6:45 pm</div>
+                    </div>
+                  </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Wed, Sep 23</div>
+                        <div class="col-8">9:00 am - 6:45 pm</div>
+                    </div>
+                  </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Thu, Sep 24</div>
+                        <div class="col-8">9:00 am - 6:45 pm</div>
+                    </div>
+                  </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Fri, Sep 25</div>
+                        <div class="col-8">9:00 am - 6:45 pm</div>
+                    </div>
+                  </div>
+                      <div class="col-12 today">
+                      <div class="row hours-fix">
+                        <div class="col-4">Sat, Sep 26</div>
+                        <div class="col-8">10:00 am - 4:45 pm</div>
+                    </div>
+                  </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Sun, Sep 27</div>
+                        <div class="col-8">12:00 pm - 6:45 pm</div>
+                    </div>
+                  </div>
+
+        </div>
+    <div class="row hours-row">
+      <div class="col-12"> 
+        <h3><a href="/spaces/lcdss">Loretta C. Duckworth Scholars Studio</a></h3>
+      </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Mon, Sep 21</div>
+                        <div class="col-8">8:30 am - 5:00 pm</div>
+                    </div>
+                  </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Tue, Sep 22</div>
+                        <div class="col-8">8:30 am - 5:00 pm</div>
+                    </div>
+                  </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Wed, Sep 23</div>
+                        <div class="col-8">8:30 am - 5:00 pm</div>
+                    </div>
+                  </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Thu, Sep 24</div>
+                        <div class="col-8">8:30 am - 5:00 pm</div>
+                    </div>
+                  </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Fri, Sep 25</div>
+                        <div class="col-8">8:30 am - 5:00 pm</div>
+                    </div>
+                  </div>
+                      <div class="col-12 today">
+                      <div class="row hours-fix">
+                        <div class="col-4">Sat, Sep 26</div>
+                        <div class="col-8"><span class="closed">CLOSED</span></div>
+                    </div>
+                  </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Sun, Sep 27</div>
+                        <div class="col-8"><span class="closed">CLOSED</span></div>
+                    </div>
+                  </div>
+
+        </div>
+    <div class="row hours-row">
+      <div class="col-12"> 
+        <h3><a href="/spaces/one-stop-assistance-desk">One Stop Assistance Desk</a></h3>
+      </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Mon, Sep 21</div>
+                        <div class="col-8">8:00 am - 1:30 am</div>
+                    </div>
+                  </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Tue, Sep 22</div>
+                        <div class="col-8">8:00 am - 1:30 am</div>
+                    </div>
+                  </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Wed, Sep 23</div>
+                        <div class="col-8">8:00 am - 1:30 am</div>
+                    </div>
+                  </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Thu, Sep 24</div>
+                        <div class="col-8">8:00 am - 1:30 am</div>
+                    </div>
+                  </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Fri, Sep 25</div>
+                        <div class="col-8">8:00 am - 8:00 pm</div>
+                    </div>
+                  </div>
+                      <div class="col-12 today">
+                      <div class="row hours-fix">
+                        <div class="col-4">Sat, Sep 26</div>
+                        <div class="col-8">9:00 am - 5:00 pm</div>
+                    </div>
+                  </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Sun, Sep 27</div>
+                        <div class="col-8">12:00 pm - 1:30 am</div>
+                    </div>
+                  </div>
+
+        </div>
+    <div class="row hours-row">
+      <div class="col-12"> 
+        <h3><a href="/spaces/scrc-reading-room">Special Collections Research Center</a></h3>
+      </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Mon, Sep 21</div>
+                        <div class="col-8">9:00 am - 5:00 pm</div>
+                    </div>
+                  </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Tue, Sep 22</div>
+                        <div class="col-8">9:00 am - 5:00 pm</div>
+                    </div>
+                  </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Wed, Sep 23</div>
+                        <div class="col-8">9:00 am - 5:00 pm</div>
+                    </div>
+                  </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Thu, Sep 24</div>
+                        <div class="col-8">9:00 am - 5:00 pm</div>
+                    </div>
+                  </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Fri, Sep 25</div>
+                        <div class="col-8">9:00 am - 5:00 pm</div>
+                    </div>
+                  </div>
+                      <div class="col-12 today">
+                      <div class="row hours-fix">
+                        <div class="col-4">Sat, Sep 26</div>
+                        <div class="col-8"><span class="closed">CLOSED</span></div>
+                    </div>
+                  </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Sun, Sep 27</div>
+                        <div class="col-8"><span class="closed">CLOSED</span></div>
+                    </div>
+                  </div>
+
+        </div>
+    <div class="row hours-row">
+      <div class="col-12"> 
+        <h3><a href="/spaces/stella-s-cafe">Stella&#39;s Cafe</a></h3>
+      </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Mon, Sep 21</div>
+                        <div class="col-8">8:00 am - 5:00 pm</div>
+                    </div>
+                  </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Tue, Sep 22</div>
+                        <div class="col-8">8:00 am - 5:00 pm</div>
+                    </div>
+                  </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Wed, Sep 23</div>
+                        <div class="col-8">8:00 am - 5:00 pm</div>
+                    </div>
+                  </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Thu, Sep 24</div>
+                        <div class="col-8">8:00 am - 5:00 pm</div>
+                    </div>
+                  </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Fri, Sep 25</div>
+                        <div class="col-8">8:00 am - 4:00 pm</div>
+                    </div>
+                  </div>
+                      <div class="col-12 today">
+                      <div class="row hours-fix">
+                        <div class="col-4">Sat, Sep 26</div>
+                        <div class="col-8"><span class="closed">CLOSED</span></div>
+                    </div>
+                  </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Sun, Sep 27</div>
+                        <div class="col-8"><span class="closed">CLOSED</span></div>
+                    </div>
+                  </div>
+
+        </div>
+    <div class="row hours-row">
+      <div class="col-12"> 
+        <h3><a href="/spaces/1st-floor-exhibit-space">1st Floor Exhibit Space</a></h3>
+      </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Mon, Sep 21</div>
+                        <div class="col-8">8:00 am - 8:00 pm</div>
+                    </div>
+                  </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Tue, Sep 22</div>
+                        <div class="col-8">8:00 am - 8:00 pm</div>
+                    </div>
+                  </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Wed, Sep 23</div>
+                        <div class="col-8">8:00 am - 8:00 pm</div>
+                    </div>
+                  </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Thu, Sep 24</div>
+                        <div class="col-8">8:00 am - 8:00 pm</div>
+                    </div>
+                  </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Fri, Sep 25</div>
+                        <div class="col-8">8:00 am - 8:00 pm</div>
+                    </div>
+                  </div>
+                      <div class="col-12 today">
+                      <div class="row hours-fix">
+                        <div class="col-4">Sat, Sep 26</div>
+                        <div class="col-8">9:00 am - 5:00 pm</div>
+                    </div>
+                  </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Sun, Sep 27</div>
+                        <div class="col-8">12:00 pm - 8:00 pm</div>
+                    </div>
+                  </div>
+
+        </div>
+
+    <div class="row building-row">
+      <div class="col-12">
+        <h2 class="red">
+          Ambler Campus Library in the Ambler Technology Center
+        </h2>
+      </div>
+    </div>
+
+    <div class="row hours-row">
+      <div class="col-12"> 
+        <h3><a href="/libraries/ambler">Ambler Campus Library in the Ambler Technology Center</a></h3>
+      </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Mon, Sep 21</div>
+                        <div class="col-8">9:00 am - 5:00 pm</div>
+                    </div>
+                  </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Tue, Sep 22</div>
+                        <div class="col-8">9:00 am - 5:00 pm</div>
+                    </div>
+                  </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Wed, Sep 23</div>
+                        <div class="col-8">9:00 am - 5:00 pm</div>
+                    </div>
+                  </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Thu, Sep 24</div>
+                        <div class="col-8">9:00 am - 5:00 pm</div>
+                    </div>
+                  </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Fri, Sep 25</div>
+                        <div class="col-8">9:00 am - 5:00 pm</div>
+                    </div>
+                  </div>
+                      <div class="col-12 today">
+                      <div class="row hours-fix">
+                        <div class="col-4">Sat, Sep 26</div>
+                        <div class="col-8"><span class="closed">CLOSED</span></div>
+                    </div>
+                  </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Sun, Sep 27</div>
+                        <div class="col-8"><span class="closed">CLOSED</span></div>
+                    </div>
+                  </div>
+
+        </div>
+
+    <div class="row building-row">
+      <div class="col-12">
+        <h2 class="red">
+          Charles L. Blockson Afro-American Collection
+        </h2>
+      </div>
+    </div>
+
+    <div class="row hours-row">
+      <div class="col-12"> 
+        <h3><a href="/libraries/blockson">Charles L. Blockson Afro-American Collection</a></h3>
+      </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Mon, Sep 21</div>
+                        <div class="col-8">9:00 am - 5:00 pm</div>
+                    </div>
+                  </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Tue, Sep 22</div>
+                        <div class="col-8">9:00 am - 5:00 pm</div>
+                    </div>
+                  </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Wed, Sep 23</div>
+                        <div class="col-8">9:00 am - 5:00 pm</div>
+                    </div>
+                  </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Thu, Sep 24</div>
+                        <div class="col-8">9:00 am - 5:00 pm</div>
+                    </div>
+                  </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Fri, Sep 25</div>
+                        <div class="col-8">9:00 am - 5:00 pm</div>
+                    </div>
+                  </div>
+                      <div class="col-12 today">
+                      <div class="row hours-fix">
+                        <div class="col-4">Sat, Sep 26</div>
+                        <div class="col-8"><span class="closed">CLOSED</span></div>
+                    </div>
+                  </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Sun, Sep 27</div>
+                        <div class="col-8"><span class="closed">CLOSED</span></div>
+                    </div>
+                  </div>
+
+      <div class="col-9 offset-3 p-3 text-start hours-note-desktop">
+        <span style="font-family: 'Roboto Condensed';">To visit the Blockson Afro-American  Collection, use the reading room, or if you need research assistance, you must make  a reservation ahead of time by emailing the Librarian Aslaku Berhanu at  <a href="mailto:aberhanu@temple.edu">aberhanu@temple.edu</a>, or by telephoning  her at <strong>215-204-4723</strong>.</span>
+      </div>
+        </div>
+
+    <div class="row building-row">
+      <div class="col-12">
+        <h2 class="red">
+          Ginsburg Health Sciences Library
+        </h2>
+      </div>
+    </div>
+
+    <div class="row hours-row">
+      <div class="col-12"> 
+        <h3><a href="/libraries/ginsburg">Ginsburg Health Sciences Library</a></h3>
+      </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Mon, Sep 21</div>
+                        <div class="col-8">8:00 am - 9:00 pm</div>
+                    </div>
+                  </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Tue, Sep 22</div>
+                        <div class="col-8">8:00 am - 9:00 pm</div>
+                    </div>
+                  </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Wed, Sep 23</div>
+                        <div class="col-8">8:00 am - 9:00 pm</div>
+                    </div>
+                  </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Thu, Sep 24</div>
+                        <div class="col-8">8:00 am - 9:00 pm</div>
+                    </div>
+                  </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Fri, Sep 25</div>
+                        <div class="col-8">8:00 am - 9:00 pm</div>
+                    </div>
+                  </div>
+                      <div class="col-12 today">
+                      <div class="row hours-fix">
+                        <div class="col-4">Sat, Sep 26</div>
+                        <div class="col-8">10:00 am - 7:00 pm</div>
+                    </div>
+                  </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Sun, Sep 27</div>
+                        <div class="col-8">11:00 am - 7:00 pm</div>
+                    </div>
+                  </div>
+
+        </div>
+    <div class="row hours-row">
+      <div class="col-12"> 
+        <h3><a href="/spaces/ginsburg-innovation-space">Ginsburg Innovation Space</a></h3>
+      </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Mon, Sep 21</div>
+                        <div class="col-8">9:00 am - 5:00 pm</div>
+                    </div>
+                  </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Tue, Sep 22</div>
+                        <div class="col-8">9:00 am - 5:00 pm</div>
+                    </div>
+                  </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Wed, Sep 23</div>
+                        <div class="col-8">9:00 am - 5:00 pm</div>
+                    </div>
+                  </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Thu, Sep 24</div>
+                        <div class="col-8">9:00 am - 5:00 pm</div>
+                    </div>
+                  </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Fri, Sep 25</div>
+                        <div class="col-8">9:00 am - 5:00 pm</div>
+                    </div>
+                  </div>
+                      <div class="col-12 today">
+                      <div class="row hours-fix">
+                        <div class="col-4">Sat, Sep 26</div>
+                        <div class="col-8"><span class="closed">CLOSED</span></div>
+                    </div>
+                  </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Sun, Sep 27</div>
+                        <div class="col-8"><span class="closed">CLOSED</span></div>
+                    </div>
+                  </div>
+
+        </div>
+
+    <div class="row building-row">
+      <div class="col-12">
+        <h2 class="red">
+          Krausz Library of Podiatric Medicine
+        </h2>
+      </div>
+    </div>
+
+    <div class="row hours-row">
+      <div class="col-12"> 
+        <h3><a href="/libraries/podiatry">Krausz Library of Podiatric Medicine</a></h3>
+      </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Mon, Sep 21</div>
+                        <div class="col-8">9:00 am - 10:00 pm</div>
+                    </div>
+                  </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Tue, Sep 22</div>
+                        <div class="col-8">9:00 am - 10:00 pm</div>
+                    </div>
+                  </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Wed, Sep 23</div>
+                        <div class="col-8">9:00 am - 10:00 pm</div>
+                    </div>
+                  </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Thu, Sep 24</div>
+                        <div class="col-8">9:00 am - 10:00 pm</div>
+                    </div>
+                  </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Fri, Sep 25</div>
+                        <div class="col-8">9:00 am - 5:00 pm</div>
+                    </div>
+                  </div>
+                      <div class="col-12 today">
+                      <div class="row hours-fix">
+                        <div class="col-4">Sat, Sep 26</div>
+                        <div class="col-8">9:00 am - 3:30 pm</div>
+                    </div>
+                  </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Sun, Sep 27</div>
+                        <div class="col-8">12:30 pm - 6:30 pm</div>
+                    </div>
+                  </div>
+
+        </div>
+
+    <div class="row building-row">
+      <div class="col-12">
+        <h2 class="red">
+          Online
+        </h2>
+      </div>
+    </div>
+
+    <div class="row hours-row">
+      <div class="col-12"> 
+        <h3><a href="/services/chat-with-a-librarian">Chat with a librarian</a></h3>
+      </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Mon, Sep 21</div>
+                        <div class="col-8">24 hours</div>
+                    </div>
+                  </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Tue, Sep 22</div>
+                        <div class="col-8">24 hours</div>
+                    </div>
+                  </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Wed, Sep 23</div>
+                        <div class="col-8">24 hours</div>
+                    </div>
+                  </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Thu, Sep 24</div>
+                        <div class="col-8">24 hours</div>
+                    </div>
+                  </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Fri, Sep 25</div>
+                        <div class="col-8">24 hours</div>
+                    </div>
+                  </div>
+                      <div class="col-12 today">
+                      <div class="row hours-fix">
+                        <div class="col-4">Sat, Sep 26</div>
+                        <div class="col-8">24 hours</div>
+                    </div>
+                  </div>
+                      <div class="col-12">
+                      <div class="row hours-fix">
+                        <div class="col-4">Sun, Sep 27</div>
+                        <div class="col-8">24 hours</div>
+                    </div>
+                  </div>
+
+        </div>
+  </div>
+</div>
+
+
+  </div>
+
+  <footer>
+
+  <div class="diagonal footer-diagonal">
+   <div id="diagonal-line"></div>
+  </div>
+
+<div id="site-footer">
+  <div class="container-lg">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start w-100 pt-4 footer-cta">
+      <a class="donate" href="/support-the-libraries">Support the Libraries</a>
+      <a class="social-button" href="/social-media">Connect With Us on Social Media</a>
+    </div>
+
+    <div class="row tu-links">
+      <div class="col-12 col-lg-8 px-0">
+        <div class="row">
+          <div class="col px-0 pt-2">
+            <h2><span class="translation_missing" title="translation missing: en.manifold.default.footer.quick_links">Quick Links</span></h2>
+          </div>
+        </div>
+        <div class="row mt-3 footer-quicklinks">
+          <div class="col-12 col-lg-3 px-0">
+            <ul class="list-unstyled">
+              <li><a href="/ezborrow">EZborrow</a></li>
+              <li><a href="/illiad">ILLiad</a></li>
+              <li><a class="citation-tool" href="/find-by-citation">Find by citation</a></li>
+              <li><a href="/forms">Patron Forms</a></li>
+            </ul>
+          </div>
+          <div class="col-12 col-lg-4 px-0">
+            <ul class="list-unstyled">
+              <li><a href="/standards">Community Standards</a></li>
+              <li><a href="/diversity">Diversity Statement</a></li>
+              <li><a href="/categories/accessibility-services">Accessibility Services</a></li>
+              <li><a href="/webpages/jobs">Employment Opportunities</a></li>
+            </ul>
+          </div>
+          <div class="col-12 col-lg-5 px-0">
+            <ul class="list-unstyled">
+              <li><a href="/privacy">Virtual Reference Privacy Guidelines</a></li>
+              <li><a href="/tu-home">Temple University homepage</a></li>
+              <li><a href="/eblast-signup">Sign up for our email list</a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12 col-lg-4 px-0">
+        <div class="row">
+          <div class="col-12 col-lg-9 offset-lg-2 px-0 address mt-4">
+            <p class="street-address mt-5">Temple University Libraries<br />1900 N. 13th Street<br />Philadelphia, PA 19122<br />(215) 204-8212</p>
+            <p><a href="/numbers">Frequently Called Numbers</a></p>
+            <p><a href="/people">Staff Directory</a></p>
+            <p><a href="/org-charts">Library Organizational Charts</a></p>
+            <p><a target="_blank" href="/staff-forms">Staff Forms</a></p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="col p-0 mt-0 mb-5">
+        <a href="/admin/library_hours?admin=index"><img style="width: 35px" class="decorative" alt="" aria-hidden="true" loading="lazy" src="/assets/gear-178f567d.png" /></a>
+      </div>
+    </div>
+
+</div>
+</footer>
+
+
+  </body>
+</html>

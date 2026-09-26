@@ -1,0 +1,75 @@
+{
+  "format_version": 1,
+  "kind": "derived_gtfs_subset",
+  "captured_at": "2026-09-26T21:07:53.943084+00:00",
+  "source_url": "https://github.com/septadev/GTFS/releases/download/v202609061/gtfs_public.zip",
+  "source_release": "v202609061",
+  "release_manifest": "septa/20260926T210752721463Z-gtfs-release/manifest.json",
+  "stop_ids": [
+    "53",
+    "1277",
+    "32148"
+  ],
+  "license_provenance": "Public vendor response recorded for offline interoperability tests. Upstream retains rights; no additional license is asserted.",
+  "http_status": 200,
+  "content_type": "application/octet-stream",
+  "source_sha256": "72a6797155d28e5c26615d945358287252e0da5b8d5396c242190cc13158aaf7",
+  "source_member_sha256": {
+    "routes.txt": "94fb1d4c5ac282f7e0989a6ed9734cbb3f17f412e02915253bb80efa318629e9",
+    "rider_categories.txt": "493e768110f33db58a360ca6119a59ca3b40c2db4275816ff7a47708bafc2dde",
+    "fare_products.txt": "3360bc74c6faa4469bab6b2bca463df12908a1340730cea8f34e90f6beb377dd",
+    "stops.txt": "da98374a57a12eb03f93efb75022b766e6fc5a93bbf47615ab6db4059d7ded36",
+    "fare_leg_rules.txt": "13bfbab244d6b54b4f3f7f3b7ce28f4081df108c86a1abfa7b7ff64cb08bb5b4",
+    "fare_leg_join_rules.txt": "414db3848343fcc251fadf12962afc8d97ea035169ffe1ee4d13b86cdb986188",
+    "pathways.txt": "e45bad1ed47547dabcec31c788c1c78afff713c885cb9b089705f414a079f139",
+    "fare_transfer_rules.txt": "d471ae8c221f81129c89e8a743e5c6eaa8000cb3330eab2849c7ccd29a29778b",
+    "directions.txt": "fcb09c2ca48c2f0e7e9fdf4089f5bd607f042b47bb6b6f1aa9a1432f12013e45",
+    "levels.txt": "edee96840e01aa3926937f28b6c38a7db00c8ffa8e6f494ea1434b04083f1159",
+    "calendar.txt": "6663bf29ed31b7d4206ee74ef2ab634d58c1a82ce2ded800c2d49541bbed724f",
+    "route_stops.txt": "af53dd10e75bd126a5eab9b4a64e0eceaeb8f7a9923f735161276c185539f498",
+    "fare_media.txt": "d689f2553240f52e25d771f7676fe9853d8fd6157307ea71b07f7f0064f0755e",
+    "shapes.txt": "c20bc9b99868e60951a9bc92312b431e20e7378520aea9b2c07e2bec2a7b9235",
+    "feed_info.txt": "c48e16504e2e588924c22c3e5498c7dc197d9fbe08ad82603fe62f3e285ed1d7",
+    "agency.txt": "b85681ad045df2b8c646194daae55cd1dab58ad4b2c1e40365be6bdaab04e0bf",
+    "trips.txt": "e62078e687a5467f60016df94ad3029bb9fa6fbde1f026cdf7de0d78e5108f73",
+    "calendar_dates.txt": "d6bc804c2296154b195bb368a7ba9d0e94ab911a92573a530486c9c98d13fbce",
+    "stop_times.txt": "2140dbdf44b02175055f5ef4722399c0ac0fe68b9ce7df0879df3a4759e8fadf"
+  },
+  "files": {
+    "stops.txt": {
+      "rows": 3,
+      "sha256": "894c24c7fc0acc4b77d048a559906b38fdb2d2da565d3710a4a9ad11c8c0432a"
+    },
+    "stop_times.txt": {
+      "rows": 890,
+      "sha256": "c885f7325752968c583541275aa1b9a8ea3cff3dee6e01e298f47e7bf855ec5e"
+    },
+    "trips.txt": {
+      "rows": 890,
+      "sha256": "eecad0d4840a8345dd0545d0c5c2093ef51d27e0f072ebf1ab3477a68fc11900"
+    },
+    "routes.txt": {
+      "rows": 2,
+      "sha256": "d3c98b0ee9be70b7de8fd22b43f18d57e921062dfc3da0a21bb90311986e6eac"
+    },
+    "agency.txt": {
+      "rows": 1,
+      "sha256": "b85681ad045df2b8c646194daae55cd1dab58ad4b2c1e40365be6bdaab04e0bf"
+    },
+    "calendar.txt": {
+      "rows": 6,
+      "sha256": "de75e30ff44f31586ba9f0cd5ee0b096ec6e59fba1c25069586032593531407f"
+    },
+    "calendar_dates.txt": {
+      "rows": 130,
+      "sha256": "25ff23187be8c0e45472911644499f1ead219be9793443db3639180e1d77c76b"
+    }
+  },
+  "validity": {
+    "start": "20260906",
+    "end": "20270220"
+  },
+  "agency_timezones": [
+    "America/New_York"
+  ]
+}
