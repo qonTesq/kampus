@@ -1,0 +1,20 @@
+{
+  "format_version": 1,
+  "kind": "recorded",
+  "captured_at": "2026-09-26T22:58:28.630793+00:00",
+  "source_url": "https://www3.septa.org/api/Arrivals/index.php?station=Cynwyd",
+  "request": {
+    "method": "GET",
+    "form": null,
+    "headers": {
+      "Accept-Encoding": "identity"
+    },
+    "cookies": "omitted"
+  },
+  "license_provenance": "Public vendor response recorded for offline interoperability tests. Upstream retains rights; no additional license is asserted.",
+  "http_status": 200,
+  "content_type": "application/json",
+  "body_file": "body.bin",
+  "sha256": "9253a0d2bb16e56018655e2367f5f3b3670a57cc284f8d0fd59d8afa6df30bd4",
+  "byte_length": 59
+}
