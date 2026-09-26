@@ -160,6 +160,10 @@ async fn spawn(mode: AuthMode) -> Server {
     };
     let keys = KeySource::from_jwks_json(&realm_key().jwks()).unwrap();
     let options = AppOptions {
+        audit_hasher: Some(kampus_core::audit::SubjectHasher::new(
+            "temple",
+            b"test-salt",
+        )),
         keys: Some(keys),
         audit_path: Some(audit_path()),
         policy_path: None,

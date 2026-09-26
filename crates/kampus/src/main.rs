@@ -62,6 +62,7 @@ async fn main() -> ExitCode {
         .map_err(kampus::AppError::from)
         .and_then(|(school, policy)| {
             let options = AppOptions {
+                audit_hasher: None,
                 keys: None,
                 audit_path: args.audit.clone(),
                 policy_path: Some(args.policy.clone()),

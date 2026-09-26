@@ -32,6 +32,10 @@ fn app() -> App {
         sandbox_compiled: false,
     };
     let options = AppOptions {
+        audit_hasher: Some(kampus_core::audit::SubjectHasher::new(
+            "temple",
+            b"test-salt",
+        )),
         audit_path: Some(std::env::temp_dir().join(format!(
             "kampus-transport-{}-{:?}.jsonl",
             std::process::id(),

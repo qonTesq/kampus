@@ -14,7 +14,7 @@ One agent owns the paths in proposal.md. Human contract freeze precedes module c
 ## 2. Policy and metadata audit
 
 - [x] 2.1 Implement the frozen authorizer/dispatcher, role mappings, pre-registered confidential registry, deny precedence and call-time checks ahead of cache/provider access; demonstrate Public allow and Sensitive deny with the same visible schemas. Budget 15 min.
-- [ ] 2.2 Implement salted metadata-only audit, 24-hour pruning and fail-closed audit errors; then add dispatch/audit behavior tests for current policy, unknown clients, student-only book_study_room without write scope, confirm_booking scope/rate/policy rechecks, device/Confidential denial, no argument/content leakage and disk failure. Document rule IDs and retention; verify provider call counts stay zero on denied calls. Budget 15 min.
+- [x] 2.2 Implement salted metadata-only audit, 24-hour pruning and fail-closed audit errors; then add dispatch/audit behavior tests for current policy, unknown clients, student-only book_study_room without write scope, confirm_booking scope/rate/policy rechecks, device/Confidential denial, no argument/content leakage and disk failure. Document rule IDs and retention; verify provider call counts stay zero on denied calls. Budget 15 min.
 
 ## 3. Local control and seven PM fallback gate
 

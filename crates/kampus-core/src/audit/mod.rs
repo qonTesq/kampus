@@ -115,7 +115,8 @@ impl JsonlAudit {
         let _guard = self.lock.lock().unwrap_or_else(PoisonError::into_inner);
         let mut file = append_handle(&self.path)?;
         file.write_all(&line).map_err(|_| AuditError)?;
-        file.flush().map_err(|_| AuditError)
+        file.flush().map_err(|_| AuditError)?;
+        file.sync_data().map_err(|_| AuditError)
     }
 
     /// Drop rows older than the retention window (atomic rewrite). Returns

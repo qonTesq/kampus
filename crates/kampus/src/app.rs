@@ -42,6 +42,8 @@ pub enum AppError {
     KeyClient,
     #[error("cannot open the audit log {path}")]
     Audit { path: PathBuf },
+    #[error("audit salt environment variable is missing or empty")]
+    AuditSalt,
     #[error("cannot listen on {addr}: {source}")]
     Listen {
         addr: SocketAddr,
@@ -52,6 +54,8 @@ pub enum AppError {
 /// Runtime inputs that are not part of `school.yaml`/`policy.yaml`.
 #[derive(Debug, Default)]
 pub struct AppOptions {
+    /// Explicit hasher for embedded callers/tests; CLI requires the configured salt.
+    pub audit_hasher: Option<SubjectHasher>,
     /// Signing keys; `None` fetches them through the issuer's discovery document.
     pub keys: Option<KeySource>,
     /// Audit log; defaults to `data/audit/<school_id>.jsonl`.
@@ -131,17 +135,14 @@ impl App {
             .and_then(|audit| audit.prune(chrono::Utc::now()).map(|_| audit))
             .map_err(|AuditError| AppError::Audit { path: audit_path })?;
         let audit = Arc::new(audit);
-        let hasher = match std::env::var(&policy.audit.salt_env) {
-            Ok(salt) if !salt.is_empty() => SubjectHasher::new(&school_id, salt.as_bytes()),
-            _ => {
-                tracing::warn!(
-                    env = %policy.audit.salt_env,
-                    "audit salt unset; using a per-process random salt"
-                );
-                SubjectHasher::ephemeral(&school_id).map_err(|AuditError| AppError::Audit {
-                    path: audit.path().to_owned(),
-                })?
-            }
+        let hasher = if let Some(hasher) = options.audit_hasher {
+            hasher
+        } else {
+            let salt = std::env::var(&policy.audit.salt_env)
+                .ok()
+                .filter(|value| !value.is_empty())
+                .ok_or(AppError::AuditSalt)?;
+            SubjectHasher::new(&school_id, salt.as_bytes())
         };
         let security = Security {
             limits: CallerLimits::new(&policy.limits),
