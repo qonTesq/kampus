@@ -1,0 +1,19 @@
+[package]
+name = "kampus-rooms"
+description = "kampus rooms module"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[features]
+sandbox = ["kampus-core/sandbox", "kampus-libcal/sandbox"]
+
+[dependencies]
+kampus-core.workspace = true
+kampus-libcal.workspace = true
+serde_json.workspace = true
+
+[lints]
+workspace = true

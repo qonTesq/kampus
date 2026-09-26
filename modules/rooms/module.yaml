@@ -1,0 +1,115 @@
+# rooms module, version 1. Contract: openspec/changes/public-rooms/design.md
+# `output_schema` describes `data` in the success envelope; the server wraps it.
+version: 1
+id: rooms
+tools:
+  - name: find_study_room
+    title: Find a study room
+    description: Find bookable study rooms with free time slots at a campus library location.
+    data_class: public
+    roles: [student, faculty, staff, guest]
+    write: false
+    scopes: []
+    readOnlyHint: true
+    destructiveHint: false
+    input_schema:
+      type: object
+      additionalProperties: false
+      required: [start, end]
+      properties:
+        location_id: { type: string, maxLength: 64, description: "Configured location ID; defaults to the school's default location." }
+        start: { type: string, format: date-time, description: "RFC 3339 start with offset." }
+        end: { type: string, format: date-time, description: "RFC 3339 end with offset." }
+        min_capacity: { type: integer, minimum: 1, maximum: 100 }
+        limit: { type: integer, minimum: 1, maximum: 20, default: 10 }
+    output_schema:
+      type: object
+      additionalProperties: false
+      required: [rooms]
+      properties:
+        rooms:
+          type: array
+          maxItems: 20
+          items:
+            type: object
+            additionalProperties: false
+            required: [room_id, name, capacity, description, slots]
+            properties:
+              room_id: { type: string, maxLength: 64 }
+              name: { type: string, maxLength: 160 }
+              capacity: { type: [integer, "null"], minimum: 0 }
+              description: { type: [string, "null"], maxLength: 500 }
+              slots:
+                type: array
+                maxItems: 50
+                items:
+                  type: object
+                  additionalProperties: false
+                  required: [start, end]
+                  properties:
+                    start: { type: string, format: date-time }
+                    end: { type: string, format: date-time }
+
+  - name: book_study_room
+    title: Propose a study room booking
+    description: Check a room slot and return a booking proposal with a confirmation_id. Nothing is booked until confirm_booking.
+    data_class: public
+    roles: [student]
+    write: false
+    scopes: []
+    readOnlyHint: true
+    destructiveHint: false
+    input_schema:
+      type: object
+      additionalProperties: false
+      required: [room_id, location_id, start, end]
+      properties:
+        room_id: { type: string, maxLength: 64 }
+        location_id: { type: string, maxLength: 64 }
+        start: { type: string, format: date-time }
+        end: { type: string, format: date-time }
+    output_schema:
+      type: object
+      additionalProperties: false
+      required: [state, proposal, confirmation_id, expires_at, sandbox, submitted]
+      properties:
+        state: { const: proposed }
+        proposal:
+          type: object
+          additionalProperties: false
+          required: [room_id, location_id, start, end]
+          properties:
+            room_id: { type: string, maxLength: 64 }
+            location_id: { type: string, maxLength: 64 }
+            start: { type: string, format: date-time }
+            end: { type: string, format: date-time }
+        confirmation_id: { type: string, maxLength: 128 }
+        expires_at: { type: string, format: date-time }
+        sandbox: { type: boolean }
+        submitted: { type: boolean }
+
+  - name: confirm_booking
+    title: Confirm a study room booking
+    description: Confirm a booking proposal by its confirmation_id.
+    data_class: public
+    roles: [student]
+    write: true
+    confirms: book_study_room
+    scopes: ["rooms:book"]
+    readOnlyHint: false
+    destructiveHint: true
+    input_schema:
+      type: object
+      additionalProperties: false
+      required: [confirmation_id]
+      properties:
+        confirmation_id: { type: string, minLength: 1, maxLength: 128 }
+    output_schema:
+      type: object
+      additionalProperties: false
+      required: [state, receipt_id, sandbox, submitted]
+      properties:
+        state: { const: confirmed }
+        receipt_id: { type: string, maxLength: 128 }
+        sandbox: { type: boolean }
+        submitted: { type: boolean }

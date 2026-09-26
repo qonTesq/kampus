@@ -1,0 +1,17 @@
+[package]
+name = "kampus-transit"
+description = "Transit adapters (SEPTA arrivals, static GTFS subset, TransLoc replay): TransitProvider."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[features]
+sandbox = ["kampus-core/sandbox"]
+
+[dependencies]
+kampus-core.workspace = true
+
+[lints]
+workspace = true

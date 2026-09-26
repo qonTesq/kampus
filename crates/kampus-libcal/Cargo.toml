@@ -1,0 +1,17 @@
+[package]
+name = "kampus-libcal"
+description = "Springshare LibCal adapter: RoomProvider (live) and BookingProvider (sandbox simulation only)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[features]
+sandbox = ["kampus-core/sandbox"]
+
+[dependencies]
+kampus-core.workspace = true
+
+[lints]
+workspace = true

@@ -1,0 +1,17 @@
+[package]
+name = "kampus-canvas"
+description = "Synthetic Canvas-shaped fake and client: DeadlineProvider (sandbox only)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[features]
+sandbox = ["kampus-core/sandbox"]
+
+[dependencies]
+kampus-core.workspace = true
+
+[lints]
+workspace = true

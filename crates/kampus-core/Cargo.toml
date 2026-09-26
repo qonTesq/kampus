@@ -1,0 +1,33 @@
+[package]
+name = "kampus-core"
+description = "kampus shared contracts, configuration, output projection and runtime primitives"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[features]
+# Compile-time gate for synthetic providers, booking simulation and replay.
+# Production builds never enable it; the runtime `sandbox.enabled` flag is the second gate.
+sandbox = []
+
+[dependencies]
+chrono.workspace = true
+chrono-tz.workspace = true
+jsonschema.workspace = true
+reqwest.workspace = true
+scraper.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+serde-saphyr.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+url.workspace = true
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["test-util"] }
+
+[lints]
+workspace = true

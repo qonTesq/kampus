@@ -1,0 +1,39 @@
+# deadlines module, version 1. Contract: openspec/changes/canvas-mock/design.md
+# Sensitive: synthetic data only, fixed structured fields, no free text.
+version: 1
+id: deadlines
+tools:
+  - name: my_deadlines
+    title: My upcoming deadlines
+    description: Upcoming assignment deadlines for the signed-in student (course code, assignment ID, due time).
+    data_class: sensitive
+    roles: [student]
+    write: false
+    scopes: []
+    readOnlyHint: true
+    destructiveHint: false
+    input_schema:
+      type: object
+      additionalProperties: false
+      properties:
+        from: { type: string, format: date-time, description: "Defaults to the start of the current school-local week." }
+        to: { type: string, format: date-time, description: "At most 31 days after from." }
+        limit: { type: integer, minimum: 1, maximum: 20, default: 10 }
+    output_schema:
+      type: object
+      additionalProperties: false
+      required: [deadlines, truncated]
+      properties:
+        deadlines:
+          type: array
+          maxItems: 20
+          items:
+            type: object
+            additionalProperties: false
+            required: [assignment_id, course_code, due_at, status]
+            properties:
+              assignment_id: { type: string, maxLength: 64 }
+              course_code: { type: string, maxLength: 32 }
+              due_at: { type: string, format: date-time }
+              status: { enum: [not_submitted, submitted] }
+        truncated: { type: boolean }

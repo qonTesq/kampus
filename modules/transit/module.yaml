@@ -1,0 +1,45 @@
+# transit module, version 1. Contract: openspec/changes/public-transit/design.md
+version: 1
+id: transit
+tools:
+  - name: next_departures
+    title: Next transit departures
+    description: Next departures from a campus stop or station, labeled live, scheduled or replay.
+    data_class: public
+    roles: [student, faculty, staff, guest]
+    write: false
+    scopes: []
+    readOnlyHint: true
+    destructiveHint: false
+    input_schema:
+      type: object
+      additionalProperties: false
+      required: [stop]
+      properties:
+        stop: { type: string, minLength: 1, maxLength: 160, description: "Stop or station name or alias." }
+        route: { type: string, minLength: 1, maxLength: 80, description: "Route name or alias." }
+        at: { type: string, format: date-time, description: "RFC 3339; defaults to now." }
+        limit: { type: integer, minimum: 1, maximum: 20, default: 5 }
+    output_schema:
+      type: object
+      additionalProperties: false
+      required: [stop_id, stop_name, route_id, service_status, departures]
+      properties:
+        stop_id: { type: string, maxLength: 64 }
+        stop_name: { type: string, maxLength: 160 }
+        route_id: { type: [string, "null"], maxLength: 64 }
+        service_status: { enum: [running, no_service, unknown] }
+        departures:
+          type: array
+          maxItems: 20
+          items:
+            type: object
+            additionalProperties: false
+            required: [trip_id, route_id, destination, departure_at, timing, delay_seconds]
+            properties:
+              trip_id: { type: [string, "null"], maxLength: 64 }
+              route_id: { type: [string, "null"], maxLength: 64 }
+              destination: { type: [string, "null"], maxLength: 160 }
+              departure_at: { type: [string, "null"], format: date-time }
+              timing: { enum: [live, scheduled, replay] }
+              delay_seconds: { type: [integer, "null"] }

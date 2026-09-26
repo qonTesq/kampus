@@ -1,0 +1,51 @@
+[package]
+name = "kampus"
+description = "kampus: a policy-controlled campus connector for AI assistants (MCP server)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[features]
+# Demo build: synthetic providers, booking simulation and Flight replay become
+# reachable (still requires `sandbox.enabled: true` at runtime).
+sandbox = [
+    "kampus-core/sandbox",
+    "kampus-rooms/sandbox",
+    "kampus-transit-tools/sandbox",
+    "kampus-deadlines/sandbox",
+    "kampus-device/sandbox",
+]
+# Development acceptance only: adds the `kampus_hello` tool. Never in the demo build.
+acceptance = []
+
+[dependencies]
+kampus-core.workspace = true
+kampus-device.workspace = true
+kampus-rooms.workspace = true
+kampus-courses.workspace = true
+kampus-transit-tools.workspace = true
+kampus-library-hours.workspace = true
+kampus-deadlines.workspace = true
+axum.workspace = true
+chrono.workspace = true
+http.workspace = true
+rmcp.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tokio-util.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+
+[dev-dependencies]
+reqwest.workspace = true
+
+# Multi-school instance tests; contents owned by the multi-school change.
+[[test]]
+name = "instances"
+path = "../../tests/instances/main.rs"
+
+[lints]
+workspace = true
