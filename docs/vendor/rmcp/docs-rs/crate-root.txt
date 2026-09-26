@@ -1,0 +1,401 @@
+Source: https://docs.rs/rmcp/3.4.1/rmcp/index.html
+Fetched: 2026-09-26
+
+rmcp - Rust
+
+                    Docs.rs
+
+                rmcp-3.4.1
+
+                        rmcp 3.4.1
+
+                             Docs.rs crate page
+
+                            Apache-2.0
+
+                                 23 September 2026
+
+Links
+
+                                         Homepage
+
+                                         Repository
+
+                                     crates.io
+
+                                     Source
+
+Owners
+
+                                         4t145
+
+                                         jokemanfire
+
+                                         alexhancock
+
+Dependencies
+
+                async-trait ^0.1.89
+
+                    normal
+
+                        optional
+
+                base64 ^0.23
+
+                    normal
+
+                        optional
+
+                bytes ^1
+
+                    normal
+
+                        optional
+
+                futures ^0.3
+
+                    normal
+
+                hmac ^0.13
+
+                    normal
+
+                        optional
+
+                http ^1
+
+                    normal
+
+                        optional
+
+                http-body ^1
+
+                    normal
+
+                        optional
+
+                http-body-util ^0.1
+
+                    normal
+
+                        optional
+
+                hyper ^1
+
+                    normal
+
+                        optional
+
+                hyper-util ^0.1
+
+                    normal
+
+                        optional
+
+                indexmap ^2
+
+                    normal
+
+                jsonwebtoken ^11
+
+                    normal
+
+                        optional
+
+                oauth2 ^5.0
+
+                    normal
+
+                        optional
+
+                pastey ^0.2.0
+
+                    normal
+
+                        optional
+
+                pin-project-lite ^0.2
+
+                    normal
+
+                process-wrap ^10.0
+
+                    normal
+
+                        optional
+
+                rand ^0.10
+
+                    normal
+
+                        optional
+
+                reqwest ^0.13.2
+
+                    normal
+
+                        optional
+
+                rmcp-macros ^3.4.1
+
+                    normal
+
+                        optional
+
+                schemars ^1.0
+
+                    normal
+
+                        optional
+
+                serde ^1.0
+
+                    normal
+
+                serde_json ^1.0
+
+                    normal
+
+                sha2 ^0.11
+
+                    normal
+
+                        optional
+
+                sse-stream ^0.2.4
+
+                    normal
+
+                        optional
+
+                thiserror ^2
+
+                    normal
+
+                tokio ^1
+
+                    normal
+
+                tokio-stream ^0.1
+
+                    normal
+
+                        optional
+
+                tokio-util ^0.7
+
+                    normal
+
+                tower-service ^0.3
+
+                    normal
+
+                        optional
+
+                tracing ^0.1
+
+                    normal
+
+                url ^2.4
+
+                    normal
+
+                        optional
+
+                uuid ^1
+
+                    normal
+
+                        optional
+
+                which ^8
+
+                    normal
+
+                        optional
+
+                zeroize ^1
+
+                    normal
+
+                        optional
+
+                anyhow ^1.0
+
+                    dev
+
+                async-trait ^0.1
+
+                    dev
+
+                axum ^0.8
+
+                    dev
+
+                hyper ^1
+
+                    dev
+
+                hyper-util ^0.1
+
+                    dev
+
+                rstest ^0.27.0
+
+                    dev
+
+                schemars ^1.1.0
+
+                    dev
+
+                tokio ^1
+
+                    dev
+
+                tower-service ^0.3
+
+                    dev
+
+                tracing-subscriber ^0.3
+
+                    dev
+
+                url ^2.4
+
+                    dev
+
+                chrono ^0.4.38
+
+                    normal
+
+                chrono ^0.4.38
+
+                    normal
+
+Versions
+
+                                        49.04%
+                                        of the crate is documented
+
+                    Platform
+
+            x86_64-unknown-linux-gnu
+
+                    Feature flags
+
+                        docs.rs
+
+ About docs.rs
+ Badges
+ Builds
+ Metadata
+ Shorthand URLs
+ Download
+ Rustdoc JSON
+ Build queue
+ Privacy policy
+
+                        Rust
+
+Rust website
+
+The Book
+
+Standard Library API Reference
+
+Rust by Example
+
+The Cargo Guide
+
+Clippy Documentation
+
+Skip to main content
+Crate rmcp
+
+Crate rmcp Copy item pathSource Expand description
+
+§rmcp
+
+The official Rust SDK for the Model Context Protocol. Build MCP servers that expose tools, resources, and prompts to AI assistants — or build clients that connect to them.
+
+For getting started, usage guides, and full MCP feature documentation (resources, prompts, sampling, roots, logging, completions, subscriptions, etc.), see the main README.
+
+§Feature Flags
+
+FeatureDescriptionDefault
+
+serverServer functionality and the tool system✅
+
+clientClient functionality
+
+macros#[tool] / #[prompt] macros (re-exports rmcp-macros)✅
+
+schemarsJSON Schema generation for tool definitions
+
+authOAuth 2.0 authentication support
+
+auth-enterprise-managedEMA/XAA refresh-token and ID-JAG exchanges for registered public and confidential clients (includes auth)
+
+elicitationElicitation support
+
+§Transport features
+
+FeatureDescription
+
+transport-ioServer-side stdio transport
+
+transport-child-processClient-side stdio transport (spawns a child process)
+
+transport-async-rwGeneric async read/write transport
+
+transport-streamable-http-clientStreamable HTTP client (transport-agnostic)
+
+transport-streamable-http-client-reqwestStreamable HTTP client with default reqwest backend
+
+transport-streamable-http-serverStreamable HTTP server transport
+
+§TLS backend options (for HTTP transports)
+
+FeatureDescription
+
+reqwestUses rustls — pure Rust TLS (recommended default)
+
+reqwest-native-tlsUses platform-native TLS (OpenSSL / Secure Transport / SChannel)
+
+reqwest-tls-no-providerUses rustls without a default crypto provider (bring your own)
+
+For enterprise-managed authorization, enable auth-enterprise-managed and a TLS
+backend such as reqwest. See the EMA/XAA guide
+for client authentication and an MCP connection example.
+
+§Transports
+
+The transport layer is pluggable. Two built-in pairs cover the most common cases:
+
+ClientServer
+
+stdioTokioChildProcessstdio
+
+Streamable HTTPStreamableHttpClientTransportStreamableHttpService
+
+Any type that implements the Transport trait can be used. The IntoTransport helper trait provides automatic conversions from:
+
+(Sink, Stream) or a combined Sink + Stream
+
+(AsyncRead, AsyncWrite) or a combined AsyncRead + AsyncWrite
+
+A Worker implementation
+
+A Transport implementation directly
+
+§License
+
+This project is licensed under the terms specified in the repository’s LICENSE file.
+
+Re-exports§pub use error::ErrorData;pub use handler::client::ClientHandler;clientpub use handler::server::ServerHandler;serverpub use handler::server::wrapper::Json;serverpub use service::ClientCacheConfig;clientpub use service::ClientLifecycleMode;clientpub use service::ClientServiceExt;clientpub use service::MAX_CLIENT_CACHE_TTL;clientpub use service::RoleClient;clientpub use service::select_protocol_version;clientpub use service::serve_client;clientpub use service::serve_client_with_lifecycle;clientpub use service::Peer;client or serverpub use service::Service;client or serverpub use service::ServiceError;client or serverpub use service::ServiceExt;client or serverpub use service::RoleServer;serverpub use service::serve_server;serverpub use schemars;schemarspub use serde;macrospub use serde_json;macros
+Modules§handlermodelBasic data types in MCP specificationserviceclient or servertask_managerserverServer-side runtime for the MCP Tasks extension (SEP-2663,
+io.modelcontextprotocol/tasks).transportclient or serverTransport
+Macros§const_stringelicit_safeelicitation and server and (client or server)Macro to mark types as safe for elicitation by verifying they generate object schemas.objectmacrosUse this macro just like serde_json::json!pastemacros and server
+Enums§RmcpErrorThis is an unified error type for the errors could be returned by the service.
+Attribute Macros§promptmacros and serverpromptprompt_handlermacros and serverprompt_handlerprompt_routermacros and serverprompt_routertoolmacros and servertooltool_handlermacros and servertool_handlertool_routermacros and servertool_router

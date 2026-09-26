@@ -1,0 +1,656 @@
+Source: https://docs.rs/rmcp/3.4.1/rmcp/model/struct.CallToolResult.html
+Fetched: 2026-09-26
+
+CallToolResult in rmcp::model - Rust
+
+                    Docs.rs
+
+                rmcp-3.4.1
+
+                        rmcp 3.4.1
+
+                             Docs.rs crate page
+
+                            Apache-2.0
+
+                                 23 September 2026
+
+Links
+
+                                         Homepage
+
+                                         Repository
+
+                                     crates.io
+
+                                     Source
+
+Owners
+
+                                         4t145
+
+                                         jokemanfire
+
+                                         alexhancock
+
+Dependencies
+
+                async-trait ^0.1.89
+
+                    normal
+
+                        optional
+
+                base64 ^0.23
+
+                    normal
+
+                        optional
+
+                bytes ^1
+
+                    normal
+
+                        optional
+
+                futures ^0.3
+
+                    normal
+
+                hmac ^0.13
+
+                    normal
+
+                        optional
+
+                http ^1
+
+                    normal
+
+                        optional
+
+                http-body ^1
+
+                    normal
+
+                        optional
+
+                http-body-util ^0.1
+
+                    normal
+
+                        optional
+
+                hyper ^1
+
+                    normal
+
+                        optional
+
+                hyper-util ^0.1
+
+                    normal
+
+                        optional
+
+                indexmap ^2
+
+                    normal
+
+                jsonwebtoken ^11
+
+                    normal
+
+                        optional
+
+                oauth2 ^5.0
+
+                    normal
+
+                        optional
+
+                pastey ^0.2.0
+
+                    normal
+
+                        optional
+
+                pin-project-lite ^0.2
+
+                    normal
+
+                process-wrap ^10.0
+
+                    normal
+
+                        optional
+
+                rand ^0.10
+
+                    normal
+
+                        optional
+
+                reqwest ^0.13.2
+
+                    normal
+
+                        optional
+
+                rmcp-macros ^3.4.1
+
+                    normal
+
+                        optional
+
+                schemars ^1.0
+
+                    normal
+
+                        optional
+
+                serde ^1.0
+
+                    normal
+
+                serde_json ^1.0
+
+                    normal
+
+                sha2 ^0.11
+
+                    normal
+
+                        optional
+
+                sse-stream ^0.2.4
+
+                    normal
+
+                        optional
+
+                thiserror ^2
+
+                    normal
+
+                tokio ^1
+
+                    normal
+
+                tokio-stream ^0.1
+
+                    normal
+
+                        optional
+
+                tokio-util ^0.7
+
+                    normal
+
+                tower-service ^0.3
+
+                    normal
+
+                        optional
+
+                tracing ^0.1
+
+                    normal
+
+                url ^2.4
+
+                    normal
+
+                        optional
+
+                uuid ^1
+
+                    normal
+
+                        optional
+
+                which ^8
+
+                    normal
+
+                        optional
+
+                zeroize ^1
+
+                    normal
+
+                        optional
+
+                anyhow ^1.0
+
+                    dev
+
+                async-trait ^0.1
+
+                    dev
+
+                axum ^0.8
+
+                    dev
+
+                hyper ^1
+
+                    dev
+
+                hyper-util ^0.1
+
+                    dev
+
+                rstest ^0.27.0
+
+                    dev
+
+                schemars ^1.1.0
+
+                    dev
+
+                tokio ^1
+
+                    dev
+
+                tower-service ^0.3
+
+                    dev
+
+                tracing-subscriber ^0.3
+
+                    dev
+
+                url ^2.4
+
+                    dev
+
+                chrono ^0.4.38
+
+                    normal
+
+                chrono ^0.4.38
+
+                    normal
+
+Versions
+
+                                        49.04%
+                                        of the crate is documented
+
+                    Platform
+
+            x86_64-unknown-linux-gnu
+
+                    Feature flags
+
+                        docs.rs
+
+ About docs.rs
+ Badges
+ Builds
+ Metadata
+ Shorthand URLs
+ Download
+ Rustdoc JSON
+ Build queue
+ Privacy policy
+
+                        Rust
+
+Rust website
+
+The Book
+
+Standard Library API Reference
+
+Rust by Example
+
+The Cargo Guide
+
+Clippy Documentation
+
+Skip to main content
+CallToolResult
+
+rmcp::model
+Struct CallToolResult Copy item pathSource 
+
+#[non_exhaustive]pub struct CallToolResult {
+    pub result_type: Option<ResultType>,
+    pub content: Vec<ContentBlock>,
+    pub structured_content: Option<Value>,
+    pub is_error: Option<bool>,
+    pub meta: Option<MetaObject>,
+}Expand description
+
+The result of a tool call operation.
+
+Contains the content returned by the tool execution and an optional
+flag indicating whether the operation resulted in an error.
+
+Fields (Non-exhaustive)§This struct is marked as non-exhaustive
+Non-exhaustive structs could have additional fields added in future. Therefore, non-exhaustive structs cannot be constructed in external crates using the traditional Struct { .. } syntax; cannot be matched against without a wildcard ..; and struct update syntax will not work.§result_type: Option<ResultType>
+
+Result type discriminator (SEP-2322). Required by the spec schema
+for servers implementing protocol version 2026-07-28, but optional
+here because this type also models results from older protocol
+versions, which do not carry the field: None means absent on the
+wire, and per the spec “the client MUST treat the absent field as
+"complete"”. Constructors default to Some(ResultType::COMPLETE);
+the server handler clears the field when responding to peers that
+negotiated an older version.
+§content: Vec<ContentBlock>
+
+The content returned by the tool (text, images, etc.)
+§structured_content: Option<Value>
+
+An optional JSON object that represents the structured result of the tool call
+§is_error: Option<bool>
+
+Whether this result represents an error condition
+§meta: Option<MetaObject>
+
+Optional protocol-level metadata for this result
+
+Implementations§
+Source§
+impl CallToolResult
+Source
+pub fn success(content: Vec<ContentBlock>) -> Self
+
+Create a successful tool result with unstructured content
+Source
+pub fn error(content: Vec<ContentBlock>) -> Self
+
+Create a tool-level error result with caller-visible content.
+§When to use this vs Err(ErrorData)
+
+MCP distinguishes two failure modes for a call_tool invocation, and
+the right one to use depends on whose problem it is:
+
+Tool-level error — Ok(CallToolResult::error(...)).
+The request was valid and routed to your tool, but executing the
+tool failed in a way the caller should see (a query returned no
+rows, an external API returned 500, the user’s input is plausible
+but produced no result, etc.). The caller’s MCP client renders the
+content you provide; your message reaches the user. This is the
+right choice for almost every “the tool ran and didn’t work” case.
+
+Protocol error — Err(ErrorData) with a JSON-RPC code.
+The server cannot route the request at all, or an infrastructure
+error makes the server itself unusable
+(ErrorCode::INTERNAL_ERROR, -32603). MCP clients typically
+render protocol errors opaquely (e.g. “Tool result missing due to
+internal error”) — the caller does not see your message.
+
+§Example
+
+ⓘ
+use rmcp::model::{CallToolResult, Content, ErrorData};
+
+async fn lookup(query: &str) -> Result<CallToolResult, ErrorData> {
+    // Caller passed a malformed query — the server can't run anything.
+    // This is a protocol error, the caller's client will render it
+    // as -32602 invalid_params:
+    if query.is_empty() {
+        return Err(ErrorData::invalid_params("query must be non-empty", None));
+    }
+
+    // Tool ran, no result. Caller should see the explanation:
+    let rows = run_query(query).await;
+    if rows.is_empty() {
+        return Ok(CallToolResult::error(vec![ContentBlock::text(
+            format!("no rows matched '{query}'"),
+        )]));
+    }
+
+    Ok(CallToolResult::success(vec![ContentBlock::text(format_rows(&rows))]))
+}Source
+pub fn structured(value: Value) -> Self
+
+Create a successful tool result with structured content
+§Example
+
+ⓘ
+use rmcp::model::CallToolResult;
+use serde_json::json;
+
+let result = CallToolResult::structured(json!({
+    "temperature": 22.5,
+    "humidity": 65,
+    "description": "Partly cloudy"
+}));Source
+pub fn structured_error(value: Value) -> Self
+
+Create an error tool result with structured content
+§Example
+
+ⓘ
+use rmcp::model::CallToolResult;
+use serde_json::json;
+
+let result = CallToolResult::structured_error(json!({
+    "error_code": "INVALID_INPUT",
+    "message": "Temperature value out of range",
+    "details": {
+        "min": -50,
+        "max": 50,
+        "provided": 100
+    }
+}));Source
+pub fn with_meta(self, meta: Option<MetaObject>) -> Self
+
+Set the metadata on this result
+Source
+pub fn into_typed<T>(self) -> Result<T, Error>
+where
+    T: DeserializeOwned,
+
+Convert the structured_content part of response into a certain type.
+§About json schema validation
+
+Since rust is a strong type language, we don’t need to do json schema validation here.
+
+But if you do have to validate the response data, you can use jsonschema crate.
+
+Trait Implementations§
+Source§
+impl Clone for CallToolResult
+Source§
+fn clone(&self) -> Self
+Returns a duplicate of the value. Read more1.0.0 (const: unstable) · Source§
+fn clone_from(&mut self, source: &Self)
+Performs copy-assignment from source. Read moreSource§
+impl Debug for CallToolResult
+Source§
+fn fmt(&self, f: &mut Formatter<'_>) -> Result
+Formats the value using the given formatter. Read moreSource§
+impl Default for CallToolResult
+Source§
+fn default() -> Self
+Returns the “default value” for a type. Read moreSource§
+impl<'de> Deserialize<'de> for CallToolResult
+Source§
+fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+where
+    D: Deserializer<'de>,
+Deserialize this value from the given Serde deserializer. Read moreSource§
+impl From<CallToolResult> for CallToolResponse
+Source§
+fn from(result: CallToolResult) -> Self
+Converts to this type from the input type.Source§
+impl From<CallToolResult> for ServerResult
+Source§
+fn from(value: CallToolResult) -> Self
+Converts to this type from the input type.Source§
+impl IntoCallToolResult for CallToolResult
+Available on crate feature server only.
+Source§
+fn into_call_tool_result(self) -> Result<CallToolResponse, ErrorData>Source§
+impl JsonSchema for CallToolResult
+Available on crate feature schemars only.
+Source§
+fn schema_name() -> Cow<'static, str>
+The name of the generated JSON Schema. Read moreSource§
+fn schema_id() -> Cow<'static, str>
+Returns a string that uniquely identifies the schema produced by this type. Read moreSource§
+fn json_schema(generator: &mut SchemaGenerator) -> Schema
+Generates a JSON Schema for this type. Read moreSource§
+fn inline_schema() -> bool
+Whether JSON Schemas generated for this type should be included directly in parent schemas,
+rather than being re-used where possible using the $ref keyword. Read moreSource§
+impl PartialEq for CallToolResult
+Source§
+fn eq(&self, other: &Self) -> bool
+Equality operator ==. Read more1.0.0 (const: unstable) · Source§
+fn ne(&self, other: &Rhs) -> bool
+Inequality operator !=. Read moreSource§
+impl Serialize for CallToolResult
+Source§
+fn serialize<__S>(&self, __serializer: __S) -> Result<__S::Ok, __S::Error>
+where
+    __S: Serializer,
+Serialize this value into the given Serde serializer. Read moreSource§
+impl StructuralPartialEq for CallToolResult
+Auto Trait Implementations§
+§
+impl Freeze for CallToolResult§
+impl RefUnwindSafe for CallToolResult§
+impl Send for CallToolResult§
+impl Sync for CallToolResult§
+impl Unpin for CallToolResult§
+impl UnsafeUnpin for CallToolResult§
+impl UnwindSafe for CallToolResult
+Blanket Implementations§
+Source§
+impl<T> Any for T
+where
+    T: 'static + ?Sized,
+Source§
+fn type_id(&self) -> TypeId
+Gets the TypeId of self. Read moreSource§
+impl<T> Borrow<T> for T
+where
+    T: ?Sized,
+Source§
+fn borrow(&self) -> &T
+Immutably borrows from an owned value. Read moreSource§
+impl<T> BorrowMut<T> for T
+where
+    T: ?Sized,
+Source§
+fn borrow_mut(&mut self) -> &mut T
+Mutably borrows from an owned value. Read moreSource§
+impl<ST, DT> CastableFrom<ST, Initialized, Initialized> for DT
+where
+    ST: ?Sized,
+    DT: ?Sized,Source§
+impl<ST, DT> CastableFrom<ST, Uninit, Uninit> for DT
+where
+    ST: ?Sized,
+    DT: ?Sized,Source§
+impl<T> CloneToUninit for T
+where
+    T: Clone,
+Source§
+unsafe fn clone_to_uninit(&self, dest: *mut u8)
+🔬This is a nightly-only experimental API. (clone_to_uninit)
+Performs copy-assignment from self to dest. Read moreSource§
+impl<T> DeserializeOwned for T
+where
+    T: for<'de> Deserialize<'de>,Source§
+impl<T> DynClone for T
+where
+    T: Clone,
+Source§
+fn __clone_box(&self, _: Private) -> *mut ()Source§
+impl<T> From<T> for T
+Source§
+fn from(t: T) -> T
+
+Returns the argument unchanged.
+Source§
+impl<T> Instrument for T
+Source§
+fn instrument(self, span: Span) -> Instrumented<Self> ⓘ
+Instruments this type with the provided Span, returning an
+Instrumented wrapper. Read moreSource§
+fn in_current_span(self) -> Instrumented<Self> ⓘ
+Instruments this type with the current Span, returning an
+Instrumented wrapper. Read moreSource§
+impl<T, U> Into<U> for T
+where
+    U: From<T>,
+Source§
+fn into(self) -> U
+
+Calls U::from(self).
+
+That is, this conversion is whatever the implementation of
+From<T> for U chooses to do.
+Source§
+impl<T> PolicyExt for T
+where
+    T: ?Sized,
+Source§
+fn and<P, B, E>(self, other: P) -> And<T, P>
+where
+    T: Sized + Policy<B, E>,
+    P: Policy<B, E>,
+Create a new Policy that returns Action::Follow only if self and other return
+Action::Follow. Read moreSource§
+fn or<P, B, E>(self, other: P) -> Or<T, P>
+where
+    T: Sized + Policy<B, E>,
+    P: Policy<B, E>,
+Create a new Policy that returns Action::Follow if either self or other returns
+Action::Follow. Read moreSource§
+impl<T> Read<Exclusive, BecauseExclusive> for T
+where
+    T: ?Sized,Source§
+impl<T> Same for T
+Source§
+type Output = T
+Should always be SelfSource§
+impl<T> ToOwned for T
+where
+    T: Clone,
+Source§
+type Owned = T
+The resulting type after obtaining ownership.Source§
+fn to_owned(&self) -> T
+Creates owned data from borrowed data, usually by cloning. Read moreSource§
+fn clone_into(&self, target: &mut T)
+Uses borrowed data to replace owned data, usually by cloning. Read moreSource§
+impl<T, U> TryFrom<U> for T
+where
+    U: Into<T>,
+Source§
+type Error = !
+The type returned in the event of a conversion error.Source§
+fn try_from(value: U) -> Result<T, !>
+Performs the conversion.Source§
+impl<T, U> TryInto<U> for T
+where
+    U: TryFrom<T>,
+Source§
+type Error = <U as TryFrom<T>>::Error
+The type returned in the event of a conversion error.Source§
+fn try_into(self) -> Result<U, <U as TryFrom<T>>::Error>
+Performs the conversion.Source§
+impl<V, T> VZip<V> for T
+where
+    V: MultiLane<T>,
+Source§
+fn vzip(self) -> VSource§
+impl<T> WithSubscriber for T
+Source§
+fn with_subscriber<S>(self, subscriber: S) -> WithDispatch<Self> ⓘ
+where
+    S: Into<Dispatch>,
+Attaches the provided Subscriber to this type, returning a
+WithDispatch wrapper. Read moreSource§
+fn with_current_subscriber(self) -> WithDispatch<Self> ⓘ
+Attaches the current default Subscriber to this type, returning a
+WithDispatch wrapper. Read more
