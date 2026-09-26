@@ -13,9 +13,11 @@ publish.workspace = true
 sandbox = []
 
 [dependencies]
+aws-lc-rs.workspace = true
 chrono.workspace = true
 chrono-tz.workspace = true
 jsonschema.workspace = true
+jsonwebtoken.workspace = true
 reqwest.workspace = true
 scraper.workspace = true
 serde.workspace = true
