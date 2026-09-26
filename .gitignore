@@ -9,7 +9,6 @@ target/
 *.pem
 *.key
 secrets/
-deploy/keycloak/realm-kampus.json
 deploy/keycloak/.env
 
 # Local runtime state
