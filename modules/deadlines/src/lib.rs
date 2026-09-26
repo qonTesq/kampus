@@ -1,31 +1,122 @@
-//! `deadlines` module. OWNED BY the `canvas-mock` change.
+//! `deadlines` module: `my_deadlines` (Sensitive, synthetic). OWNED BY the
+//! `canvas-mock` change.
 //!
-//! Foundation stub: the descriptor is registered (schemas are always listed)
-//! and every call returns `unsupported_source`. Replace `call` with the real
-//! implementation; keep [`module`] as the single registration entry point.
+//! Policy (auth-policy-audit) runs before [`Module::call`]; this module adds
+//! defense in depth: only signed-in student users with a registered synthetic
+//! profile reach the provider, at most 30 reads per user per minute, and
+//! nothing is cached. A production build has no source, so every call answers
+//! `unsupported_source` while the schema stays listed.
 
+use std::fmt;
 use std::sync::Arc;
 
+use chrono::{DateTime, Datelike, Days, FixedOffset, NaiveTime, TimeDelta, TimeZone, Utc};
+use chrono_tz::Tz;
+use kampus_core::contracts::providers::{DeadlineProvider, DeadlineQuery};
 use kampus_core::contracts::{
-    BoxFuture, CallContext, Module, ModuleDescriptor, ModuleInit, RegistryError, ToolError,
-    ToolSuccess,
+    AuthKind, BoxFuture, CallContext, Module, ModuleDescriptor, ModuleInit, Principal,
+    RegistryError, Role, ToolError, ToolSuccess, parse_args,
 };
+use kampus_core::runtime::RateLimiter;
+use serde::Deserialize;
 use serde_json::Value;
+
+#[cfg(test)]
+mod tests;
 
 /// Module ID; must match `id` in `module.yaml`.
 pub const MODULE_ID: &str = "deadlines";
+/// The module's only tool.
+pub const TOOL: &str = "my_deadlines";
 
 const MODULE_YAML: &str = include_str!("../module.yaml");
+const DEFAULT_LIMIT: u8 = 10;
+const MAX_LIMIT: u8 = 20;
+const DEFAULT_RANGE_DAYS: i64 = 7;
+const MAX_RANGE_DAYS: i64 = 31;
+const READS_PER_MINUTE: u32 = 30;
+const READ_BURST: u32 = 10;
+
+/// Verified subject → registered synthetic user ID.
+type ProfileLookup = dyn Fn(&str) -> Option<String> + Send + Sync;
+
+/// Where deadlines come from. Only a sandbox build constructs one from
+/// configuration; tests inject their own.
+struct Source {
+    provider: Arc<dyn DeadlineProvider>,
+    profiles: Box<ProfileLookup>,
+}
+
+impl Source {
+    #[cfg(any(test, feature = "sandbox"))]
+    fn new(provider: Arc<dyn DeadlineProvider>, profiles: Box<ProfileLookup>) -> Self {
+        Self { provider, profiles }
+    }
+}
+
+impl fmt::Debug for Source {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Source").finish_non_exhaustive()
+    }
+}
 
 #[derive(Debug)]
 pub struct Deadlines {
     descriptor: ModuleDescriptor,
+    timezone: Tz,
+    source: Option<Source>,
+    limiter: RateLimiter,
 }
 
 /// Registration entry point, called once from `crates/kampus/src/registry.rs`.
-pub fn module(_init: &ModuleInit) -> Result<Arc<dyn Module>, RegistryError> {
-    let descriptor = ModuleDescriptor::from_yaml(MODULE_ID, MODULE_YAML)?;
-    Ok(Arc::new(Deadlines { descriptor }))
+pub fn module(init: &ModuleInit) -> Result<Arc<dyn Module>, RegistryError> {
+    Ok(Arc::new(Deadlines::new(init, configured_source(init)?)?))
+}
+
+impl Deadlines {
+    fn new(init: &ModuleInit, source: Option<Source>) -> Result<Self, RegistryError> {
+        let descriptor = ModuleDescriptor::from_yaml(MODULE_ID, MODULE_YAML)?;
+        let timezone = init
+            .school
+            .school
+            .timezone
+            .parse()
+            .map_err(|_| module_error("school.timezone is not an IANA timezone"))?;
+        Ok(Self {
+            descriptor,
+            timezone,
+            source,
+            limiter: RateLimiter::per_minute(READS_PER_MINUTE, READ_BURST),
+        })
+    }
+
+    async fn my_deadlines(&self, args: Value, ctx: &CallContext) -> Result<ToolSuccess, ToolError> {
+        let Some(source) = &self.source else {
+            return Err(ToolError::unsupported_source());
+        };
+        let input: Input = parse_args(args)?;
+        let (from, to) = input.range(ctx.now, self.timezone)?;
+        let limit = input.limit()?;
+        if !is_student_user(&ctx.principal) {
+            return Err(ToolError::permission_denied(
+                "My deadlines is only available to signed-in students.",
+            ));
+        }
+        let synthetic_user_id = (source.profiles)(&ctx.principal.subject).ok_or_else(|| {
+            ToolError::permission_denied(
+                "No synthetic demo profile is registered for this account.",
+            )
+        })?;
+        self.limiter.check(&synthetic_user_id)?;
+        let query = DeadlineQuery {
+            synthetic_user_id,
+            from,
+            to,
+            limit,
+        };
+        let sourced = source.provider.list(&query).await?;
+        ToolSuccess::new(&sourced.value, sourced.provenance)
+    }
 }
 
 impl Module for Deadlines {
@@ -35,10 +126,125 @@ impl Module for Deadlines {
 
     fn call<'a>(
         &'a self,
-        _tool: &'a str,
-        _args: Value,
-        _ctx: &'a CallContext,
+        tool: &'a str,
+        args: Value,
+        ctx: &'a CallContext,
     ) -> BoxFuture<'a, Result<ToolSuccess, ToolError>> {
-        Box::pin(async { Err(ToolError::unsupported_source()) })
+        Box::pin(async move {
+            if tool != TOOL {
+                return Err(ToolError::configuration_error());
+            }
+            self.my_deadlines(args, ctx).await
+        })
     }
+}
+
+/// Only user-delegated tokens of students; never guests or devices.
+fn is_student_user(principal: &Principal) -> bool {
+    principal.auth_kind == AuthKind::User && principal.has_role(Role::Student)
+}
+
+fn module_error(message: &str) -> RegistryError {
+    RegistryError::Module {
+        module: MODULE_ID.to_owned(),
+        message: message.to_owned(),
+    }
+}
+
+#[cfg(feature = "sandbox")]
+fn configured_source(init: &ModuleInit) -> Result<Option<Source>, RegistryError> {
+    let school = &init.school;
+    let Some(canvas) = school.canvas.as_ref().filter(|c| c.enabled) else {
+        return Ok(None);
+    };
+    if !school.sandbox.enabled || !init.is_enabled(MODULE_ID) {
+        return Ok(None);
+    }
+    let canvas = Arc::new(
+        kampus_canvas::SandboxCanvas::start(&canvas.base_url)
+            .map_err(|e| module_error(&e.to_string()))?,
+    );
+    let provider = Arc::new(canvas.provider.clone());
+    // The lookup owns the running fake, keeping it up as long as the module.
+    let profiles = Box::new(move |subject: &str| {
+        canvas
+            .profiles
+            .synthetic_user_for(subject)
+            .map(str::to_owned)
+    });
+    Ok(Some(Source::new(provider, profiles)))
+}
+
+/// Production builds contain no Canvas simulation at all.
+#[cfg(not(feature = "sandbox"))]
+#[allow(
+    clippy::unnecessary_wraps,
+    reason = "same signature as the sandbox build"
+)]
+fn configured_source(_init: &ModuleInit) -> Result<Option<Source>, RegistryError> {
+    Ok(None)
+}
+
+/// `my_deadlines` arguments. There is deliberately no user field.
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct Input {
+    from: Option<DateTime<FixedOffset>>,
+    to: Option<DateTime<FixedOffset>>,
+    limit: Option<u8>,
+}
+
+impl Input {
+    /// `[from, to)`: defaults to the current school-local ISO week (Monday
+    /// 00:00), at most 31 days long.
+    fn range(
+        &self,
+        now: DateTime<Utc>,
+        tz: Tz,
+    ) -> Result<(DateTime<Utc>, DateTime<Utc>), ToolError> {
+        let from = match self.from {
+            Some(from) => from.to_utc(),
+            None => week_start(now, tz)?,
+        };
+        let to = match self.to {
+            Some(to) => to.to_utc(),
+            None if self.from.is_none() => from
+                .with_timezone(&tz)
+                .checked_add_days(Days::new(7))
+                .map(|end| end.to_utc())
+                .ok_or_else(bad_range)?,
+            None => from
+                .checked_add_signed(TimeDelta::days(DEFAULT_RANGE_DAYS))
+                .ok_or_else(bad_range)?,
+        };
+        if to <= from || to - from > TimeDelta::days(MAX_RANGE_DAYS) {
+            return Err(bad_range());
+        }
+        Ok((from, to))
+    }
+
+    fn limit(&self) -> Result<usize, ToolError> {
+        let limit = self.limit.unwrap_or(DEFAULT_LIMIT);
+        if (1..=MAX_LIMIT).contains(&limit) {
+            Ok(usize::from(limit))
+        } else {
+            Err(ToolError::invalid_arguments(
+                "limit must be between 1 and 20.",
+            ))
+        }
+    }
+}
+
+fn bad_range() -> ToolError {
+    ToolError::invalid_arguments("`to` must be after `from` and at most 31 days later.")
+}
+
+/// Monday 00:00 of `now`'s school-local week, as UTC.
+fn week_start(now: DateTime<Utc>, tz: Tz) -> Result<DateTime<Utc>, ToolError> {
+    let local = now.with_timezone(&tz);
+    let monday = local.date_naive() - Days::new(u64::from(local.weekday().num_days_from_monday()));
+    tz.from_local_datetime(&monday.and_time(NaiveTime::MIN))
+        .earliest()
+        .map(|start| start.to_utc())
+        .ok_or_else(ToolError::configuration_error)
 }
