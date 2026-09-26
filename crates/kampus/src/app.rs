@@ -9,6 +9,7 @@ use axum::extract::Request;
 use axum::http::StatusCode;
 use axum::middleware::{self, Next};
 use axum::response::{IntoResponse, Response};
+use kampus_core::auth::{AuthSettings, Authenticator, KeySource};
 use kampus_core::config::{ConfigError, Env, PolicyConfig, SchoolConfig};
 use kampus_core::contracts::{ModuleInit, RegistryError, ToolRegistry};
 use kampus_core::dispatch::Dispatcher;
@@ -34,6 +35,8 @@ pub enum AppError {
     Registry(#[from] RegistryError),
     #[error("school.yaml modules: unknown module {0}")]
     UnknownModule(String),
+    #[error("cannot build the realm key client")]
+    KeyClient,
     #[error("cannot listen on {addr}: {source}")]
     Listen {
         addr: SocketAddr,
@@ -47,6 +50,7 @@ pub struct App {
     init: ModuleInit,
     policy: Arc<PolicyConfig>,
     dispatcher: Arc<Dispatcher>,
+    auth: Arc<Authenticator>,
 }
 
 impl App {
@@ -56,6 +60,18 @@ impl App {
         school: SchoolConfig,
         policy: PolicyConfig,
         env: &Env<'_>,
+    ) -> Result<Self, AppError> {
+        Self::build_with_keys(school, policy, env, None)
+    }
+
+    /// [`App::build`] with an explicit signing-key source. `None` fetches keys
+    /// through the configured issuer's discovery document; tests pass a
+    /// locally generated key set.
+    pub fn build_with_keys(
+        school: SchoolConfig,
+        policy: PolicyConfig,
+        env: &Env<'_>,
+        keys: Option<KeySource>,
     ) -> Result<Self, AppError> {
         school.validate(env)?;
         let init = ModuleInit {
@@ -73,6 +89,22 @@ impl App {
         }
         let known_tools: BTreeSet<String> = registry.tool_names().map(str::to_owned).collect();
         policy.validate(&init.school, &known_tools, env)?;
+        let scopes = registry
+            .tools()
+            .flat_map(|t| t.descriptor.scopes.iter().cloned())
+            .collect();
+        let settings = AuthSettings::from_school(&init.school, scopes);
+        let keys = match keys {
+            Some(keys) => keys,
+            None => KeySource::Discovery {
+                client: kampus_core::runtime::upstream_client_builder()
+                    .redirect(reqwest::redirect::Policy::none())
+                    .build()
+                    .map_err(|_| AppError::KeyClient)?,
+                issuer: settings.issuer.clone(),
+            },
+        };
+        let auth = Arc::new(Authenticator::new(settings, keys));
         let dispatcher = Arc::new(Dispatcher::new(
             init.school.school.id.clone(),
             Arc::new(registry),
@@ -81,6 +113,7 @@ impl App {
             init,
             policy: Arc::new(policy),
             dispatcher,
+            auth,
         })
     }
 
@@ -114,7 +147,12 @@ impl App {
         );
         Router::new()
             .nest_service(mcp_path(school), service)
+            .layer(middleware::from_fn_with_state(
+                Arc::clone(&self.auth),
+                crate::auth::authenticate,
+            ))
             .layer(middleware::from_fn(protocol_version_guard))
+            .merge(crate::auth::metadata_routes(&self.auth))
             .merge(registry::routes(&self.init))
     }
 

@@ -7,8 +7,9 @@ One agent owns the paths in proposal.md. Human contract freeze precedes module c
 ## 1. Working login followed immediately by bad-token tests
 
 - [ ] 1.1 During foundation setup before Sat 5 PM, configure Keycloak >=26.6, confidential workspace clients, PKCE redirects, realm-default audience mapper and scoped DCR settings; save a secret-free realm setup guide and verify a synthetic user's token has the required aud and azp. This configuration preflight can run before the foundation code lands. Budget 20 min.
-- [ ] 1.2 Implement path-inserted metadata, exact resource 401 challenge and trusted-JWKS JWT checks for both transport modes; verify a valid synthetic Keycloak user can call the acceptance tool and record sanitized discovery evidence. Budget 20 min.
-- [ ] 1.3 Immediately after login works, add and run wrong-issuer, wrong-audience, missing/malformed/wrong-client azp, expired, bad-signature, algorithm, key-refresh and legacy-session-expiry tests; verify invalid credentials never downgrade to guest. Human-review this code before proceeding and before Sat 7 PM. Budget 15 min.
+- [x] 1.2 Implement path-inserted metadata, exact resource 401 challenge and trusted-JWKS JWT checks for both transport modes; verify a valid synthetic Keycloak user can call the acceptance tool and record sanitized discovery evidence. Budget 20 min.
+- [x] 1.3 Immediately after login works, add and run wrong-issuer, wrong-audience, missing/malformed/wrong-client azp, expired, bad-signature, algorithm, key-refresh and legacy-session-expiry tests; verify invalid credentials never downgrade to guest. Human-review this code before proceeding and before Sat 7 PM. Budget 15 min.
+  - Code and offline tests done (`kampus-core` `auth::tests`, `crates/kampus/tests/auth.rs`). Still open for 1.2/1.3: real-realm evidence (sanitized discovery/JWKS, synthetic-user call) and the human review.
 
 ## 2. Policy and metadata audit
 

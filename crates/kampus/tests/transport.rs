@@ -14,7 +14,7 @@ use std::path::Path;
 
 use axum::Router;
 use kampus::App;
-use kampus_core::config::{Env, PolicyConfig, SchoolConfig};
+use kampus_core::config::{AuthMode, Env, PolicyConfig, SchoolConfig};
 use serde_json::{Value, json};
 use tokio_util::sync::CancellationToken;
 
@@ -23,7 +23,9 @@ const LEGACY: &str = "2025-11-25";
 
 fn app() -> App {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../schools/temple");
-    let school = SchoolConfig::load(&root.join("school.yaml")).unwrap();
+    let mut school = SchoolConfig::load(&root.join("school.yaml")).unwrap();
+    // Offline transport runs as explicit no-login guests; OAuth is in tests/auth.rs.
+    school.auth.mode = AuthMode::NoLogin;
     let policy = PolicyConfig::load(&root.join("policy.yaml")).unwrap();
     let env = Env {
         has_var: &|_| true,
@@ -212,10 +214,6 @@ fn assert_denied(result: &Value) {
     assert_eq!(&serde_json::from_str::<Value>(text).unwrap(), structured);
 }
 
-fn room_args() -> Value {
-    json!({ "start": "2026-09-26T15:00:00-04:00", "end": "2026-09-26T16:00:00-04:00" })
-}
-
 #[tokio::test]
 async fn current_protocol_lists_and_fails_closed() {
     let server = spawn(|r| r).await;
@@ -228,8 +226,8 @@ async fn current_protocol_lists_and_fails_closed() {
     );
     assert_catalog(&rpc_body(response).await["result"]);
 
-    let params = json!({ "name": "find_study_room", "arguments": room_args() });
-    let response = modern(&server, "tools/call", Some("find_study_room"), params).await;
+    let params = json!({ "name": "my_deadlines", "arguments": {} });
+    let response = modern(&server, "tools/call", Some("my_deadlines"), params).await;
     assert_eq!(response.status(), 200);
     assert_denied(&rpc_body(response).await["result"]);
 }
@@ -332,22 +330,7 @@ async fn foreign_host_header_is_rejected() {
 
 #[cfg(feature = "acceptance")]
 mod acceptance {
-    use axum::extract::Request;
-    use axum::middleware::{self, Next};
-    use kampus_core::contracts::{AuthKind, Principal};
-
     use super::*;
-
-    /// Test stand-in for the auth middleware: `x-test-user` yields a user principal.
-    async fn test_auth(mut request: Request, next: Next) -> axum::response::Response {
-        if request.headers().contains_key("x-test-user") {
-            let mut principal = Principal::guest();
-            principal.subject = "synthetic:student-a".into();
-            principal.auth_kind = AuthKind::User;
-            request.extensions_mut().insert(principal);
-        }
-        next.run(request).await
-    }
 
     fn hello_ok(result: &Value, caller: &str) {
         assert_eq!(result["isError"], false, "{result}");
@@ -372,27 +355,5 @@ mod acceptance {
             rpc_body(legacy(&server, &session, call(2, "kampus_hello", json!({}))).await).await;
         hello_ok(&body["result"], "guest");
     }
-
-    #[tokio::test]
-    async fn legacy_session_never_carries_identity_between_requests() {
-        let server = spawn(|r| r.layer(middleware::from_fn(test_auth))).await;
-        let session = legacy_session(&server).await;
-
-        let authed = server
-            .client
-            .post(&server.url)
-            .header("Accept", "application/json, text/event-stream")
-            .header("MCP-Protocol-Version", LEGACY)
-            .header("Mcp-Session-Id", &session)
-            .header("x-test-user", "1")
-            .json(&call(2, "kampus_hello", json!({})))
-            .send()
-            .await
-            .unwrap();
-        hello_ok(&rpc_body(authed).await["result"], "user");
-
-        // Same session, no credential: the earlier caller's identity is not reused.
-        let anon = legacy(&server, &session, call(3, "kampus_hello", json!({}))).await;
-        hello_ok(&rpc_body(anon).await["result"], "guest");
-    }
+    // Per-request identity over legacy sessions (real tokens): tests/auth.rs.
 }
