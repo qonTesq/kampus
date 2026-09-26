@@ -1,6 +1,6 @@
-# kampus contracts (proposed for freeze, 2026-09-26)
+# kampus contracts (frozen, 2026-09-26)
 
-**Status: awaiting human freeze.** Once frozen, any change needs a human. Source of truth: `crates/kampus-core/src/contracts/` and `crates/kampus-core/src/config/`; this page is the field reference.
+**Status: frozen as committed at `d9ff8ee`.** Changing a contract requires a human's sign-off. Source of truth: `crates/kampus-core/src/contracts/` and `crates/kampus-core/src/config/`; this page is the field reference.
 
 ## module.yaml (version 1)
 
@@ -66,7 +66,7 @@ Startup errors: unknown fields; a bad timezone; non-https URLs (http only on loo
 
 Required: `version`, `school_id` (must equal `school.id`), `tier_mapping` (all four canonical classes; never mapped downward), `client_registry[{azp, registration: pre_registered_confidential|dcr|cimd|device, approved, workspace}]` (only `pre_registered_confidential` can be approved; every `devices[].azp` must be registered as `device`), `sensitive_enabled`, `rules[{id, effect: allow|deny, roles, tools (names or ["*"]), effective_classes, client_trust: any|approved|unapproved, required_scopes, enabled}]` (unique IDs, known tools, never allow `confidential`), `audit.{retention_hours (1..=720), salt_env}`, `limits` (per minute: user reads 60, guest reads 30, booking proposals 5, confirms 2, device binds 6 per device and 30 per source). Deny wins; unmatched calls deny.
 
-## Proposed numeric defaults (freeze these)
+## Frozen numeric defaults
 
 | Item | Default |
 |---|---|
@@ -81,4 +81,4 @@ Required: `version`, `school_id` (must equal `school.id`), `tier_mapping` (all f
 
 ## Freeze decision
 
-_Record here: who froze these, when (America/New_York), and any changes requested._
+On 2026-09-26, America/New_York, the human project owner instructed foundation to record the contracts and numeric defaults as frozen at `d9ff8ee`. The humans deferred detailed review until after implementation. This records that decision without claiming the detailed review has occurred. Any subsequent contract change needs a human's sign-off; no contract fields or defaults changed in this record.
