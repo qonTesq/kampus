@@ -8,10 +8,24 @@ license.workspace = true
 publish.workspace = true
 
 [features]
-sandbox = ["kampus-core/sandbox"]
+sandbox = ["kampus-core/sandbox", "dep:getrandom"]
 
 [dependencies]
 kampus-core.workspace = true
+chrono.workspace = true
+chrono-tz.workspace = true
+reqwest.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+url.workspace = true
+# Sandbox receipt IDs. Already in the lock via jsonschema; integrator request:
+# add `getrandom = "0.3.4"` to [workspace.dependencies] and switch to `.workspace = true`.
+getrandom = { version = "0.3.4", optional = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["test-util"] }
 
 [lints]
 workspace = true
