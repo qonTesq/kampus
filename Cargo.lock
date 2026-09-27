@@ -1241,7 +1241,16 @@ dependencies = [
 name = "kampus-device"
 version = "0.1.0"
 dependencies = [
+ "aws-lc-rs",
+ "axum",
+ "chrono",
  "kampus-core",
+ "kampus-rooms",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tokio",
 ]
 
 [[package]]
@@ -1255,7 +1264,16 @@ dependencies = [
 name = "kampus-libcal"
 version = "0.1.0"
 dependencies = [
+ "chrono",
+ "chrono-tz",
+ "getrandom 0.3.4",
  "kampus-core",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tokio",
+ "url",
 ]
 
 [[package]]
@@ -1271,9 +1289,12 @@ dependencies = [
 name = "kampus-rooms"
 version = "0.1.0"
 dependencies = [
+ "chrono",
  "kampus-core",
  "kampus-libcal",
+ "serde",
  "serde_json",
+ "tokio",
 ]
 
 [[package]]
