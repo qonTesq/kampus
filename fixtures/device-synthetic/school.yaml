@@ -1,0 +1,17 @@
+version: 1
+school: { id: demo-u, display_name: Synthetic Demo, timezone: America/New_York }
+server: { resource_url: 'http://127.0.0.1:8080/mcp', listen: '127.0.0.1:8080', admin_listen: '127.0.0.1:8081' }
+auth: { issuer: 'http://127.0.0.1:8082/realms/demo', audience: demo }
+modules: [rooms, deadlines]
+devices:
+  - device_id: demo-a
+    azp: mascot-a
+    bind_secret_env: DEMO_PI_A
+    stickers:
+      - { uid: 'synthetic:sticker-a', subject: 'synthetic:student-a', role: student }
+      - { uid: 'synthetic:sticker-c', subject: 'synthetic:student-c', role: student }
+  - device_id: demo-b
+    azp: mascot-b
+    bind_secret_env: DEMO_PI_B
+    stickers:
+      - { uid: 'synthetic:sticker-b', subject: 'synthetic:student-b', role: student }

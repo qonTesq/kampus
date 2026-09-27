@@ -1,0 +1,19 @@
+version: 1
+school_id: demo-u
+tier_mapping: { public: public, internal: sensitive, sensitive: sensitive, confidential: confidential }
+client_registry:
+  - { azp: mascot-a, registration: device, approved: false, workspace: Synthetic mascot A }
+  - { azp: mascot-b, registration: device, approved: false, workspace: Synthetic mascot B }
+sensitive_enabled: true
+rules:
+  - id: public
+    effect: allow
+    roles: [guest, student]
+    tools: ['*']
+    effective_classes: [public]
+  - id: sensitive
+    effect: allow
+    roles: [student]
+    tools: ['*']
+    effective_classes: [sensitive]
+audit: { retention_hours: 24, salt_env: DEMO_AUDIT_SALT }

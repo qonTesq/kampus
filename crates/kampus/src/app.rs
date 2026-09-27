@@ -33,6 +33,8 @@ pub const SUPPORTED_PROTOCOL_VERSIONS: &[ProtocolVersion] =
 #[derive(Debug, thiserror::Error)]
 pub enum AppError {
     #[error(transparent)]
+    Device(#[from] kampus_device::DeviceError),
+    #[error(transparent)]
     Admin(#[from] kampus_core::admin::AdminError),
     #[error(transparent)]
     Config(#[from] ConfigError),
@@ -69,6 +71,7 @@ pub struct AppOptions {
 /// A fully validated server instance for one school.
 #[derive(Debug)]
 pub struct App {
+    devices: Arc<kampus_device::DeviceBindings>,
     admin: Arc<kampus_core::admin::Admin>,
     init: ModuleInit,
     policy: Arc<PolicyEngine>,
@@ -147,7 +150,7 @@ impl App {
                 .ok_or(AppError::AuditSalt)?;
             SubjectHasher::new(&school_id, salt.as_bytes())
         };
-        let security = Security {
+        let mut security = Security {
             limits: CallerLimits::new(&policy.limits),
             policy: Arc::new(PolicyEngine::new(policy)),
             audit: Arc::clone(&audit) as _,
@@ -155,6 +158,13 @@ impl App {
             identity: None,
             enabled_modules: init.school.modules.iter().cloned().collect(),
         };
+        let devices = kampus_device::DeviceBindings::new(
+            &init.school,
+            &security,
+            &|name| std::env::var(name).ok(),
+            Arc::new(kampus_device::SystemClock::default()),
+        )?;
+        security.identity = Some(Arc::clone(&devices) as _);
         let policy = Arc::clone(&security.policy);
         let admin = Arc::new(kampus_core::admin::Admin::new(
             Arc::clone(&policy),
@@ -169,6 +179,7 @@ impl App {
             security,
         ));
         Ok(Self {
+            devices,
             admin,
             init,
             policy,
@@ -226,7 +237,7 @@ impl App {
             ))
             .layer(middleware::from_fn(protocol_version_guard))
             .merge(crate::auth::metadata_routes(&self.auth))
-            .merge(registry::routes(&self.init))
+            .merge(registry::routes(&self.init).layer(axum::Extension(Arc::clone(&self.devices))))
     }
 
     /// Bind the public listener and serve until `cancel` fires.
@@ -270,10 +281,13 @@ impl App {
         let public_cancel = cancel.clone();
         let admin_cancel = cancel.clone();
         let public = async move {
-            axum::serve(listener, router)
-                .with_graceful_shutdown(async move { public_cancel.cancelled().await })
-                .await
-                .map_err(|source| AppError::Listen { addr, source })
+            axum::serve(
+                listener,
+                router.into_make_service_with_connect_info::<SocketAddr>(),
+            )
+            .with_graceful_shutdown(async move { public_cancel.cancelled().await })
+            .await
+            .map_err(|source| AppError::Listen { addr, source })
         };
         let local = async move {
             axum::serve(admin_listener, admin_router)
