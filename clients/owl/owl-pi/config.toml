@@ -23,7 +23,10 @@ barge_in = false
 server_label = "kampus"
 server_url = ""
 server_description = "Kampus campus information"
-allowed_tools = []
+# Demo tools only (no course search or booking). my_deadlines is refused on purpose.
+allowed_tools = ["find_study_room", "next_departures", "library_hours", "my_deadlines"]
+# Seconds before a tool call counts as "couldn't reach the campus system".
+call_timeout = 10
 
 [pipeline]
 # Used by voice_pipeline.py: AI brain + ElevenLabs voice.

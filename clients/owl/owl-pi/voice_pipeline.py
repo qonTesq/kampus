@@ -23,6 +23,8 @@ Keys live only in .env on the Pi (pipeline.brain in config.toml picks the brain)
   python voice_pipeline.py --no-display # without the eye screens
 """
 import argparse
+from datetime import datetime
+from zoneinfo import ZoneInfo
 import base64
 import io
 import json
@@ -55,19 +57,30 @@ REPLY_SCHEMA = {
 }
 
 
-def instructions(cfg):
+KAMPUS_RULES = """
+Use the kampus tools for study rooms, trains and the B subway (for Cecil B. Moore, ask
+northbound or southbound) and library hours. Times are Eastern. If a tool returns
+permission_denied, say: 'That's personal, so open it in your school's approved assistant.
+I'm a public helper.' Never make up times or personal data. You can't book rooms.
+If a tool fails or can't be reached, say you couldn't reach the campus system."""
+
+
+def instructions(cfg, kampus=False):
     a, p = cfg["assistant"], cfg["pipeline"]
+    now = datetime.now(ZoneInfo("America/New_York"))
     return f"""You are {a['name']}, a friendly owl-shaped robot assistant with expressive eyes.
 Reply in the language the user speaks to you; if unsure, use {a['language']}. Your words are
 read aloud, so answer in at most {p['max_reply_words']} words, in plain spoken sentences: no
 lists, markdown, emoji or URLs. Expand only when asked.
+
+It is now {now:%A, %B %-d, %Y, %-I:%M %p} Eastern time ({now.isoformat(timespec="minutes")}).
 
 About yourself, if asked: {a['creator']} {a['technology']}
 Say this plainly; never claim your maker is secret or that you are independent.
 
 What you can do: talk, answer questions from general knowledge, explain things, tell jokes and
 fun facts, and show expressions with your eyes. What you cannot do: see, browse the internet,
-check the real time or date, keep a schedule, set reminders or alarms, send messages, or remember
+keep a schedule, set reminders or alarms, send messages, or remember
 anything after you go to sleep. If asked for one of these, say kindly that you can't do it yet.
 Never claim abilities you don't have. Do not claim to be human or to have real feelings.
 
@@ -78,6 +91,7 @@ need clarification (then ask ONE short question); angry only as a playful act. U
 only for plain factual explanations, and sleepy when talking about sleep or being tired.
 If the user asks for a specific expression, use it.
 Set sleep to true only when the user says goodbye or asks you to sleep.""" + (
+        KAMPUS_RULES if kampus else "") + (
         f"""
 When the user asks about something your {cfg['mcp'].get('server_label', 'kampus')} tools cover,
 call them and answer from their results; say so honestly if a tool fails.""" if mcp_tool(cfg) else "")
@@ -204,12 +218,10 @@ class GeminiBrain:
                   "maxOutputTokens": self.cfg["assistant"]["max_response_tokens"]}
         if p.get("gemini_thinking"):
             config["thinkingConfig"] = {"thinkingLevel": p["gemini_thinking"]}
-        body = {"systemInstruction": {"parts": [{"text": instructions(self.cfg)}]},
+        body = {"systemInstruction": {"parts": [{"text": instructions(self.cfg, getattr(self, "kampus", False))}]},
                 "contents": contents, "generationConfig": config}
         if self.bridge and self.bridge.tools:
-            body["tools"] = [{"functionDeclarations": [
-                {"name": t.name, "description": t.description or t.name,
-                 "parametersJsonSchema": t.inputSchema} for t in self.bridge.tools]}]
+            body["tools"] = [{"functionDeclarations": self.bridge.declarations()}]
         r = self.http.post(f"{GEMINI}/models/{p['gemini_model']}:generateContent",
                            json=body, timeout=60)
         r.raise_for_status()
@@ -341,16 +353,18 @@ def main():
             from mcp_bridge import MCPBridge
             m = cfg["mcp"]
             try:
-                bridge = MCPBridge(m["server_url"], m.get("authorization", ""), m.get("allowed_tools"))
+                bridge = MCPBridge(m["server_url"], m.get("authorization", ""), m.get("allowed_tools"),
+                                   call_timeout=m.get("call_timeout", 10))
                 print(f"MCP server: {len(bridge.tools)} tools from {m['server_url']}", flush=True)
             except RuntimeError as exc:
                 print(f"{exc}; continuing without MCP tools", flush=True)
         if cfg["pipeline"]["brain"] == "gemini-live":
             from gemini_live import GeminiLiveBrain
-            brain = GeminiLiveBrain(cfg, brain_key, instructions(cfg), bridge)
+            brain = GeminiLiveBrain(cfg, brain_key, lambda: instructions(cfg, kampus=bool(bridge)), bridge)
             print(f"Brain: Gemini Live ({cfg['pipeline']['gemini_live_model']})", flush=True)
         else:
             brain = GeminiBrain(cfg, brain_key, bridge)
+            brain.kampus = bool(bridge)
             print(f"Brain: Gemini ({cfg['pipeline']['gemini_model']})", flush=True)
     else:
         brain = Brain(cfg, brain_key)

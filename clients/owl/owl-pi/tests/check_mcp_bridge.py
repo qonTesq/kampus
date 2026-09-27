@@ -62,7 +62,7 @@ def main():
         result = bridge.call("next_event", {"topic": "hackathon"})
         assert "Friday 12:00" in result, result
         print("ok  tool call result:", result)
-        assert bridge.call("secret_tool", {}).startswith("Error: unknown tool")
+        assert "unknown_tool" in bridge.call("secret_tool", {})
         print("ok  disallowed tool refused")
         bridge.close()
         print("MCP bridge: all checks passed")

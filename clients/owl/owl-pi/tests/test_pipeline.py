@@ -108,6 +108,11 @@ class FakeTool:
 class FakeBridge:
     tools = [FakeTool()]
 
+    def declarations(self):
+        from mcp_bridge import gemini_schema
+        return [{"name": t.name, "description": t.description,
+                 "parametersJsonSchema": gemini_schema(t.inputSchema)} for t in self.tools]
+
     def __init__(self): self.calls = []
 
     def call(self, name, args):

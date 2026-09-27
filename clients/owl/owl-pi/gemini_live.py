@@ -97,8 +97,7 @@ class GeminiLiveBrain:
         p = self.cfg["pipeline"]
         tools = [EXPRESSION_TOOL]
         if self.bridge:
-            tools += [{"name": t.name, "description": t.description or t.name,
-                       "parametersJsonSchema": t.inputSchema} for t in self.bridge.tools]
+            tools += self.bridge.declarations()
         generation = {"responseModalities": ["AUDIO"]}
         if self.thinking:                     # less thinking = faster first words
             generation["thinkingConfig"] = {"thinkingLevel": self.thinking}
@@ -107,7 +106,8 @@ class GeminiLiveBrain:
         self._send({"setup": {
             "model": f"models/{p['gemini_live_model']}",
             "generationConfig": generation,
-            "systemInstruction": {"parts": [{"text": self.instructions + LIVE_RULES}]},
+            "systemInstruction": {"parts": [{"text": (self.instructions() if callable(self.instructions)
+                                                       else self.instructions) + LIVE_RULES}]},
             "tools": [{"functionDeclarations": tools}],
             "inputAudioTranscription": {},
             "outputAudioTranscription": {},
