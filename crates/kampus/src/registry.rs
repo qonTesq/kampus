@@ -25,5 +25,5 @@ pub fn modules(init: &ModuleInit) -> Result<Vec<Arc<dyn Module>>, RegistryError>
 /// Extra public HTTP routes merged next to the MCP endpoint
 /// (device-binding registers `POST /device/bind` here).
 pub fn routes(_init: &ModuleInit) -> Router {
-    Router::new()
+    Router::new().merge(kampus_device::routes())
 }
