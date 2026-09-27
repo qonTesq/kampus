@@ -11,7 +11,7 @@ Robot with animated eyes on two round screens, a mic (Logitech webcam) and a spe
 | 3 | Speaker: JBL Go 3 paired + trusted (18:90:67:87:94:0C), default output | Done 2026-09-26 (owl volume 0.8, system 62%) |
 | 4 | Mic: Logitech Brio 100 webcam, `main.py --audio-test` record + playback | Done 2026-09-26 |
 | 5 | Eyes + mic + speaker together, `owl-pi/soak_test.py` 10 min | Done 2026-09-26 (25 fps, 0 audio glitches, max 43.3°C, no throttling) |
-| 6 | Voice loop: `owl-pi/voice_pipeline.py` (ChatGPT brain + ElevenLabs voice), or `main.py` (OpenAI Realtime) | Built, tested offline with simulated cloud; **needs API keys** |
+| 6 | Voice loop: `owl-pi/main.py` = OpenAI Realtime (`gpt-realtime-2.1`), MCP-ready, barge-in switch (off). `voice_pipeline.py` = ChatGPT + ElevenLabs alternative | Built + 25 offline tests pass; **needs OPENAI_API_KEY in .env**; MCP URL pending |
 
 ## Hardware
 

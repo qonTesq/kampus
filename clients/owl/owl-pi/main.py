@@ -49,6 +49,23 @@ def load_config(path):
     cfg["wake"]["model_path"] = str(model if model.is_absolute() else ROOT / model)
     return cfg
 
+def apply_env(cfg):
+    """Settings in .env (or the environment) override config.toml."""
+    env = {k: v.strip() for k, v in os.environ.items()}
+    if env.get("OPENAI_REALTIME_MODEL"):
+        cfg["assistant"]["model"] = env["OPENAI_REALTIME_MODEL"]
+    for name, key in (("AUDIO_INPUT_DEVICE", "input_device"), ("AUDIO_OUTPUT_DEVICE", "output_device")):
+        if env.get(name):
+            value = env[name]
+            cfg["audio"][key] = int(value) if value.lstrip("-").isdigit() else value
+    mcp = cfg.setdefault("mcp", {})
+    for name, key in (("MCP_SERVER_URL", "server_url"), ("MCP_AUTHORIZATION", "authorization")):
+        if env.get(name):
+            mcp[key] = env[name]
+    if env.get("MCP_ALLOWED_TOOLS"):
+        mcp["allowed_tools"] = [t.strip() for t in env["MCP_ALLOWED_TOOLS"].split(",") if t.strip()]
+    return cfg
+
 def phrase_matches(text, phrases):
     words = " " + " ".join(re.findall(r"[\w']+", text.casefold())) + " "
     return any(" " + " ".join(re.findall(r"[\w']+", p.casefold())) + " " in words for p in phrases)
@@ -149,6 +166,9 @@ def main():
     parser.add_argument("--audio-test", action="store_true", help="Record three seconds locally, then play it back; no cloud")
     args = parser.parse_args()
     cfg = load_config(args.config)
+    from dotenv import load_dotenv
+    load_dotenv(ROOT / ".env")
+    apply_env(cfg)
     if args.list_audio:
         import sounddevice as sd
         print(sd.query_devices())
@@ -176,8 +196,6 @@ def main():
         sd.play(playback, samplerate=a["output_rate"], device=device_value(a["output_device"]))
         sd.wait(); return
     if not args.demo:
-        from dotenv import load_dotenv
-        load_dotenv(ROOT / ".env")
         if not cfg["assistant"]["allow_cloud_audio"]:
             raise RuntimeError("Online conversation is disabled. Eye-only mode: --demo")
         if not os.environ.get("OPENAI_API_KEY", "").strip():

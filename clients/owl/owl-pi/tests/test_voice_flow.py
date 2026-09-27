@@ -25,9 +25,10 @@ class Socket:
 
 
 class Audio:
-    def __init__(self): self.chunks = []
+    def __init__(self): self.chunks, self.cleared = [], False
     def playing(self): return False
     def feed_pcm24(self, pcm): self.chunks.append(pcm)
+    def clear_output(self): self.cleared = True
 
 
 def planned(emotion="love", camera=False):
@@ -99,6 +100,75 @@ class VoiceFlowTests(unittest.IsolatedAsyncioTestCase):
         session = self.session([{"type": "error", "error": {"code": "invalid_api_key", "message": "Invalid key"}}])
         with self.assertRaisesRegex(RuntimeError, "invalid_api_key"):
             await session.receive()
+
+    async def test_mcp_server_is_offered_to_answers_but_not_plans(self):
+        session = self.session([planned("happy")])
+        session.cfg["mcp"] = {"server_label": "kampus", "server_url": "https://mcp.test/mcp",
+                              "authorization": "secret", "allowed_tools": ["events"]}
+        session.stage = "planning"
+        await session.receive()
+        answer = [e["response"] for e in session.ws.sent if e["type"] == "response.create"][-1]
+        self.assertEqual(answer["tool_choice"], "auto")
+        self.assertEqual(answer["tools"], [{"type": "mcp", "server_label": "kampus",
+            "server_url": "https://mcp.test/mcp", "require_approval": "never",
+            "authorization": "secret", "allowed_tools": ["events"]}])
+        await session.request_answer(planning=True)
+        self.assertNotIn("tools", session.ws.sent[-1]["response"])
+
+    async def test_mcp_list_failure_does_not_end_conversation(self):
+        session = self.session([{"type": "mcp_list_tools.failed"},
+                                {"type": "response.mcp_call.failed"}])
+        await session.receive()
+
+    async def test_barge_in_stops_playback_and_truncates_heard_audio(self):
+        pcm = b"\x01\x00" * 2400                       # 100 ms at 24 kHz
+        session = self.session([
+            {"type": "response.output_audio.delta", "item_id": "reply-1",
+             "delta": base64.b64encode(pcm).decode()},
+            {"type": "input_audio_buffer.speech_started"},
+            {"type": "response.done", "response": {"status": "cancelled"}},
+        ])
+        session.barge_in, session.busy, session.stage = True, True, "answer"
+        await session.receive()
+        truncate = [e for e in session.ws.sent if e["type"] == "conversation.item.truncate"]
+        self.assertEqual(len(truncate), 1)
+        self.assertEqual(truncate[0]["item_id"], "reply-1")
+        self.assertLessEqual(truncate[0]["audio_end_ms"], 100)
+        self.assertTrue(session.audio.cleared)
+        self.assertFalse(session.busy)
+
+    async def test_without_barge_in_speech_never_interrupts(self):
+        pcm = b"\x01\x00" * 2400
+        session = self.session([
+            {"type": "response.output_audio.delta", "item_id": "reply-1",
+             "delta": base64.b64encode(pcm).decode()},
+            {"type": "input_audio_buffer.speech_started"},
+        ])
+        session.busy, session.stage = True, "answer"
+        await session.receive()
+        self.assertFalse([e for e in session.ws.sent if e["type"] == "conversation.item.truncate"])
+        self.assertFalse(session.audio.cleared)
+
+
+class EnvOverrideTests(unittest.TestCase):
+    def test_env_overrides_config(self):
+        from main import apply_env
+        cfg = load_config(Path(__file__).resolve().parents[1] / "config.toml")
+        env = {"OPENAI_REALTIME_MODEL": "gpt-test", "AUDIO_INPUT_DEVICE": "3",
+               "AUDIO_OUTPUT_DEVICE": "JBL Go 3", "MCP_SERVER_URL": "https://mcp.test/mcp",
+               "MCP_AUTHORIZATION": "tok", "MCP_ALLOWED_TOOLS": "a, b"}
+        with patch.dict("os.environ", env):
+            apply_env(cfg)
+        self.assertEqual(cfg["assistant"]["model"], "gpt-test")
+        self.assertEqual(cfg["audio"]["input_device"], 3)
+        self.assertEqual(cfg["audio"]["output_device"], "JBL Go 3")
+        self.assertEqual(cfg["mcp"]["server_url"], "https://mcp.test/mcp")
+        self.assertEqual(cfg["mcp"]["allowed_tools"], ["a", "b"])
+
+    def test_no_mcp_server_means_no_mcp_tool(self):
+        from realtime_voice import session_settings
+        cfg = load_config(Path(__file__).resolve().parents[1] / "config.toml")
+        self.assertEqual([t["type"] for t in session_settings(cfg)["tools"]], ["function"])
 
 
 if __name__ == "__main__": unittest.main()

@@ -10,6 +10,18 @@ allow_cloud_audio = true
 model = "gpt-realtime-2.1"
 voice = "marin"
 max_response_tokens = 900
+# Let the user interrupt the owl mid-reply. Leave false with a Bluetooth speaker
+# and webcam mic: without echo cancellation the owl hears itself and stops.
+barge_in = false
+
+[mcp]
+# Remote MCP server the owl can call (Realtime API, main.py). Empty = no MCP.
+# MCP_SERVER_URL / MCP_AUTHORIZATION / MCP_ALLOWED_TOOLS in .env override these;
+# keep tokens in .env only.
+server_label = "kampus"
+server_url = ""
+server_description = "Kampus campus information"
+allowed_tools = []
 
 [pipeline]
 # Used by voice_pipeline.py: ChatGPT brain + ElevenLabs voice.
