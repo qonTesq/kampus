@@ -9,10 +9,11 @@ import time
 
 import numpy as np
 
-SILENCE_END = 0.8     # seconds of quiet that count as "done speaking"
+SILENCE_END = 1.2     # seconds of quiet that count as "done speaking" (natural pauses are ~1 s)
 MAX_UTTERANCE = 10    # seconds; longer speech is cut off here
 MIN_SPEECH = 0.3      # seconds of loud audio needed before it counts as speech
 ONSET_WINDOW = 0.5    # seconds the MIN_SPEECH has to fall within
+MAX_THRESHOLD = 4500  # a noisy calibration (fan at boot, people talking) can't make it deaf
 
 
 def rms(samples):
@@ -35,7 +36,7 @@ def calibrate(audio, seconds=2.0):
         if item is not None:
             noise.append(rms(item[1]))
     floor = float(np.median(noise)) if noise else 200.0
-    return floor, max(1200.0, floor * 4)
+    return floor, min(MAX_THRESHOLD, max(1200.0, floor * 4))
 
 
 def listen(audio, rate, block_ms, threshold, on_start=None, timeout=None):

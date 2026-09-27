@@ -54,6 +54,8 @@ Always call set_expression at the start of each reply, then answer out loud."""
 class GeminiLiveBrain:
     streams = True               # can hand over the reply sentence by sentence
 
+    timing = {}                  # seconds spent sending the turn / until Gemini's first words
+
     def __init__(self, cfg, key, instructions, bridge=None, connect=None):
         self.cfg, self.key, self.instructions, self.bridge = cfg, key, instructions, bridge
         if connect is None:
@@ -124,8 +126,10 @@ class GeminiLiveBrain:
         as each sentence is complete, letting ElevenLabs start on the first one.
         """
         try:
+            start = time.monotonic()
             self._ensure_open()
             self._send_turn(text, samples, rate)
+            self.timing = {"send": time.monotonic() - start}
             return self._collect(text, on_sentence)
         except Exception:
             self.close()                      # a broken session is reopened next turn
@@ -196,6 +200,8 @@ class GeminiLiveBrain:
             if "inputTranscription" in content:
                 heard.append(content["inputTranscription"].get("text", ""))
             if "outputTranscription" in content:
+                if "first_text" not in self.timing:
+                    self.timing["first_text"] = time.monotonic() - deadline + TURN_TIMEOUT
                 piece = content["outputTranscription"].get("text", "")
                 said.append(piece)
                 pending += piece

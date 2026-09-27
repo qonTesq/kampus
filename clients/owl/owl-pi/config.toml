@@ -3,7 +3,9 @@
 
 [assistant]
 name = "Owl"
-language = "English"
+language = "English"      # default; the owl replies in the language it is spoken to
+creator = "I was made by a group of three humble students from Saint Joseph's University."
+technology = "I run on a Raspberry Pi, think with Google Gemini, and speak with an ElevenLabs voice."
 wake_phrases = ["hey owl", "hello owl"]
 sleep_after_seconds = 300
 allow_cloud_audio = true

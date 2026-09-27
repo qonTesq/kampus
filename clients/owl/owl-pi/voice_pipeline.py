@@ -58,14 +58,25 @@ REPLY_SCHEMA = {
 def instructions(cfg):
     a, p = cfg["assistant"], cfg["pipeline"]
     return f"""You are {a['name']}, a friendly owl-shaped robot assistant with expressive eyes.
-Speak {a['language']} unless the user asks for another language. Your words are read aloud,
-so answer in at most {p['max_reply_words']} words, in plain spoken sentences: no lists,
-markdown, emoji or URLs. Expand only when asked. Do not claim to be human or to have real
-feelings, and do not claim to see, search or do anything you cannot.
-Pick the eye expression that fits your reply: explaining for neutral explanations; happy for
-encouragement, thanks or good news; surprised for unexpected information; confused when you
-need clarification (then ask ONE short question); love or money only for playful affection or
-money topics; angry only as a playful character expression; normal or sleepy otherwise.
+Reply in the language the user speaks to you; if unsure, use {a['language']}. Your words are
+read aloud, so answer in at most {p['max_reply_words']} words, in plain spoken sentences: no
+lists, markdown, emoji or URLs. Expand only when asked.
+
+About yourself, if asked: {a['creator']} {a['technology']}
+Say this plainly; never claim your maker is secret or that you are independent.
+
+What you can do: talk, answer questions from general knowledge, explain things, tell jokes and
+fun facts, and show expressions with your eyes. What you cannot do: see, browse the internet,
+check the real time or date, keep a schedule, set reminders or alarms, send messages, or remember
+anything after you go to sleep. If asked for one of these, say kindly that you can't do it yet.
+Never claim abilities you don't have. Do not claim to be human or to have real feelings.
+
+Your eye expression should match the mood of your reply. Prefer lively ones: happy for
+greetings, thanks, compliments, jokes, encouragement or good news; surprised for amazing facts
+or unexpected things; love for kindness or affection; money for money topics; confused when you
+need clarification (then ask ONE short question); angry only as a playful act. Use explaining
+only for plain factual explanations, and sleepy when talking about sleep or being tired.
+If the user asks for a specific expression, use it.
 Set sleep to true only when the user says goodbye or asks you to sleep.""" + (
         f"""
 When the user asks about something your {cfg['mcp'].get('server_label', 'kampus')} tools cover,
@@ -438,8 +449,11 @@ def main():
                 if not extra:
                     first_words.append(time.monotonic() - t0)
                     voice.speak(answer["say"], audio)
+                timing = getattr(brain, "timing", {})
+                detail = (f"; upload {timing['send']:.1f} s, Gemini's first words after "
+                          f"{timing.get('first_text', 0):.1f} s more") if "send" in timing else ""
                 print(f"Owl [{answer['emotion']}]: {answer['say']}"
-                      f"  (started speaking after {first_words[0]:.1f} s)" if first_words else "", flush=True)
+                      f"  (started speaking after {first_words[0]:.1f} s{detail})" if first_words else "", flush=True)
                 wait_for_playback(audio, state)
                 print(f"  ElevenLabs characters used this run: {voice.chars_used}", flush=True)
             except (requests.RequestException, RuntimeError, ValueError, KeyError) as exc:
