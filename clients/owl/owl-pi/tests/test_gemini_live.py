@@ -96,6 +96,47 @@ class GeminiLiveTests(unittest.TestCase):
         self.assertEqual(len(audio), 10)                       # 1 s at 16 kHz in 100 ms pieces
         self.assertEqual(sent[-1]["toolResponse"]["functionResponses"][0]["id"], "c1")
 
+    def test_answer_after_tool_call_arrives_in_a_second_model_turn(self):
+        # Real Gemini Live order (seen on the Pi): tool call, turnComplete, then
+        # after our toolResponse a new model turn with the spoken answer.
+        brain = self.brain([[SETUP, [
+            {"toolCall": {"functionCalls": [{"id": "c1", "name": "set_expression",
+                                             "args": {"emotion": "happy", "sleep": False}}]}},
+            content(generationComplete=True),
+            content(turnComplete=True)], [
+            content(outputTranscription={"text": "I am Owl, "}),
+            content(outputTranscription={"text": "your friendly robot."}),
+            content(generationComplete=True),
+            content(turnComplete=True)]]])
+        got = brain.turn(text="Who are you?")
+        self.assertEqual(got, {"heard": "Who are you?", "say": "I am Owl, your friendly robot.",
+                               "emotion": "happy", "sleep": False})
+
+    def test_sentences_are_handed_over_as_soon_as_complete(self):
+        brain = self.brain([[SETUP, [
+            {"toolCall": {"functionCalls": [{"id": "c1", "name": "set_expression",
+                                             "args": {"emotion": "surprised", "sleep": False}}]}},
+            content(turnComplete=True)], [
+            content(outputTranscription={"text": "Owls can turn "}),
+            content(outputTranscription={"text": "their heads far. They "}),
+            content(outputTranscription={"text": "also fly silently!"}),
+            content(turnComplete=True)]]])
+        spoken = []
+        brain.turn(text="fun fact?", on_sentence=lambda s, e: spoken.append((s, e["emotion"], len(spoken))))
+        self.assertEqual(spoken, [("Owls can turn their heads far.", "surprised", 0),
+                                  ("They also fly silently!", "surprised", 1)])
+
+    def test_long_sentence_is_started_at_a_comma(self):
+        brain = self.brain([[SETUP, [
+            content(outputTranscription={"text": "Many owls can rotate their necks up to two hundred and "}),
+            content(outputTranscription={"text": "seventy degrees, which helps them spot prey "}),
+            content(outputTranscription={"text": "without moving their body."}),
+            content(turnComplete=True)]]])
+        spoken = []
+        brain.turn(text="fact?", on_sentence=lambda s, e: spoken.append(s))
+        self.assertEqual(spoken, ["Many owls can rotate their necks up to two hundred and seventy degrees,",
+                                  "which helps them spot prey without moving their body."])
+
     def test_mcp_tool_runs_on_the_pi(self):
         bridge = FakeBridge()
         brain = self.brain([[SETUP, [

@@ -417,7 +417,17 @@ def main():
 
             try:
                 t0 = time.monotonic()
-                answer = brain.turn(text=text, samples=said.samples if said else None, rate=rate)
+                first_words = []
+
+                def speak_sentence(sentence, expression):
+                    if not first_words:          # first sentence: set the eyes, start talking
+                        first_words.append(time.monotonic() - t0)
+                        state.phase("idle")
+                        state.emotion(expression["emotion"])
+                    voice.speak(sentence, audio)
+
+                extra = {"on_sentence": speak_sentence} if getattr(brain, "streams", False) else {}
+                answer = brain.turn(text=text, samples=said.samples if said else None, rate=rate, **extra)
                 if answer is None:            # no words in the recording
                     state.phase("idle")
                     continue
@@ -425,13 +435,16 @@ def main():
                     print(f"\nYou: {answer['heard']}", flush=True)
                 state.phase("idle")
                 state.emotion(answer["emotion"])
+                if not extra:
+                    first_words.append(time.monotonic() - t0)
+                    voice.speak(answer["say"], audio)
                 print(f"Owl [{answer['emotion']}]: {answer['say']}"
-                      f"  ({time.monotonic() - t0:.1f} s to think)", flush=True)
-                voice.speak(answer["say"], audio)
+                      f"  (started speaking after {first_words[0]:.1f} s)" if first_words else "", flush=True)
                 wait_for_playback(audio, state)
                 print(f"  ElevenLabs characters used this run: {voice.chars_used}", flush=True)
             except (requests.RequestException, RuntimeError, ValueError, KeyError) as exc:
-                detail = getattr(exc.response, "text", "")[:300] if exc.response is not None else ""
+                response = getattr(exc, "response", None)
+                detail = getattr(response, "text", "")[:300] if response is not None else ""
                 print(f"  Cloud request failed: {exc} {detail}", flush=True)
                 state.phase("idle")
                 state.emotion("confused")

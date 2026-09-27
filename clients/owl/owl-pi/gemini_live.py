@@ -17,6 +17,7 @@ last few exchanges as text.
 """
 import base64
 import json
+import re
 import time
 
 import soxr
@@ -29,6 +30,7 @@ SESSION_MAX = 14 * 60        # seconds; Live audio sessions end at 15 minutes
 CHUNK_MS = 100               # audio sent in 100 ms pieces
 TURN_TIMEOUT = 60            # seconds to wait for Gemini to finish a turn
 MAX_TOOL_ROUNDS = 5
+LONG_CLAUSE = 60             # characters before a long sentence is split at a comma
 
 EXPRESSION_TOOL = {
     "name": "set_expression",
@@ -50,6 +52,8 @@ Always call set_expression at the start of each reply, then answer out loud."""
 
 
 class GeminiLiveBrain:
+    streams = True               # can hand over the reply sentence by sentence
+
     def __init__(self, cfg, key, instructions, bridge=None, connect=None):
         self.cfg, self.key, self.instructions, self.bridge = cfg, key, instructions, bridge
         if connect is None:
@@ -112,12 +116,17 @@ class GeminiLiveBrain:
 
     # ---------- one exchange ----------
 
-    def turn(self, text=None, samples=None, rate=None):
-        """Send one user turn; return {heard, say, emotion, sleep}, or None if nothing was said."""
+    def turn(self, text=None, samples=None, rate=None, on_sentence=None):
+        """Send one user turn; return {heard, say, emotion, sleep}, or None if nothing was said.
+
+        Gemini produces its answer at speaking pace, so waiting for the whole
+        reply takes seconds. on_sentence(sentence, expression) is called as soon
+        as each sentence is complete, letting ElevenLabs start on the first one.
+        """
         try:
             self._ensure_open()
             self._send_turn(text, samples, rate)
-            return self._collect(text)
+            return self._collect(text, on_sentence)
         except Exception:
             self.close()                      # a broken session is reopened next turn
             raise
@@ -135,14 +144,34 @@ class GeminiLiveBrain:
                 "mimeType": "audio/pcm;rate=16000"}}})
         self._send({"realtimeInput": {"activityEnd": {}}})
 
-    def _collect(self, text):
+    def _collect(self, text, on_sentence=None):
         heard, said = [], []
         expression = {"emotion": "explaining", "sleep": False}
+        pending = ""                          # reply text not yet handed to on_sentence
+
+        def emit(final=False):
+            nonlocal pending
+            parts = re.split(r"(?<=[.!?])\s+", pending)
+            ready, pending = (parts, "") if final else (parts[:-1], parts[-1])
+            # A long sentence still growing: speak up to its last comma now.
+            if not final and len(pending) > LONG_CLAUSE and ", " in pending:
+                head, _, pending = pending.rpartition(", ")
+                ready.append(head + ",")
+            for sentence in ready:
+                sentence = " ".join(sentence.split())
+                if sentence and on_sentence:
+                    on_sentence(sentence, expression)
+
         deadline = time.monotonic() + TURN_TIMEOUT
         rounds = 0
+        # A tool call ends Gemini's current model turn (turnComplete) and the
+        # spoken answer follows in a new one once our toolResponse arrives, so
+        # a turnComplete right after a tool call is not the end of the reply.
+        answer_pending = False
         while True:
             msg = self._recv(deadline)
             if "toolCall" in msg:
+                answer_pending = True
                 rounds += 1
                 if rounds > MAX_TOOL_ROUNDS:
                     raise RuntimeError("Gemini kept calling tools without answering")
@@ -167,11 +196,19 @@ class GeminiLiveBrain:
             if "inputTranscription" in content:
                 heard.append(content["inputTranscription"].get("text", ""))
             if "outputTranscription" in content:
-                said.append(content["outputTranscription"].get("text", ""))
+                piece = content["outputTranscription"].get("text", "")
+                said.append(piece)
+                pending += piece
+                emit()
+                answer_pending = False
             # modelTurn audio (Gemini's own voice) is ignored: ElevenLabs speaks instead
             if content.get("turnComplete"):
+                if answer_pending:
+                    answer_pending = False    # tool step done; wait for the answer turn
+                    continue
                 break
 
+        emit(final=True)
         user = (text if text is not None else "".join(heard)).strip()
         say = " ".join("".join(said).split())
         if not user or not say:
