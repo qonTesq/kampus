@@ -99,6 +99,9 @@ class GeminiLiveBrain:
         if self.bridge:
             tools += self.bridge.declarations()
         generation = {"responseModalities": ["AUDIO"]}
+        if p.get("gemini_voice"):             # Gemini's built-in voice (used when voice = "gemini")
+            generation["speechConfig"] = {"voiceConfig": {"prebuiltVoiceConfig": {
+                "voiceName": p["gemini_voice"]}}}
         if self.thinking:                     # less thinking = faster first words
             generation["thinkingConfig"] = {"thinkingLevel": self.thinking}
         self.ws = self.connect(f"{LIVE_URL}?key={self.key}", open_timeout=20,
@@ -132,7 +135,7 @@ class GeminiLiveBrain:
 
     # ---------- one exchange ----------
 
-    def turn(self, text=None, samples=None, rate=None, on_sentence=None):
+    def turn(self, text=None, samples=None, rate=None, on_sentence=None, on_audio=None):
         """Send one user turn; return {heard, say, emotion, sleep}, or None if nothing was said.
 
         Gemini produces its answer at speaking pace, so waiting for the whole
@@ -144,7 +147,7 @@ class GeminiLiveBrain:
             self._ensure_open()
             self._send_turn(text, samples, rate)
             self.timing = {"send": time.monotonic() - start}
-            return self._collect(text, on_sentence)
+            return self._collect(text, on_sentence, on_audio)
         except Exception:
             self.close()                      # a broken session is reopened next turn
             raise
@@ -169,7 +172,7 @@ class GeminiLiveBrain:
         except Exception as exc:
             self.stream_error = exc
 
-    def finish_audio(self, on_sentence=None):
+    def finish_audio(self, on_sentence=None, on_audio=None):
         """User stopped: close the turn and collect the answer (see turn())."""
         try:
             if self.stream_error:
@@ -178,7 +181,7 @@ class GeminiLiveBrain:
             self._send_pcm(self.resampler.resample_chunk(np.zeros(0, dtype=np.int16), last=True))
             self._send({"realtimeInput": {"activityEnd": {}}})
             self.timing = {"send": time.monotonic() - start}
-            return self._collect(None, on_sentence)
+            return self._collect(None, on_sentence, on_audio)
         except Exception:
             self.close()
             raise
@@ -204,7 +207,9 @@ class GeminiLiveBrain:
                 "mimeType": "audio/pcm;rate=16000"}}})
         self._send({"realtimeInput": {"activityEnd": {}}})
 
-    def _collect(self, text, on_sentence=None):
+    def _collect(self, text, on_sentence=None, on_audio=None):
+        """on_audio(pcm24k_bytes, expression) plays Gemini's own voice as it streams;
+        without it, only the transcript is used (for ElevenLabs via on_sentence)."""
         heard, said = [], []
         expression = {"emotion": "explaining", "sleep": False}
         pending = ""                          # reply text not yet handed to on_sentence
@@ -267,7 +272,15 @@ class GeminiLiveBrain:
                 pending += piece
                 emit()
                 answer_pending = False
-            # modelTurn audio (Gemini's own voice) is ignored: ElevenLabs speaks instead
+            if on_audio:                      # Gemini's own voice: play it as it arrives
+                for part in content.get("modelTurn", {}).get("parts", []):
+                    blob = part.get("inlineData", {})
+                    if blob.get("data") and blob.get("mimeType", "audio/pcm").startswith("audio/pcm"):
+                        if "first_audio" not in self.timing:
+                            self.timing["first_audio"] = time.monotonic() - deadline + TURN_TIMEOUT
+                        pcm = base64.b64decode(blob["data"])
+                        on_audio(pcm[: len(pcm) - len(pcm) % 2], expression)
+            # (otherwise Gemini's audio is dropped and ElevenLabs speaks the transcript)
             if content.get("turnComplete"):
                 if answer_pending:
                     answer_pending = False    # tool step done; wait for the answer turn

@@ -354,11 +354,15 @@ def main():
     brain_var = "GEMINI_API_KEY" if use_gemini else "OPENAI_API_KEY"
     brain_key = (os.environ.get(brain_var, "")
                  or (os.environ.get("GOOGLE_API_KEY", "") if use_gemini else "")).strip()
+    # Gemini Live can speak with its own voice; otherwise ElevenLabs speaks.
+    gemini_voice = cfg["pipeline"]["brain"] == "gemini-live" and cfg["pipeline"].get("voice") == "gemini"
     eleven_key = os.environ.get("ELEVENLABS_API_KEY", "").strip()
     voice_id = (os.environ.get("ELEVENLABS_VOICE_ID", "").strip()
                 or cfg["pipeline"]["voice_id"].strip())
-    missing = [n for n, v in ((brain_var, brain_key), ("ELEVENLABS_API_KEY", eleven_key),
-                              ("ELEVENLABS_VOICE_ID", voice_id)) if not v]
+    needed = [(brain_var, brain_key)]
+    if not gemini_voice:
+        needed += [("ELEVENLABS_API_KEY", eleven_key), ("ELEVENLABS_VOICE_ID", voice_id)]
+    missing = [n for n, v in needed if not v]
     if missing:
         raise SystemExit("Add to .env on the Pi: " + ", ".join(missing))
 
@@ -387,7 +391,9 @@ def main():
         print(f"Brain: ChatGPT ({cfg['pipeline']['chat_model']})", flush=True)
         if mcp_tool(cfg):
             print(f"MCP server: {cfg['mcp']['server_url']}", flush=True)
-    voice = Voice(cfg, eleven_key, voice_id)
+    voice = None if gemini_voice else Voice(cfg, eleven_key, voice_id)
+    print("Voice: " + (f"Gemini ({cfg['pipeline']['gemini_voice']})" if gemini_voice else "ElevenLabs"),
+          flush=True)
     streaming_mic = hasattr(brain, "start_audio")      # Gemini Live listens while you talk
     rate, block_ms = cfg["audio"]["input_rate"], cfg["audio"]["block_ms"]
     phrases = cfg["assistant"]["wake_phrases"]
@@ -421,7 +427,12 @@ def main():
         state.emotion("happy")
         print("Awake! Talk to me (Ctrl+C to stop).", flush=True)
         try:
-            voice.speak(cfg["pipeline"]["greeting"], audio)
+            if voice:
+                voice.speak(cfg["pipeline"]["greeting"], audio)
+            else:                             # Gemini greets in its own voice
+                brain.turn(text="(You were just woken up. Say exactly: "
+                                f"{cfg['pipeline']['greeting']})",
+                           on_audio=lambda pcm, e: audio.feed_pcm24(pcm))
             wait_for_playback(audio, state)
         except Exception as exc:
             print(f"  Greeting skipped, voice unreachable: {type(exc).__name__}", flush=True)
@@ -491,7 +502,17 @@ def main():
                         state.emotion(expression["emotion"])
                     voice.speak(sentence, audio, on_first_audio=first_audio)
 
-                extra = {"on_sentence": speak_sentence} if getattr(brain, "streams", False) else {}
+                def play_gemini(pcm, expression):
+                    if not first_words:          # first audio: set the eyes
+                        state.phase("idle")
+                        state.emotion(expression["emotion"])
+                    audio.feed_pcm24(pcm)
+                    first_audio()
+
+                if gemini_voice:
+                    extra = {"on_audio": play_gemini}
+                else:
+                    extra = {"on_sentence": speak_sentence} if getattr(brain, "streams", False) else {}
                 try:
                     if said and streaming_mic:
                         answer = brain.finish_audio(**extra)
@@ -522,14 +543,15 @@ def main():
                 print(f"Owl [{answer['emotion']}]: {answer['say']}"
                       f"  (first audio {first_words[0]:.1f} s {after}{detail})" if first_words else "", flush=True)
                 wait_for_playback(audio, state)
-                print(f"  ElevenLabs characters used this run: {voice.chars_used}", flush=True)
+                if voice:
+                    print(f"  ElevenLabs characters used this run: {voice.chars_used}", flush=True)
             except Exception as exc:          # never let one bad turn stop the owl
                 response = getattr(exc, "response", None)
                 detail = getattr(response, "text", "")[:300] if response is not None else ""
                 print(f"  Cloud request failed: {type(exc).__name__}: {exc} {detail}", flush=True)
                 state.phase("idle")
                 state.emotion("confused")
-                if not first_words:
+                if not first_words and voice:
                     try:
                         voice.speak("Sorry, I lost my connection. Could you ask again?", audio)
                         wait_for_playback(audio, state)
@@ -550,7 +572,8 @@ def main():
             brain.close()
         if bridge:
             bridge.close()
-        print(f"ElevenLabs characters used this run: {voice.chars_used}")
+        if voice:
+            print(f"ElevenLabs characters used this run: {voice.chars_used}")
 
 
 if __name__ == "__main__":

@@ -5,7 +5,8 @@
 name = "Owl"
 language = "English"      # default; the owl replies in the language it is spoken to
 creator = "I was made by a group of three humble students from Saint Joseph's University."
-technology = "I run on a Raspberry Pi, think with Google Gemini, and speak with an ElevenLabs voice."
+technology = "I run on a Raspberry Pi and use Google Gemini to think and talk."
+# If you switch [pipeline] voice to "elevenlabs", say so here, e.g. "...and speak with an ElevenLabs voice."
 wake_phrases = ["hey owl", "hello owl"]
 sleep_after_seconds = 300
 allow_cloud_audio = true
@@ -35,6 +36,11 @@ call_timeout = 10
 #         "openai"      : ChatGPT                                         (OPENAI_API_KEY)
 brain = "gemini-live"
 gemini_live_model = "gemini-3.8-live"
+# Who speaks: "gemini" = Gemini Live's own voice (fastest, no ElevenLabs credit)
+#             "elevenlabs" = ElevenLabs re-speaks Gemini's words (slower)
+voice = "gemini"
+# Gemini built-in voice, e.g. Puck, Kore, Charon, Aoede, Fenrir, Leda, Orus, Zephyr
+gemini_voice = "Puck"
 # Less thinking = faster first words. gemini-3.8-live refuses "minimal" and "low", so "" (default).
 gemini_live_thinking = ""
 # Fastest, lowest-cost Gemini; check your free-tier limits in Google AI Studio.

@@ -16,7 +16,9 @@ fail() { echo "  [FAIL] $*"; exit 1; }
 echo "Pre-flight checks"
 
 # 1. API keys present in .env (values never printed)
-for key in GEMINI_API_KEY ELEVENLABS_API_KEY; do
+keys="GEMINI_API_KEY"
+grep -Eq '^voice = "elevenlabs"' config.toml && keys="$keys ELEVENLABS_API_KEY"
+for key in $keys; do
   grep -Eq "^${key}=.{10,}" .env 2>/dev/null || fail "$key missing in owl-pi/.env"
 done
 ok "API keys present"

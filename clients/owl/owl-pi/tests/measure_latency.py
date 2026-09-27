@@ -44,7 +44,8 @@ def main():
                   os.environ.get("ELEVENLABS_VOICE_ID", "").strip() or cfg["pipeline"]["voice_id"])
     brain = GeminiLiveBrain(cfg, os.environ["GEMINI_API_KEY"].strip(), instructions(cfg))
     brain._ensure_open()                          # the session is already open while awake
-    print(f"thinking setting in use: {brain.thinking or 'model default'}")
+    print(f"thinking setting in use: {brain.thinking or 'model default'}; "
+          f"voice: {cfg['pipeline'].get('voice', 'elevenlabs')}")
     results = []
     for i in range(rounds):
         question = QUESTIONS[i % len(QUESTIONS)]
@@ -64,7 +65,10 @@ def main():
             brain.feed_audio(chunk)
             time.sleep(0.02)
         sink = Sink()
-        answer = brain.finish_audio(on_sentence=lambda s, e: voice.speak(s, sink))
+        if cfg["pipeline"].get("voice") == "gemini":
+            answer = brain.finish_audio(on_audio=lambda pcm, e: sink.feed_pcm24(pcm))
+        else:
+            answer = brain.finish_audio(on_sentence=lambda s, e: voice.speak(s, sink))
         delay = sink.first - speech_end
         results.append(delay)
         print(f"Q: {question!r} heard as {answer['heard']!r}")

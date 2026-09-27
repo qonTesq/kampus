@@ -1,4 +1,5 @@
 """Gemini Live brain protocol, with a fake WebSocket (no network, no credit)."""
+import base64
 import json
 from pathlib import Path
 import sys
@@ -181,6 +182,26 @@ class GeminiLiveTests(unittest.TestCase):
         brain = GeminiLiveBrain(cfg, "gkey", "Be an owl.", connect=lambda url, **kw: next(socks))
         self.assertEqual(brain.turn(text="hi")["say"], "Hi.")
         self.assertEqual(brain.thinking, "")
+
+    def test_gemini_voice_is_played_as_it_streams(self):
+        pcm = b"\x01\x00" * 480
+        brain = self.brain([[SETUP, [
+            {"toolCall": {"functionCalls": [{"id": "c1", "name": "set_expression",
+                                             "args": {"emotion": "happy", "sleep": False}}]}},
+            content(turnComplete=True)], [
+            content(modelTurn={"parts": [{"inlineData": {"mimeType": "audio/pcm;rate=24000",
+                                                         "data": base64.b64encode(pcm).decode()}}]}),
+            content(outputTranscription={"text": "Hi there!"}),
+            content(modelTurn={"parts": [{"inlineData": {"mimeType": "audio/pcm;rate=24000",
+                                                         "data": base64.b64encode(pcm).decode()}}]}),
+            content(turnComplete=True)]]])
+        played = []
+        got = brain.turn(text="hello", on_audio=lambda b, e: played.append((len(b), e["emotion"])))
+        self.assertEqual(played, [(960, "happy"), (960, "happy")])
+        self.assertEqual(got["say"], "Hi there!")
+        setup = self.sockets[0].sent[0]["setup"]
+        self.assertEqual(setup["generationConfig"]["speechConfig"]["voiceConfig"]
+                         ["prebuiltVoiceConfig"]["voiceName"], "Puck")
 
     def test_mcp_tool_runs_on_the_pi(self):
         bridge = FakeBridge()
