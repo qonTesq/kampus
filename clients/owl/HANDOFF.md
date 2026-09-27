@@ -58,4 +58,4 @@ Troubleshooting:
 - Shut down with `sudo shutdown -h now`, then unplug. Don't pull the power while the Pi is running.
 - Work on the **`eyes` branch**. Merge into `main` only after the other person has looked at it.
 - Don't change system settings or install system packages. Ask the Pi owner.
-- The working SD card is backed up as `kampus-baseline.img` (made with Win32 Disk Imager). If the Pi gets into a bad state, write that image back to the card.
+- Commit and push to the `eyes` branch often. GitHub is the only backup of this work.
