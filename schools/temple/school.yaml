@@ -78,15 +78,26 @@ transit:
       name: Temple University Station
       provider: septa_rail
       aliases: [Temple, Temple Station, Temple University Station]
-    - id: "53"
-      name: Cecil B Moore Av & Broad St
+    # GTFS stop 53 is the route 3 bus; the B at Cecil B. Moore is 32148 (north) and 1277 (south).
+    - id: "32148"
+      name: Cecil B. Moore northbound
       provider: septa_gtfs
-      aliases: [Cecil B Moore, Cecil B. Moore, Cecil B Moore Station]
+      aliases: [Cecil B Moore, Cecil B. Moore, CBM north]
+    - id: "1277"
+      name: Cecil B. Moore southbound
+      provider: septa_gtfs
+      aliases: [Cecil B Moore, Cecil B. Moore, CBM south]
+    - id: flight
+      name: Flight shuttle
+      provider: flight
+      aliases: [Flight, shuttle]
   routes:
     - id: B1
       provider: septa_gtfs
       aliases: [B, the B, BSL, Broad Street Line, orange line]
-  # The transit owner adds gtfs_subset_path and gtfs_validity (taken from the
-  # published septadev/GTFS release) once the campus subset is built.
+  gtfs_subset_path: fixtures/septa/20260926T210752721463Z-gtfs-subset
+  gtfs_validity: { start: "2026-09-06", end: "2027-02-20" }
+  # Sandbox config only, also requiring sandbox.enabled: true:
+  # replay_path: fixtures/flight/20260926T225527128011Z-vehicle-points
 
 devices: []
