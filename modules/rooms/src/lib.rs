@@ -38,8 +38,16 @@ pub struct Rooms {
 }
 
 #[derive(Serialize)]
-struct FoundData {
-    rooms: Vec<Room>,
+struct FoundData<'a> {
+    rooms: Vec<FoundRoom<'a>>,
+}
+
+/// A found room plus the configured location ID that `book_study_room` accepts.
+#[derive(Serialize)]
+struct FoundRoom<'a> {
+    #[serde(flatten)]
+    room: Room,
+    location_id: &'a str,
 }
 
 /// Registration entry point, called once from `crates/kampus/src/registry.rs`.
@@ -99,7 +107,12 @@ impl Rooms {
             limit: args.limit()?,
         };
         let found = libcal.find(&query).await?;
-        ToolSuccess::new(&FoundData { rooms: found.value }, found.provenance)
+        let rooms = found
+            .value
+            .into_iter()
+            .map(|room| FoundRoom { room, location_id })
+            .collect();
+        ToolSuccess::new(&FoundData { rooms }, found.provenance)
     }
 
     #[cfg(feature = "sandbox")]

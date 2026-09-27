@@ -196,6 +196,17 @@ async fn confirm_schema_accepts_only_the_confirmation_id() {
             "user_id": "someone-else" }))
         .unwrap_err();
     assert_eq!(err.code, ErrorCode::InvalidArguments);
+    assert!(!err.message.contains("someone-else") && !err.message.contains("user_id"));
+    let err = book
+        .validate_input(&json!({ "room_id": "1", "start": 7_654_321, "end": "x" }))
+        .unwrap_err();
+    assert!(
+        err.message.contains("location_id is required."),
+        "{}",
+        err.message
+    );
+    assert!(err.message.contains("start has the wrong type."));
+    assert!(!err.message.contains("7654321"));
 }
 
 // ------------------------------------------------------------ find_study_room
@@ -218,6 +229,30 @@ async fn find_returns_schema_valid_live_rooms() {
     assert_eq!(names, ["387", "405"]);
     assert_eq!(rooms[0]["description"], "Large group study room, breakout+");
     assert_eq!(rooms[0]["slots"][0]["start"], "2026-09-27T14:00:00-04:00");
+    // The alias resolves to the configured ID, which is what booking accepts.
+    assert!(rooms.iter().all(|r| r["location_id"] == "8404"));
+}
+
+/// Build `book_study_room` arguments straight from a `find_study_room` result.
+fn chain_args(found: &Value) -> Value {
+    let room = &found["data"]["rooms"][0];
+    json!({
+        "room_id": room["room_id"],
+        "location_id": room["location_id"],
+        "start": room["slots"][0]["start"],
+        "end": room["slots"][0]["end"],
+    })
+}
+
+#[tokio::test]
+async fn find_result_feeds_book_study_room_schema() {
+    let h = harness(false, false).await;
+    let result = h
+        .call("find_study_room", find_args(), &ctx(Principal::guest()))
+        .await;
+    let found = h.projected("find_study_room", &result);
+    let book = h.registry.get("book_study_room").unwrap();
+    book.validate_input(&chain_args(&found)).unwrap();
 }
 
 #[tokio::test]
@@ -371,6 +406,25 @@ mod sandbox {
         // One cached read to propose, one fresh read to confirm; reads only.
         assert_eq!(h.server.hits(), 2);
         h.only_gets();
+    }
+
+    #[tokio::test]
+    async fn student_books_straight_from_a_find_result() {
+        let h = harness(true, true).await;
+        let result = h.call("find_study_room", find_args(), &student()).await;
+        let found = h.projected("find_study_room", &result);
+        let args = chain_args(&found);
+        h.registry
+            .get("book_study_room")
+            .unwrap()
+            .validate_input(&args)
+            .unwrap();
+        let result = h.call("book_study_room", args.clone(), &student()).await;
+        let out = h.projected("book_study_room", &result);
+        assert_eq!(out["status"], "ok", "{out}");
+        assert_eq!(out["data"]["state"], "proposed");
+        assert_eq!(out["data"]["proposal"]["room_id"], args["room_id"]);
+        assert_eq!(out["data"]["proposal"]["location_id"], "8404");
     }
 
     #[tokio::test]

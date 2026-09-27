@@ -33,9 +33,10 @@ tools:
           items:
             type: object
             additionalProperties: false
-            required: [room_id, name, capacity, description, slots]
+            required: [room_id, location_id, name, capacity, description, slots]
             properties:
               room_id: { type: string, maxLength: 64 }
+              location_id: { type: string, maxLength: 64, description: "Pass this with room_id to book_study_room." }
               name: { type: string, maxLength: 160 }
               capacity: { type: [integer, "null"], minimum: 0 }
               description: { type: [string, "null"], maxLength: 500 }
