@@ -20,6 +20,7 @@ Keys live only in .env on the Pi:
 import argparse
 import io
 import json
+import re
 import os
 import time
 import wave
@@ -27,7 +28,8 @@ import wave
 import numpy as np
 import requests
 
-from main import ROOT, load_config, phrase_matches
+from main import ROOT, apply_env, load_config, phrase_matches
+from realtime_voice import mcp_tool
 from state import EMOTIONS, OwlState
 from turns import calibrate, listen
 
@@ -57,20 +59,30 @@ Pick the eye expression that fits your reply: explaining for neutral explanation
 encouragement, thanks or good news; surprised for unexpected information; confused when you
 need clarification (then ask ONE short question); love or money only for playful affection or
 money topics; angry only as a playful character expression; normal or sleepy otherwise.
-Set sleep to true only when the user says goodbye or asks you to sleep."""
+Set sleep to true only when the user says goodbye or asks you to sleep.""" + (
+        f"""
+When the user asks about something your {cfg['mcp'].get('server_label', 'kampus')} tools cover,
+call them and answer from their results; say so honestly if a tool fails.""" if mcp_tool(cfg) else "")
 
 
 class Brain:
-    """OpenAI: speech-to-text plus the ChatGPT reply, with a short memory."""
+    """OpenAI: speech-to-text plus the ChatGPT reply (with MCP tools if configured).
+
+    Turns are chained with previous_response_id, so the conversation and the MCP
+    server's tool list carry over without being re-sent. The reply normally comes
+    back as strict JSON (say / emotion / sleep); if the API refuses that format
+    alongside MCP tools, it falls back once to a tagged reply like "[happy] Hi!".
+    """
 
     def __init__(self, cfg, key):
         self.cfg = cfg
         self.http = requests.Session()
         self.http.headers["Authorization"] = f"Bearer {key}"
-        self.history = []
+        self.previous = None
+        self.tagged = False
 
     def reset(self):
-        self.history = []
+        self.previous = None
 
     def transcribe(self, samples, rate):
         buf = io.BytesIO()
@@ -85,23 +97,47 @@ class Brain:
         r.raise_for_status()
         return r.json().get("text", "").strip()
 
-    def reply(self, text):
-        self.history.append({"role": "user", "content": text})
-        r = self.http.post(f"{OPENAI}/responses", timeout=30, json={
+    def request(self, text):
+        body = {
             "model": self.cfg["pipeline"]["chat_model"],
-            "instructions": instructions(self.cfg),
-            "input": self.history,
+            "instructions": instructions(self.cfg) + (TAG_RULES if self.tagged else ""),
+            "input": [{"role": "user", "content": text}],
             "max_output_tokens": self.cfg["assistant"]["max_response_tokens"],
-            "text": {"format": {"type": "json_schema", "name": "owl_reply",
-                                "schema": REPLY_SCHEMA, "strict": True}},
-        })
+        }
+        if self.previous:
+            body["previous_response_id"] = self.previous
+        tool = mcp_tool(self.cfg)
+        if tool:
+            body["tools"] = [tool]
+        if not self.tagged:
+            body["text"] = {"format": {"type": "json_schema", "name": "owl_reply",
+                                       "schema": REPLY_SCHEMA, "strict": True}}
+        return self.http.post(f"{OPENAI}/responses", json=body, timeout=60)
+
+    def reply(self, text):
+        r = self.request(text)
+        if r.status_code == 400 and not self.tagged and mcp_tool(self.cfg):
+            self.tagged = True               # JSON format + MCP refused: use tags
+            r = self.request(text)
         r.raise_for_status()
-        out = "".join(c["text"] for item in r.json()["output"] if item["type"] == "message"
+        data = r.json()
+        self.previous = data["id"]
+        out = "".join(c["text"] for item in data["output"] if item["type"] == "message"
                       for c in item["content"] if c["type"] == "output_text")
-        answer = json.loads(out)
-        self.history.append({"role": "assistant", "content": answer["say"]})
-        self.history = self.history[-2 * self.cfg["pipeline"]["history_turns"]:]
-        return answer
+        return parse_tagged(out) if self.tagged else json.loads(out)
+
+
+TAG_RULES = """
+Start your reply with the expression in square brackets, e.g. [happy], then the words to
+speak. End with [sleep] only when the user says goodbye or asks you to sleep."""
+
+
+def parse_tagged(out):
+    """'[happy] Hello there! [sleep]' -> {'say': 'Hello there!', 'emotion': 'happy', 'sleep': True}"""
+    tags = re.findall(r"\[(\w+)\]", out)
+    say = re.sub(r"\s*\[\w+\]\s*", " ", out).strip()
+    emotion = next((t for t in tags if t in EMOTIONS), "explaining")
+    return {"say": say, "emotion": emotion, "sleep": "sleep" in tags}
 
 
 class Voice:
@@ -156,6 +192,7 @@ def main():
     cfg = load_config(ROOT / "config.toml")
     from dotenv import load_dotenv
     load_dotenv(ROOT / ".env")
+    apply_env(cfg)
     openai_key = os.environ.get("OPENAI_API_KEY", "").strip()
     eleven_key = os.environ.get("ELEVENLABS_API_KEY", "").strip()
     voice_id = (os.environ.get("ELEVENLABS_VOICE_ID", "").strip()
@@ -167,6 +204,8 @@ def main():
 
     from audio_io import AudioIO
     brain = Brain(cfg, openai_key)
+    if mcp_tool(cfg):
+        print(f"MCP server: {cfg['mcp']['server_url']}", flush=True)
     voice = Voice(cfg, eleven_key, voice_id)
     rate, block_ms = cfg["audio"]["input_rate"], cfg["audio"]["block_ms"]
     phrases = cfg["assistant"]["wake_phrases"]
