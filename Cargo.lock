@@ -1242,16 +1242,28 @@ dependencies = [
 name = "kampus-transit"
 version = "0.1.0"
 dependencies = [
+ "chrono",
+ "chrono-tz",
  "kampus-core",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tokio",
+ "tracing",
+ "url",
 ]
 
 [[package]]
 name = "kampus-transit-tools"
 version = "0.1.0"
 dependencies = [
+ "chrono",
  "kampus-core",
  "kampus-transit",
+ "serde",
  "serde_json",
+ "tokio",
 ]
 
 [[package]]
