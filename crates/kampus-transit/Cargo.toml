@@ -12,6 +12,18 @@ sandbox = ["kampus-core/sandbox"]
 
 [dependencies]
 kampus-core.workspace = true
+chrono.workspace = true
+chrono-tz.workspace = true
+reqwest.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+url.workspace = true
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["test-util", "io-util"] }
 
 [lints]
 workspace = true

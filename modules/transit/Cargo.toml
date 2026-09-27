@@ -13,7 +13,12 @@ sandbox = ["kampus-core/sandbox", "kampus-transit/sandbox"]
 [dependencies]
 kampus-core.workspace = true
 kampus-transit.workspace = true
+chrono.workspace = true
+serde.workspace = true
 serde_json.workspace = true
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["io-util"] }
 
 [lints]
 workspace = true
