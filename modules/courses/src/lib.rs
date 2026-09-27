@@ -1,44 +1,138 @@
-//! `courses` module. OWNED BY the `public-courses` change.
-//!
-//! Foundation stub: the descriptor is registered (schemas are always listed)
-//! and every call returns `unsupported_source`. Replace `call` with the real
-//! implementation; keep [`module`] as the single registration entry point.
-
-use std::sync::Arc;
-
-use kampus_core::contracts::{
-    BoxFuture, CallContext, Module, ModuleDescriptor, ModuleInit, RegistryError, ToolError,
-    ToolSuccess,
+//! Public course search. The dispatcher authorizes before this module touches cache.
+use kampus_banner::Banner;
+use kampus_core::{
+    config::BannerConfig,
+    contracts::providers::{CourseProvider, CourseQuery},
+    contracts::{
+        BoxFuture, CallContext, Module, ModuleDescriptor, ModuleInit, Provenance, RegistryError,
+        ToolError, ToolSuccess, parse_args,
+    },
+    runtime::{CacheKey, SharedRuntime, defaults},
 };
-use serde_json::Value;
-
-/// Module ID; must match `id` in `module.yaml`.
+use serde::Deserialize;
+use serde_json::{Value, json};
+use std::sync::Arc;
 pub const MODULE_ID: &str = "courses";
-
 const MODULE_YAML: &str = include_str!("../module.yaml");
-
 #[derive(Debug)]
 pub struct Courses {
     descriptor: ModuleDescriptor,
+    school_id: String,
+    enabled: Option<(BannerConfig, Banner)>,
+    runtime: Arc<SharedRuntime>,
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct Args {
+    term: Option<String>,
+    subject: Option<String>,
+    query: Option<String>,
+    page: Option<u32>,
+    page_size: Option<u32>,
 }
 
-/// Registration entry point, called once from `crates/kampus/src/registry.rs`.
-pub fn module(_init: &ModuleInit) -> Result<Arc<dyn Module>, RegistryError> {
+pub fn module(init: &ModuleInit) -> Result<Arc<dyn Module>, RegistryError> {
     let descriptor = ModuleDescriptor::from_yaml(MODULE_ID, MODULE_YAML)?;
-    Ok(Arc::new(Courses { descriptor }))
+    let enabled = init
+        .school
+        .banner
+        .as_ref()
+        .filter(|b| b.enabled && init.is_enabled(MODULE_ID))
+        .map(|b| {
+            Banner::new(b.clone(), Arc::clone(&init.runtime))
+                .map(|provider| (b.clone(), provider))
+                .map_err(|e| RegistryError::Module {
+                    module: MODULE_ID.into(),
+                    message: e.to_string(),
+                })
+        })
+        .transpose()?;
+    Ok(Arc::new(Courses {
+        descriptor,
+        school_id: init.school.school.id.clone(),
+        enabled,
+        runtime: Arc::clone(&init.runtime),
+    }))
 }
-
 impl Module for Courses {
     fn descriptor(&self) -> &ModuleDescriptor {
         &self.descriptor
     }
-
     fn call<'a>(
         &'a self,
-        _tool: &'a str,
-        _args: Value,
-        _ctx: &'a CallContext,
+        tool: &'a str,
+        args: Value,
+        ctx: &'a CallContext,
     ) -> BoxFuture<'a, Result<ToolSuccess, ToolError>> {
-        Box::pin(async { Err(ToolError::unsupported_source()) })
+        Box::pin(async move {
+            if tool != "search_courses" || ctx.school_id != self.school_id {
+                return Err(ToolError::invalid_arguments("Unknown tool or school."));
+            }
+            let (config, provider) = self
+                .enabled
+                .as_ref()
+                .ok_or_else(ToolError::unsupported_source)?;
+            let query = normalize(parse_args(args)?, config)?;
+            let key = CacheKey {
+                school_id: self.school_id.clone(),
+                provider: "banner".into(),
+                config_version: config.base_url.to_string(),
+                request: json!([
+                    query.term,
+                    query.subject,
+                    query.query,
+                    query.page,
+                    query.page_size
+                ])
+                .to_string(),
+            };
+            let cached = self
+                .runtime
+                .cache
+                .get_or_fetch(key, defaults::COURSES_TTL, async {
+                    let result = provider.search(&query).await?;
+                    Ok(json!({"data": result.value, "provenance": result.provenance}))
+                })
+                .await?;
+            let mut provenance: Provenance =
+                serde_json::from_value(cached.value["provenance"].clone())
+                    .map_err(|_| ToolError::configuration_error())?;
+            provenance.stale = cached.stale;
+            Ok(ToolSuccess {
+                data: cached.value["data"].clone(),
+                provenance,
+            })
+        })
     }
+}
+fn normalize(args: Args, config: &BannerConfig) -> Result<CourseQuery, ToolError> {
+    let term = args.term.unwrap_or_else(|| config.default_term.clone());
+    let subject = args.subject.map(|s| s.trim().to_ascii_uppercase());
+    let query = args
+        .query
+        .map(|s| s.split_whitespace().collect::<Vec<_>>().join(" "));
+    let page = args.page.unwrap_or(1);
+    let page_size = args.page_size.unwrap_or(10);
+    if !config.allowed_terms.contains(&term)
+        || !(1..=100).contains(&page)
+        || !(1..=20).contains(&page_size)
+        || subject.as_ref().is_some_and(|s| {
+            s.is_empty() || s.len() > 8 || !s.bytes().all(|b| b.is_ascii_alphabetic())
+        })
+        || query
+            .as_ref()
+            .is_some_and(|s| s.is_empty() || s.chars().count() > 120)
+        || (subject.is_none() && query.is_none())
+    {
+        return Err(ToolError::invalid_arguments(
+            "Use a configured term, subject or keywords, and bounded pagination.",
+        ));
+    }
+    Ok(CourseQuery {
+        term,
+        subject,
+        query,
+        page,
+        page_size,
+    })
 }

@@ -1,0 +1,120 @@
+{
+  "success": true,
+  "totalCount": 0,
+  "data": 
+  [
+  ],
+  "pageOffset": 0,
+  "pageMaxSize": 10,
+  "sectionsFetchedCount": 0,
+  "pathMode": "search",
+  "searchResultsConfigs": 
+  [
+    {
+      "config": "partOfTerm",
+      "display": "Part of Term",
+      "title": "Part of Term",
+      "required": false,
+      "width": "5%"
+    },
+    {
+      "config": "courseReferenceNumber",
+      "display": "CRN",
+      "title": "CRN",
+      "required": false,
+      "width": "4%"
+    },
+    {
+      "config": "subjectCourseSectionNumber",
+      "display": "Subject Course Section",
+      "title": "Subject Course Section",
+      "required": false,
+      "width": "7%"
+    },
+    {
+      "config": "subject",
+      "display": "Subject",
+      "title": "Subject",
+      "required": false,
+      "width": "5%"
+    },
+    {
+      "config": "courseNumber",
+      "display": "Course",
+      "title": "Course",
+      "required": false,
+      "width": "5%"
+    },
+    {
+      "config": "sequenceNumber",
+      "display": "Section",
+      "title": "Section",
+      "required": false,
+      "width": "4%"
+    },
+    {
+      "config": "campus",
+      "display": "Campus",
+      "title": "Campus",
+      "required": false,
+      "width": "3%"
+    },
+    {
+      "config": "creditHours",
+      "display": "Hours",
+      "title": "Hours",
+      "required": false,
+      "width": "3%"
+    },
+    {
+      "config": "courseTitle",
+      "display": "Title",
+      "title": "Title",
+      "required": true,
+      "width": "9%"
+    },
+    {
+      "config": "meetingTime",
+      "display": "Meeting Times",
+      "title": "Meeting Times",
+      "required": false,
+      "width": "15%"
+    },
+    {
+      "config": "status",
+      "display": "Capacity",
+      "title": "Capacity",
+      "required": false,
+      "width": "6%"
+    },
+    {
+      "config": "instructor",
+      "display": "Instructor",
+      "title": "Instructor",
+      "required": false,
+      "width": "8%"
+    },
+    {
+      "config": "bookstores",
+      "display": "Materials Cost",
+      "title": "Materials Cost",
+      "required": false,
+      "width": "4%"
+    },
+    {
+      "config": "attribute",
+      "display": "Attribute",
+      "title": "Attribute",
+      "required": false,
+      "width": "6%"
+    },
+    {
+      "config": "feeAmount",
+      "display": "Fees",
+      "title": "Fees",
+      "required": false,
+      "width": "4%"
+    }
+  ],
+  "ztcEncodedImage": null
+}

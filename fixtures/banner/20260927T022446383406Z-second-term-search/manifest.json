@@ -1,0 +1,20 @@
+{
+  "format_version": 1,
+  "kind": "recorded",
+  "captured_at": "2026-09-27T02:24:50.042009+00:00",
+  "source_url": "https://prd-xereg.temple.edu/StudentRegistrationSsb/ssb/searchResults/searchResults?txt_term=202536&txt_subject=CIS&pageOffset=0&pageMaxSize=10&sortColumn=subjectDescription&sortDirection=asc",
+  "request": {
+    "method": "GET",
+    "form": null,
+    "headers": {
+      "Accept-Encoding": "identity"
+    },
+    "cookies": "omitted"
+  },
+  "license_provenance": "Public vendor response recorded for offline interoperability tests. Upstream retains rights; no additional license is asserted.",
+  "http_status": 200,
+  "content_type": "application/json;charset=UTF-8",
+  "body_file": "body.bin",
+  "sha256": "091bb909cf4b55f6b77a36910c684002aa8913d9b953f0e51a33dd578355cd5e",
+  "byte_length": 66054
+}
