@@ -2,7 +2,7 @@
 use kampus_banner::Banner;
 use kampus_core::{
     config::BannerConfig,
-    contracts::providers::{CourseProvider, CourseQuery},
+    contracts::providers::CourseQuery,
     contracts::{
         BoxFuture, CallContext, Module, ModuleDescriptor, ModuleInit, Provenance, RegistryError,
         ToolError, ToolSuccess, parse_args,
@@ -90,8 +90,15 @@ impl Module for Courses {
                 .runtime
                 .cache
                 .get_or_fetch(key, defaults::COURSES_TTL, async {
-                    let result = provider.search(&query).await?;
-                    Ok(json!({"data": result.value, "provenance": result.provenance}))
+                    let result = provider.search_labeled(&query).await?;
+                    let (page, term_label) = result.value;
+                    let mut data =
+                        serde_json::to_value(page).map_err(|_| ToolError::configuration_error())?;
+                    if let Some(data) = data.as_object_mut() {
+                        data.insert("term".into(), json!(query.term));
+                        data.insert("term_label".into(), json!(term_label));
+                    }
+                    Ok(json!({"data": data, "provenance": result.provenance}))
                 })
                 .await?;
             let mut provenance: Provenance =

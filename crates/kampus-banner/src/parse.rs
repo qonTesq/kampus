@@ -20,6 +20,7 @@ struct Response {
 #[serde(rename_all = "camelCase")]
 struct Row {
     term: String,
+    term_desc: Option<String>,
     course_reference_number: String,
     subject: String,
     course_number: String,
@@ -36,12 +37,23 @@ struct MeetingRow {
     meeting_time: Value,
 }
 
-pub(crate) fn page(body: &[u8], query: &CourseQuery) -> Result<CoursePage, ToolError> {
+/// Parse one results page, plus the term's display label (`termDesc`, such
+/// as "2026 Fall") when any row carries one.
+pub(crate) fn page(
+    body: &[u8],
+    query: &CourseQuery,
+) -> Result<(CoursePage, Option<String>), ToolError> {
     let raw: Response =
         serde_json::from_slice(body).map_err(|_| ToolError::upstream_invalid_response())?;
     if !raw.success || raw.data.len() > query.page_size as usize {
         return Err(ToolError::upstream_invalid_response());
     }
+    let term_label = raw
+        .data
+        .iter()
+        .find_map(|r| r.term_desc.as_deref())
+        .map(|s| clean_text(s, 32))
+        .filter(|s| !s.is_empty());
     let offset = u64::from(query.page - 1) * u64::from(query.page_size);
     let count = raw.data.len() as u64;
     let has_more = raw
@@ -52,13 +64,14 @@ pub(crate) fn page(body: &[u8], query: &CourseQuery) -> Result<CoursePage, ToolE
         .into_iter()
         .map(|r| section(r, &query.term))
         .collect::<Result<_, _>>()?;
-    Ok(CoursePage {
+    let page = CoursePage {
         sections,
         page: query.page,
         page_size: query.page_size,
         total_count: raw.total_count,
         has_more,
-    })
+    };
+    Ok((page, term_label))
 }
 fn section(row: Row, term: &str) -> Result<Section, ToolError> {
     if row.term != term || row.meetings_faculty.len() > 10 {
