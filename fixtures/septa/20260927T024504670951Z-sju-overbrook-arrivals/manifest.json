@@ -1,0 +1,20 @@
+{
+  "format_version": 1,
+  "kind": "recorded",
+  "captured_at": "2026-09-27T02:45:07.046772+00:00",
+  "source_url": "https://www3.septa.org/api/Arrivals/index.php?station=Overbrook",
+  "request": {
+    "method": "GET",
+    "form": null,
+    "headers": {
+      "Accept-Encoding": "identity"
+    },
+    "cookies": "omitted"
+  },
+  "license_provenance": "Public vendor response recorded for offline interoperability tests. Upstream retains rights; no additional license is asserted.",
+  "http_status": 200,
+  "content_type": "application/json",
+  "body_file": "body.bin",
+  "sha256": "4b1586dfbb6d451cf4db5bfe5857e2a5ce9889f7e5d94a7fbad5a32f1614e613",
+  "byte_length": 63
+}
