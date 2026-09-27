@@ -27,7 +27,7 @@ mic_channel = 0
 block_ms = 20
 # Increase if you hear the assistant answer its own Bluetooth speaker.
 echo_guard_seconds = 0.8
-volume = 0.7
+volume = 0.9
 
 [display]
 enabled = true
