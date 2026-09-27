@@ -1,0 +1,72 @@
+# SJU access policy (policy.yaml version 1).
+# Separate client registry, audit salt and policy state.
+# Deny wins; any call no enabled rule allows is denied.
+version: 1
+school_id: sju
+
+# Conservative tier mapping: Internal is Sensitive.
+tier_mapping:
+  public: public
+  internal: sensitive
+  sensitive: sensitive
+  confidential: confidential
+
+client_registry:
+  - azp: kampus-sju-claude
+    registration: pre_registered_confidential
+    approved: true
+    workspace: Claude (school workspace)
+  - azp: kampus-sju-chatgpt
+    registration: pre_registered_confidential
+    approved: false
+    workspace: ChatGPT (school workspace)
+  - azp: kampus-sju-mascot
+    registration: device
+    approved: false
+    workspace: Mascot device
+
+# Global Sensitive switch; off by default outside the synthetic demo profile.
+sensitive_enabled: false
+
+rules:
+  - id: public-read
+    effect: allow
+    roles: [student, faculty, staff, guest]
+    tools: [find_study_room, search_courses, next_departures, library_hours]
+    effective_classes: [public]
+  - id: booking-propose
+    effect: allow
+    roles: [student]
+    tools: [book_study_room]
+    effective_classes: [public]
+  - id: booking-confirm
+    effect: allow
+    roles: [student]
+    tools: [confirm_booking]
+    effective_classes: [public]
+    required_scopes: ["rooms:book"]
+  - id: sensitive-approved-student
+    effect: allow
+    roles: [student]
+    tools: [my_deadlines]
+    effective_classes: [sensitive]
+    client_trust: approved
+  - id: sensitive-unapproved-deny
+    effect: deny
+    roles: [student, faculty, staff, guest]
+    tools: ["*"]
+    effective_classes: [sensitive, confidential]
+    client_trust: unapproved
+
+audit:
+  retention_hours: 24
+  salt_env: KAMPUS_SJU_AUDIT_SALT
+
+limits:
+  user_reads_per_minute: 60
+  guest_reads_per_minute: 30
+  booking_proposals_per_minute: 5
+  booking_confirms_per_minute: 2
+  device_binds_per_minute: 6
+  device_binds_per_source_per_minute: 30
+
