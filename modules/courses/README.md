@@ -10,6 +10,8 @@ Null, missing, non-array data, false success, wrong-term sections, malformed fie
 
 The module defaults to `banner.default_term`, accepts only `allowed_terms`, requires subject or nonblank keywords, and bounds page to 1..100 and page size to 1..20. Subject is uppercased and keyword whitespace normalized. Keyword text uses Banner's `txt_keywordlike`; page offsets are zero-based upstream. Cache keys include school, base URL, term, normalized filters and pagination. Public data is cached for 15 minutes. Retryable outages may use a cached value no older than twice TTL, with its original timestamps and `stale: true`. Invalid responses never use stale fallback.
 
+`data` also carries the searched `term` code and `term_label`, the term's display name from Banner's `termDesc` (such as "2026 Fall", entity-decoded, at most 32 characters), or null when no returned section carries one, for example on an empty page. The label comes from the vendor response, never from code, because term-code encodings differ per school.
+
 Only contract fields are returned. `courseReferenceNumber` identifies a section. Fixed credits use `creditHours`, or `creditHourLow` when no differing upper bound exists; variable credits are null. Meeting times become structured local times. Titles and locations are entity-decoded, HTML-stripped and bounded by shared `clean_text`. Faculty contacts, enrollment and arbitrary vendor fields are omitted.
 
 ## Fixture evidence

@@ -26,8 +26,10 @@ tools:
     output_schema:
       type: object
       additionalProperties: false
-      required: [sections, page, page_size, total_count, has_more]
+      required: [term, term_label, sections, page, page_size, total_count, has_more]
       properties:
+        term: { type: string, maxLength: 16, description: "The term code that was searched." }
+        term_label: { type: [string, "null"], maxLength: 32, description: "The term's display name from the catalog, such as \"2026 Fall\"; null when no section reports one." }
         sections:
           type: array
           maxItems: 20

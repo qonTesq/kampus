@@ -93,6 +93,8 @@ async fn public_schema_cache_policy_denial_and_metadata_only_audit() {
             .output_is_valid(&first)
     );
     assert_eq!(first["data"]["total_count"], 384);
+    assert_eq!(first["data"]["term"], "202636");
+    assert_eq!(first["data"]["term_label"], "2026 Fall");
     assert!(!first.to_string().contains("emailAddress"));
     let cached = call(
         &d,
@@ -162,6 +164,22 @@ async fn invalid_inputs_do_not_contact_banner_and_caller_limit_precedes_cache() 
         assert_eq!(call(&d, args).await["error"]["code"], "invalid_arguments");
     }
     assert!(server.requests.lock().unwrap().is_empty());
+    // Schema errors say what is wrong without echoing values or unknown keys.
+    let neither = call(&d, json!({"page": 2})).await;
+    assert_eq!(
+        neither["error"]["message"],
+        "Invalid arguments: Provide at least one of: subject, query."
+    );
+    assert_eq!(neither["error"]["retryable"], false);
+    let unknown = call(&d, json!({"subject":"CIS","sentinel-key":"sentinel-value"})).await;
+    let message = unknown["error"]["message"].as_str().unwrap();
+    assert!(message.contains("Unknown argument; allowed:") && message.contains("subject"));
+    assert!(!message.contains("sentinel"));
+    let long = call(&d, json!({"query":"sentinel".repeat(20)})).await;
+    assert_eq!(
+        long["error"]["message"],
+        "Invalid arguments: query must be at most 120 characters."
+    );
     // Module-level validation can consume caller budget; use a fresh dispatcher.
     let (d, _, _, _) = setup(&server.url, 1);
     assert_eq!(call(&d, json!({"subject":"CIS"})).await["status"], "ok");

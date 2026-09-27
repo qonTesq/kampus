@@ -42,7 +42,7 @@ impl Banner {
         &self,
         query: &CourseQuery,
         deadline: Instant,
-    ) -> Result<CoursePage, ToolError> {
+    ) -> Result<(CoursePage, Option<String>), ToolError> {
         // A new client owns a new in-memory jar, including on the one retry.
         let client = upstream_client_builder()
             .redirect(reqwest::redirect::Policy::none())
@@ -161,42 +161,56 @@ impl Banner {
     }
 }
 
+impl Banner {
+    /// [`CourseProvider::search`] plus the term's display label from the
+    /// response (`termDesc`, such as "2026 Fall"), when any row carries one.
+    pub async fn search_labeled(
+        &self,
+        query: &CourseQuery,
+    ) -> ProviderResult<(CoursePage, Option<String>)> {
+        if !self.config.enabled {
+            return Err(ToolError::unsupported_source());
+        }
+        if !self.config.allowed_terms.contains(&query.term)
+            || !(1..=100).contains(&query.page)
+            || !(1..=20).contains(&query.page_size)
+        {
+            return Err(ToolError::invalid_arguments(
+                "Use a configured term and bounded page.",
+            ));
+        }
+        let deadline = Instant::now() + defaults::CALL_DEADLINE;
+        tokio::time::timeout_at(deadline, async {
+            let mut result = self.attempt(query, deadline).await;
+            if let Err(error) = &result
+                && (error.retryable
+                    || error.code == kampus_core::contracts::ErrorCode::UpstreamInvalidResponse)
+            {
+                let delay = Duration::from_secs(u64::from(error.retry_after_seconds.unwrap_or(0)))
+                    .max(Duration::from_millis(300));
+                if Instant::now() + delay < deadline {
+                    tokio::time::sleep(delay).await;
+                    result = self.attempt(query, deadline).await;
+                }
+            }
+            Ok(Sourced {
+                value: result?,
+                provenance: Provenance::live(Utc::now()),
+            })
+        })
+        .await
+        .map_err(|_| ToolError::upstream_unavailable())?
+    }
+}
+
 impl CourseProvider for Banner {
     fn search<'a>(&'a self, query: &'a CourseQuery) -> BoxFuture<'a, ProviderResult<CoursePage>> {
         Box::pin(async move {
-            if !self.config.enabled {
-                return Err(ToolError::unsupported_source());
-            }
-            if !self.config.allowed_terms.contains(&query.term)
-                || !(1..=100).contains(&query.page)
-                || !(1..=20).contains(&query.page_size)
-            {
-                return Err(ToolError::invalid_arguments(
-                    "Use a configured term and bounded page.",
-                ));
-            }
-            let deadline = Instant::now() + defaults::CALL_DEADLINE;
-            tokio::time::timeout_at(deadline, async {
-                let mut result = self.attempt(query, deadline).await;
-                if let Err(error) = &result
-                    && (error.retryable
-                        || error.code == kampus_core::contracts::ErrorCode::UpstreamInvalidResponse)
-                {
-                    let delay =
-                        Duration::from_secs(u64::from(error.retry_after_seconds.unwrap_or(0)))
-                            .max(Duration::from_millis(300));
-                    if Instant::now() + delay < deadline {
-                        tokio::time::sleep(delay).await;
-                        result = self.attempt(query, deadline).await;
-                    }
-                }
-                Ok(Sourced {
-                    value: result?,
-                    provenance: Provenance::live(Utc::now()),
-                })
+            let found = self.search_labeled(query).await?;
+            Ok(Sourced {
+                value: found.value.0,
+                provenance: found.provenance,
             })
-            .await
-            .map_err(|_| ToolError::upstream_unavailable())?
         })
     }
 }
