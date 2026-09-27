@@ -1,0 +1,22 @@
+{
+  "format_version": 1,
+  "kind": "recorded",
+  "captured_at": "2026-09-27T02:24:46.436902+00:00",
+  "source_url": "https://prd-xereg.temple.edu/StudentRegistrationSsb/ssb/term/search?mode=search",
+  "request": {
+    "method": "POST",
+    "form": {
+      "term": "202636"
+    },
+    "headers": {
+      "Accept-Encoding": "identity"
+    },
+    "cookies": "omitted"
+  },
+  "license_provenance": "Public vendor response recorded for offline interoperability tests. Upstream retains rights; no additional license is asserted.",
+  "http_status": 200,
+  "content_type": "application/json;charset=UTF-8",
+  "body_file": "body.bin",
+  "sha256": "cec56e90ba40abaa2e563a2f14d7b7e2f080237cee0476b36b6e4bf431b3da4a",
+  "byte_length": 69
+}
