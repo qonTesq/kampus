@@ -1,0 +1,61 @@
+# Kampus hardware — handoff
+
+Robot with animated eyes on two round screens, a mic (Logitech webcam) and a speaker (JBL Go 3), driven by a Raspberry Pi 5.
+
+## Status
+
+| Phase | Task | Status |
+|---|---|---|
+| 1 | Pi boots, SSH, OS updated, health + 3-min stress test | Done (max 73.6°C, no throttling) |
+| 2 | **Eyes:** wire GC9A01 screens, run `eyes_test.py` | **Next: you're here** |
+| 3 | Speaker: pair JBL Go 3 over Bluetooth | To do |
+| 4 | Mic: Logitech webcam over USB, record and play back | To do |
+| 5 | Eyes, mic and speaker running together for 10 min | To do |
+| 6 | Voice loop: mic → speech-to-text → AI → text-to-speech → speaker | To do |
+
+## Hardware
+
+- Raspberry Pi 5 (8 GB), Raspberry Pi OS 64-bit (Debian 13 "trixie")
+- 3× 1.28" round 240×240 GC9A01 SPI screens (Teyleten Robot); two are used as eyes
+- Logitech webcam: its built-in mic is the robot's mic
+- JBL Go 3: Bluetooth only; its USB-C port is for charging
+
+## Connecting to the Pi
+
+1. Turn on the iPhone hotspot `kampus-hotspot` and keep its Personal Hotspot screen open.
+2. Connect the laptop to `kampus-hotspot`. Windows tends to switch back to eduroam on its own.
+3. Run `ssh <your-user>@172.20.10.8`. If the IP changes, try `hienle.local`.
+
+Campus Wi-Fi (eduroam) won't work for this: it blocks laptop-to-Pi connections.
+
+## Files
+
+- `eyes_test.py`: two-eye animation for the Pi (Python, `luma.lcd`). The wiring table is at the top of the file.
+- `eyes_test/eyes_test.ino`: the same animation for an Arduino Uno. Needs a level shifter, because the Uno's pins are 5V.
+
+## Phase 2: getting the eyes running on the Pi
+
+1. Ask the Pi owner to turn on SPI. This needs admin rights: `sudo raspi-config nonint do_spi 0 && sudo reboot`
+2. **Power the Pi off**, then wire the **left eye only**, following the table in `eyes_test.py`.
+3. On the Pi:
+   ```bash
+   python3 -m venv ~/kampus-env --system-site-packages
+   source ~/kampus-env/bin/activate
+   pip install luma.lcd pillow rpi-lgpio
+   python eyes_test.py --one
+   ```
+4. Once one eye works, wire the right eye and run `python eyes_test.py`.
+
+Troubleshooting:
+- **Black screen:** check VCC and GND, and check that SPI is on (`ls /dev/spidev0.*`).
+- **Garbled image:** check the DC and RST wires, or lower `SPI_HZ` to `20_000_000`.
+- **Mirrored or rotated image:** change `rotate=` in the script.
+
+## Rules (don't break the baseline)
+
+- **3.3V only** on the screens. Never connect them to 5V.
+- **Power the Pi off** before changing any wiring.
+- Shut down with `sudo shutdown -h now`, then unplug. Don't pull the power while the Pi is running.
+- Work on the **`eyes` branch**. Merge into `main` only after the other person has looked at it.
+- Don't change system settings or install system packages. Ask the Pi owner.
+- The working SD card is backed up as `kampus-baseline.img` (made with Win32 Disk Imager). If the Pi gets into a bad state, write that image back to the card.
