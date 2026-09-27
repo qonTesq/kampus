@@ -1160,7 +1160,15 @@ dependencies = [
 name = "kampus-canvas"
 version = "0.1.0"
 dependencies = [
+ "axum",
+ "chrono",
  "kampus-core",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tokio",
+ "url",
 ]
 
 [[package]]
@@ -1194,9 +1202,13 @@ dependencies = [
 name = "kampus-deadlines"
 version = "0.1.0"
 dependencies = [
+ "chrono",
+ "chrono-tz",
  "kampus-canvas",
  "kampus-core",
+ "serde",
  "serde_json",
+ "tokio",
 ]
 
 [[package]]

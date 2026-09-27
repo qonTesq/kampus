@@ -15,7 +15,7 @@ The previous agent added these existing workspace dependencies:
 - `kampus-canvas`: optional `axum`, `chrono`, `reqwest`, `serde`, `serde_json`, `thiserror`, `tokio`, `url`, all enabled only by `sandbox`.
 - `kampus-deadlines`: `chrono`, `chrono-tz`, `serde`; dev dependency `tokio`.
 
-No new dependency package or version was added to the workspace. The inherited `Cargo.lock` diff only adds these dependency edges. It remains uncommitted and preserved for the integrator to review and regenerate or commit with integration. Tests used that lockfile.
+No new dependency package or version was added to the workspace. The inherited `Cargo.lock` diff only adds these dependency edges. The integrator authorized committing this exact dependency-edge diff during handoff; the integrator will reconcile it when merging. Tests used that lockfile.
 
 ## Validation
 

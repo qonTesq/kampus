@@ -30,3 +30,6 @@ Tasks 1.1–1.3 are implemented and tested in this lane. Approved identity here me
 - 2.2 partially complete: production configuration refusal and unsupported tool behavior are tested; the synthetic per-user vault and future production vault boundary are documented. Full-dispatch admin changes, HTTP bearer-token sentinels, zero provider requests on policy denial, and metadata-only audit assertions remain with auth integration.
 - 3.1 remains open until the gate is repeated on the integrated branch. See `integration.md` for lane results.
 - 3.2: reviewed all 12 forbidden patterns. No unsafe, login-token input, content logging, result cache, policy hiding, real student fixtures, school-specific production values, extra tools, or new workspace dependencies. Typed upstream errors distinguish broken responses from empty success; descriptors and projected envelope are tested. Human review and denial audit evidence remain required before merge.
+
+- Tasks 2.1/2.2: pending integration by the integrator after auth lands on main.
+- Task 3.2: deferred to human review.
