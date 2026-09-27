@@ -8,9 +8,9 @@ Robot with animated eyes on two round screens, a mic (Logitech webcam) and a spe
 |---|---|---|
 | 1 | Pi boots, SSH, OS updated, health + 3-min stress test | Done (max 73.6°C, no throttling) |
 | 2 | **Eyes:** GC9A01 screens wired, `owl-pi/main.py --demo` runs all expressions | Done 2026-09-26 (25 fps, no errors, 39.5°C) |
-| 3 | Speaker: pair JBL Go 3 over Bluetooth | **Next** (install `libportaudio2` first) |
-| 4 | Mic: Logitech webcam over USB, record and play back | To do |
-| 5 | Eyes, mic and speaker running together for 10 min | To do |
+| 3 | Speaker: JBL Go 3 paired + trusted (18:90:67:87:94:0C), default output | Done 2026-09-26 (owl volume 0.8, system 62%) |
+| 4 | Mic: Logitech Brio 100 webcam, `main.py --audio-test` record + playback | Done 2026-09-26 |
+| 5 | Eyes, mic and speaker running together for 10 min | **Next** |
 | 6 | Voice loop: mic → speech-to-text → AI → text-to-speech → speaker | To do |
 
 ## Hardware
