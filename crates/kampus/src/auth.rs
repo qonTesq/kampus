@@ -17,21 +17,29 @@ use kampus_core::contracts::Principal;
 /// Largest MCP request body accepted (tool arguments are small).
 const MAX_BODY_BYTES: usize = 1024 * 1024;
 
-/// `GET /.well-known/oauth-protected-resource/<resource path>`.
+/// Root metadata path. Some clients (`ChatGPT`) probe it before, or instead of,
+/// the path-inserted form.
+const ROOT_METADATA_PATH: &str = "/.well-known/oauth-protected-resource";
+
+/// `GET /.well-known/oauth-protected-resource/<resource path>`, plus the same
+/// document at the root path.
 pub(crate) fn metadata_routes(auth: &Arc<Authenticator>) -> Router {
     let document = auth.metadata();
-    Router::new().route(
-        &auth.metadata_path(),
-        get(move || {
-            let document = document.clone();
-            async move {
-                (
-                    [(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")],
-                    axum::Json(document),
-                )
-            }
-        }),
-    )
+    let serve = move || {
+        let document = document.clone();
+        async move {
+            (
+                [(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")],
+                axum::Json(document),
+            )
+        }
+    };
+    let router = Router::new().route(&auth.metadata_path(), get(serve.clone()));
+    if auth.metadata_path() == ROOT_METADATA_PATH {
+        router
+    } else {
+        router.route(ROOT_METADATA_PATH, get(serve))
+    }
 }
 
 /// Verify the credential, then admit (inserting the principal), challenge
