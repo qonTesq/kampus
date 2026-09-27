@@ -17,7 +17,7 @@ fn security(school: &str, dir: &std::path::Path) -> Security {
     Security {
         limits: CallerLimits::new(&policy.limits),
         policy: Arc::new(PolicyEngine::new(policy)),
-        audit: Arc::new(JsonlAudit::open(&dir.join(format!("{school}.jsonl")), 24).unwrap()),
+        audit: Arc::new(JsonlAudit::open(dir.join(format!("{school}.jsonl")), 24).unwrap()),
         hasher: SubjectHasher::new(school, format!("synthetic-{school}").as_bytes()),
         identity: None,
         enabled_modules: ["rooms".into()].into_iter().collect(),
@@ -143,7 +143,7 @@ async fn device_bindings_secrets_and_caller_budgets_are_instance_local() {
         subject: "synthetic:shared-user".into(),
         azp: Some("test-client".into()),
         roles: [Role::Student].into_iter().collect(),
-        scopes: Default::default(),
+        scopes: std::collections::BTreeSet::default(),
         auth_kind: AuthKind::User,
         device_id: None,
     };

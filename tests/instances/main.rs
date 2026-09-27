@@ -1,5 +1,11 @@
-//! Two real processes of CARGO_BIN_EXE_kampus, plus date-pinned vendor tests.
-#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+//! Two real processes of `CARGO_BIN_EXE_kampus`, plus date-pinned vendor tests.
+// Acceptance scenarios read top to bottom as one demo script.
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::too_many_lines
+)]
 
 mod isolation;
 mod recorded;
