@@ -2,6 +2,8 @@ use std::collections::BTreeMap;
 use std::fmt;
 use std::sync::Arc;
 
+use jsonschema::error::ValidationErrorKind;
+use jsonschema::paths::{Location, LocationSegment};
 use serde_json::Value;
 
 use super::{
@@ -46,19 +48,107 @@ impl fmt::Debug for RegisteredTool {
 
 impl RegisteredTool {
     /// Validate call arguments against `input_schema`.
+    ///
+    /// The error message names what is wrong using only schema-sourced text
+    /// (declared property names and limits); argument values and unknown
+    /// keys are never echoed.
     pub fn validate_input(&self, args: &Value) -> Result<(), ToolError> {
         if self.input_validator.is_valid(args) {
-            Ok(())
-        } else {
-            Err(ToolError::invalid_arguments(
-                "Arguments do not match the tool schema.",
-            ))
+            return Ok(());
         }
+        let declared = &self.descriptor.input_schema["properties"];
+        let mut problems: Vec<String> = Vec::new();
+        for error in self.input_validator.iter_errors(args) {
+            let problem = describe(error.kind(), error.instance_path(), declared);
+            if !problems.contains(&problem) {
+                problems.push(problem);
+            }
+            if problems.len() == MAX_PROBLEMS {
+                break;
+            }
+        }
+        let message = if problems.is_empty() {
+            "Arguments do not match the tool schema.".to_owned()
+        } else {
+            format!("Invalid arguments: {}", problems.join(" "))
+        };
+        Err(ToolError::invalid_arguments(message))
     }
 
     /// Whether a projected envelope matches the published `outputSchema`.
     pub fn output_is_valid(&self, envelope: &Value) -> bool {
         self.output_validator.is_valid(envelope)
+    }
+}
+
+/// At most this many distinct problems are reported per call.
+const MAX_PROBLEMS: usize = 3;
+
+/// One sentence about a schema violation, built from schema text only.
+fn describe(kind: &ValidationErrorKind, path: &Location, declared: &Value) -> String {
+    let names = |props: &Value| -> Vec<String> {
+        props
+            .as_object()
+            .map(|m| m.keys().cloned().collect())
+            .unwrap_or_default()
+    };
+    // Name the top-level property only when the schema declares it.
+    let field = match path.segments().next() {
+        Some(LocationSegment::Property(name)) => declared
+            .as_object()
+            .and_then(|m| m.get_key_value(name.as_ref()))
+            .map(|(k, _)| k.clone()),
+        _ => None,
+    };
+    let subject = field.unwrap_or_else(|| "an argument".to_owned());
+    match kind {
+        ValidationErrorKind::Required { property } => match property.as_str() {
+            Some(p) if declared.get(p).is_some() => format!("{p} is required."),
+            _ => "A required argument is missing.".to_owned(),
+        },
+        ValidationErrorKind::AnyOf { context } | ValidationErrorKind::OneOfNotValid { context } => {
+            let mut alternatives: Vec<&str> = context
+                .iter()
+                .flatten()
+                .filter_map(|e| match e.kind() {
+                    ValidationErrorKind::Required { property } => property.as_str(),
+                    _ => None,
+                })
+                .filter(|p| declared.get(*p).is_some())
+                .collect();
+            alternatives.dedup();
+            if alternatives.len() > 1 && context.iter().all(|c| c.len() == 1) {
+                format!("Provide at least one of: {}.", alternatives.join(", "))
+            } else {
+                "The arguments do not match any accepted combination.".to_owned()
+            }
+        }
+        ValidationErrorKind::AdditionalProperties { .. } => {
+            let allowed = names(declared);
+            if allowed.is_empty() {
+                "Unknown arguments are not allowed.".to_owned()
+            } else {
+                format!("Unknown argument; allowed: {}.", allowed.join(", "))
+            }
+        }
+        ValidationErrorKind::Type { .. } if path.as_str().is_empty() => {
+            "Arguments must be a JSON object.".to_owned()
+        }
+        ValidationErrorKind::Type { .. } => format!("{subject} has the wrong type."),
+        ValidationErrorKind::Format { format } => format!("{subject} must be a valid {format}."),
+        ValidationErrorKind::MinLength { limit } => {
+            format!("{subject} must be at least {limit} characters.")
+        }
+        ValidationErrorKind::MaxLength { limit } => {
+            format!("{subject} must be at most {limit} characters.")
+        }
+        ValidationErrorKind::Minimum { limit } => format!("{subject} must be at least {limit}."),
+        ValidationErrorKind::Maximum { limit } => format!("{subject} must be at most {limit}."),
+        ValidationErrorKind::Pattern { .. } => format!("{subject} has an invalid format."),
+        ValidationErrorKind::Enum { .. } | ValidationErrorKind::Constant { .. } => {
+            format!("{subject} has an unsupported value.")
+        }
+        _ => format!("{subject} does not match the tool schema."),
     }
 }
 
