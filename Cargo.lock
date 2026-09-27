@@ -1267,7 +1267,15 @@ dependencies = [
 name = "kampus-hours"
 version = "0.1.0"
 dependencies = [
+ "chrono",
+ "chrono-tz",
  "kampus-core",
+ "reqwest",
+ "scraper",
+ "serde",
+ "serde_json",
+ "tokio",
+ "url",
 ]
 
 [[package]]
@@ -1290,9 +1298,13 @@ dependencies = [
 name = "kampus-library-hours"
 version = "0.1.0"
 dependencies = [
+ "chrono",
+ "chrono-tz",
  "kampus-core",
  "kampus-hours",
+ "serde",
  "serde_json",
+ "tokio",
 ]
 
 [[package]]
