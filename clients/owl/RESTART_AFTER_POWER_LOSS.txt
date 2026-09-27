@@ -68,7 +68,12 @@ STEP 6 - Run what you need   (press Ctrl+C to stop any of them)
   # 10-minute combined test - eyes + mic + speaker together, prints health
         .venv/bin/python soak_test.py
 
-  # Full talking owl - say "Hey Owl" or "Hello Owl"
+  # Talking owl, ChatGPT brain + ElevenLabs voice - say "Hey Owl"
+  # (needs OPENAI_API_KEY, ELEVENLABS_API_KEY, ELEVENLABS_VOICE_ID in .env)
+        .venv/bin/python voice_pipeline.py
+  #   add --no-wake to skip "Hey Owl", or --text to type instead of speaking
+
+  # Full talking owl, OpenAI voice only - say "Hey Owl" or "Hello Owl"
   # (needs the OpenAI API key in ~/kampus/owl-pi/.env on the Pi)
         .venv/bin/python main.py
 

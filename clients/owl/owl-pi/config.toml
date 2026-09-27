@@ -11,6 +11,19 @@ model = "gpt-realtime-2.1"
 voice = "marin"
 max_response_tokens = 900
 
+[pipeline]
+# Used by voice_pipeline.py: ChatGPT brain + ElevenLabs voice.
+chat_model = "gpt-6-luna"
+transcribe_model = "gpt-4o-mini-transcribe"
+# Flash is ElevenLabs' fastest model and costs half the credits per character.
+tts_model = "eleven_flash_v2_5"
+# ElevenLabs voice ID from the Voices page. ELEVENLABS_VOICE_ID in .env overrides this.
+voice_id = ""
+# Short replies save ElevenLabs credits and sound more natural.
+max_reply_words = 40
+history_turns = 6
+greeting = "Hoo! I'm awake."
+
 [wake]
 model_path = "models/vosk-model-small-en-us-0.15"
 

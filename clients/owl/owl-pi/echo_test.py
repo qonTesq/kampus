@@ -19,16 +19,9 @@ import soxr
 from audio_io import AudioIO
 from main import ROOT
 from state import OwlState
+from turns import calibrate, listen, rms
 
-SILENCE_END = 0.8     # seconds of quiet that count as "done speaking"
-MAX_UTTERANCE = 10    # seconds; longer speech is cut off here
-MIN_SPEECH = 0.3      # seconds of loud audio needed before it counts as speech
-ONSET_WINDOW = 0.5    # seconds the MIN_SPEECH has to fall within
 TARGET_RMS = 6000     # replay loudness (int16 RMS) before the config volume
-
-
-def rms(samples):
-    return float(np.sqrt(np.mean(samples.astype(np.float32) ** 2)))
 
 
 def main():
@@ -43,7 +36,6 @@ def main():
     with open(ROOT / "config.toml", "rb") as f:
         cfg = tomllib.load(f)
     rate = cfg["audio"]["input_rate"]
-    ONSET_CHUNKS = max(1, round(ONSET_WINDOW * 1000 / cfg["audio"]["block_ms"]))
 
     state = OwlState(timeout=10**6)
     state.wake()
@@ -61,53 +53,19 @@ def main():
 
     try:
         print("Calibrating background noise, stay quiet for 2 s...")
-        noise = []
-        end = time.monotonic() + 2
-        while time.monotonic() < end:
-            item = audio.read()
-            if item is not None:
-                noise.append(rms(item[1]))
-        floor = float(np.median(noise)) if noise else 200.0
-        threshold = max(1200.0, floor * 4)
+        floor, threshold = calibrate(audio)
         print(f"Noise floor {floor:.0f}, speech threshold {threshold:.0f}")
+
+        def heard():
+            state.emotion("surprised")
+            print("  hearing you...", flush=True)
 
         for turn in range(1, args.turns + 1):
             print(f"\n[{turn}/{args.turns}] Speak now...", flush=True)
             state.emotion("normal")
-            audio.drain_input()
-            chunks, recent, started, last_voice = [], [], None, None
-            while True:
-                item = audio.read()
-                if item is None:
-                    continue
-                captured_at, samples = item
-                loud = rms(samples) > threshold
-                if started is None:
-                    # Speech starts only once MIN_SPEECH of loud audio lands within
-                    # the last ONSET_WINDOW; taps, clicks and echo tails are ignored.
-                    chunks = chunks[-(ONSET_CHUNKS + 15):] + [samples]   # + 300 ms pre-roll
-                    recent = recent[-(ONSET_CHUNKS - 1):] + [(captured_at, loud)]
-                    loud_time = sum(len(samples) for _, l in recent if l) / rate
-                    if loud_time < MIN_SPEECH:
-                        continue
-                    started = next(t for t, l in recent if l)
-                    last_voice = captured_at + len(samples) / rate
-                    state.emotion("surprised")
-                    print("  hearing you...", flush=True)
-                    continue
-                chunks.append(samples)
-                if loud:
-                    last_voice = captured_at + len(samples) / rate
-                if captured_at - last_voice >= SILENCE_END or captured_at - started > MAX_UTTERANCE:
-                    break
-
-            speech_end = last_voice
-            # Keep 0.3 s before the onset and 0.2 s after the last loud chunk.
-            audio_end = captured_at + len(samples) / rate
-            recorded = np.concatenate(chunks)
-            first = max(0, len(recorded) - int((audio_end - started + 0.3) * rate))
-            last = len(recorded) - max(0, int((audio_end - speech_end - 0.2) * rate))
-            spoken = recorded[first:last].astype(np.float32)
+            said = listen(audio, rate, cfg["audio"]["block_ms"], threshold, on_start=heard)
+            started, speech_end = said.started, said.ended
+            spoken = said.samples.astype(np.float32)
             # Level the replay: quiet or distant speech is boosted (up to 4x)
             # without clipping, so it plays at a steady volume.
             gain = min(4.0, TARGET_RMS / max(rms(spoken), 1.0),

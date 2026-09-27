@@ -7,3 +7,4 @@ websockets>=14,<18
 python-dotenv>=1,<2
 spidev>=3.6,<4; sys_platform == 'linux'
 gpiozero>=2,<3; sys_platform == 'linux'
+requests>=2.31,<3
