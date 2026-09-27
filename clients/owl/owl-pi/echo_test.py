@@ -24,6 +24,7 @@ SILENCE_END = 0.8     # seconds of quiet that count as "done speaking"
 MAX_UTTERANCE = 10    # seconds; longer speech is cut off here
 MIN_SPEECH = 0.3      # seconds of loud audio needed before it counts as speech
 ONSET_WINDOW = 0.5    # seconds the MIN_SPEECH has to fall within
+TARGET_RMS = 6000     # replay loudness (int16 RMS) before the config volume
 
 
 def rms(samples):
@@ -106,7 +107,12 @@ def main():
             recorded = np.concatenate(chunks)
             first = max(0, len(recorded) - int((audio_end - started + 0.3) * rate))
             last = len(recorded) - max(0, int((audio_end - speech_end - 0.2) * rate))
-            spoken = recorded[first:last]
+            spoken = recorded[first:last].astype(np.float32)
+            # Level the replay: quiet or distant speech is boosted (up to 4x)
+            # without clipping, so it plays at a steady volume.
+            gain = min(4.0, TARGET_RMS / max(rms(spoken), 1.0),
+                       30000 / max(float(np.abs(spoken).max()), 1.0))
+            spoken = (spoken * gain).astype(np.int16)
             state.emotion("explaining")
             print(f"  heard {speech_end - started:.1f} s of speech; replying in {args.delay:g} s", flush=True)
             reply = soxr.resample(spoken, rate, 24000).astype("<i2").tobytes()
