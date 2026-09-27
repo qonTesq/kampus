@@ -39,9 +39,12 @@ def calibrate(audio, seconds=2.0):
     return floor, min(MAX_THRESHOLD, max(1200.0, floor * 4))
 
 
-def listen(audio, rate, block_ms, threshold, on_start=None, timeout=None):
+def listen(audio, rate, block_ms, threshold, on_start=None, timeout=None, on_audio=None):
     """Block until one utterance is heard; return it, or None after timeout
-    seconds without speech. Mic audio is ignored while the speaker plays."""
+    seconds without speech. Mic audio is ignored while the speaker plays.
+
+    on_audio(samples), if given, receives the speech as it is recorded (pre-roll
+    first), so a cloud brain can be listening before the user has finished."""
     onset_chunks = max(1, round(ONSET_WINDOW * 1000 / block_ms))
     deadline = None if timeout is None else time.monotonic() + timeout
     audio.drain_input()
@@ -66,8 +69,13 @@ def listen(audio, rate, block_ms, threshold, on_start=None, timeout=None):
             last_voice = captured_at + len(samples) / rate
             if on_start:
                 on_start()
+            if on_audio:
+                for chunk in chunks:
+                    on_audio(chunk)
             continue
         chunks.append(samples)
+        if on_audio:
+            on_audio(samples)
         if loud:
             last_voice = captured_at + len(samples) / rate
         if captured_at - last_voice >= SILENCE_END or captured_at - started > MAX_UTTERANCE:

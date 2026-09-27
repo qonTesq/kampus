@@ -20,6 +20,7 @@ import json
 import re
 import time
 
+import numpy as np
 import soxr
 
 from state import EMOTIONS
@@ -31,6 +32,7 @@ CHUNK_MS = 100               # audio sent in 100 ms pieces
 TURN_TIMEOUT = 60            # seconds to wait for Gemini to finish a turn
 MAX_TOOL_ROUNDS = 5
 LONG_CLAUSE = 60             # characters before a long sentence is split at a comma
+FIRST_CLAUSE = 25            # the very first words go out at a comma even sooner
 
 EXPRESSION_TOOL = {
     "name": "set_expression",
@@ -64,6 +66,9 @@ class GeminiLiveBrain:
         self.ws = None
         self.opened = 0.0
         self.history = []            # text-only memory, replayed after a reconnect
+        self.thinking = cfg["pipeline"].get("gemini_live_thinking", "")
+        self.stream_error = None
+        self.resampler = None
 
     # ---------- session ----------
 
@@ -94,11 +99,14 @@ class GeminiLiveBrain:
         if self.bridge:
             tools += [{"name": t.name, "description": t.description or t.name,
                        "parametersJsonSchema": t.inputSchema} for t in self.bridge.tools]
+        generation = {"responseModalities": ["AUDIO"]}
+        if self.thinking:                     # less thinking = faster first words
+            generation["thinkingConfig"] = {"thinkingLevel": self.thinking}
         self.ws = self.connect(f"{LIVE_URL}?key={self.key}", open_timeout=20,
                                max_size=16 * 1024 * 1024)
         self._send({"setup": {
             "model": f"models/{p['gemini_live_model']}",
-            "generationConfig": {"responseModalities": ["AUDIO"]},
+            "generationConfig": generation,
             "systemInstruction": {"parts": [{"text": self.instructions + LIVE_RULES}]},
             "tools": [{"functionDeclarations": tools}],
             "inputAudioTranscription": {},
@@ -106,8 +114,14 @@ class GeminiLiveBrain:
             "realtimeInputConfig": {"automaticActivityDetection": {"disabled": True}},
         }})
         deadline = time.monotonic() + 20
-        while "setupComplete" not in self._recv(deadline):
-            pass
+        try:
+            while "setupComplete" not in self._recv(deadline):
+                pass
+        except Exception:
+            if not self.thinking:
+                raise
+            self.thinking = ""                # model refused the thinking setting: retry without
+            return self._open()
         self.opened = time.monotonic()
         if self.history:                      # carry the conversation over a reconnect
             self._send({"clientContent": {"turns": self.history, "turnComplete": False}})
@@ -135,6 +149,48 @@ class GeminiLiveBrain:
             self.close()                      # a broken session is reopened next turn
             raise
 
+    # ---------- streaming a spoken turn while it is recorded ----------
+
+    def start_audio(self, rate):
+        """User started talking: open the turn and stream audio as it arrives."""
+        self.stream_error = None
+        try:
+            self._ensure_open()
+            self.resampler = soxr.ResampleStream(rate, 16000, 1, dtype="int16")
+            self._send({"realtimeInput": {"activityStart": {}}})
+        except Exception as exc:
+            self.stream_error = exc
+
+    def feed_audio(self, samples):
+        if self.stream_error or self.resampler is None:
+            return
+        try:
+            self._send_pcm(self.resampler.resample_chunk(samples))
+        except Exception as exc:
+            self.stream_error = exc
+
+    def finish_audio(self, on_sentence=None):
+        """User stopped: close the turn and collect the answer (see turn())."""
+        try:
+            if self.stream_error:
+                raise self.stream_error
+            start = time.monotonic()
+            self._send_pcm(self.resampler.resample_chunk(np.zeros(0, dtype=np.int16), last=True))
+            self._send({"realtimeInput": {"activityEnd": {}}})
+            self.timing = {"send": time.monotonic() - start}
+            return self._collect(None, on_sentence)
+        except Exception:
+            self.close()
+            raise
+        finally:
+            self.resampler = None
+
+    def _send_pcm(self, pcm):
+        if pcm.size:
+            self._send({"realtimeInput": {"audio": {
+                "data": base64.b64encode(pcm.astype("<i2").tobytes()).decode(),
+                "mimeType": "audio/pcm;rate=16000"}}})
+
     def _send_turn(self, text, samples, rate):
         if text is not None:
             self._send({"realtimeInput": {"text": text}})
@@ -152,18 +208,22 @@ class GeminiLiveBrain:
         heard, said = [], []
         expression = {"emotion": "explaining", "sleep": False}
         pending = ""                          # reply text not yet handed to on_sentence
+        said_any = []                         # sentences already handed over
 
         def emit(final=False):
             nonlocal pending
             parts = re.split(r"(?<=[.!?])\s+", pending)
             ready, pending = (parts, "") if final else (parts[:-1], parts[-1])
-            # A long sentence still growing: speak up to its last comma now.
-            if not final and len(pending) > LONG_CLAUSE and ", " in pending:
+            # A long sentence still growing: speak up to its last comma now
+            # (sooner for the very first words, so the owl starts talking quickly).
+            limit = LONG_CLAUSE if said_any else FIRST_CLAUSE
+            if not final and not ready and len(pending) > limit and ", " in pending:
                 head, _, pending = pending.rpartition(", ")
                 ready.append(head + ",")
             for sentence in ready:
                 sentence = " ".join(sentence.split())
                 if sentence and on_sentence:
+                    said_any.append(sentence)
                     on_sentence(sentence, expression)
 
         deadline = time.monotonic() + TURN_TIMEOUT

@@ -137,6 +137,46 @@ class GeminiLiveTests(unittest.TestCase):
         self.assertEqual(spoken, ["Many owls can rotate their necks up to two hundred and seventy degrees,",
                                   "which helps them spot prey without moving their body."])
 
+    def test_audio_is_streamed_while_the_user_talks(self):
+        brain = self.brain([[SETUP, [
+            content(inputTranscription={"text": "Hello"}),
+            content(outputTranscription={"text": "Hi there!"}),
+            content(turnComplete=True)]]])
+        brain.start_audio(48000)
+        sock = self.sockets[0]
+        self.assertIn("activityStart", sock.sent[-1]["realtimeInput"])   # sent before speech ends
+        for _ in range(10):
+            brain.feed_audio(np.zeros(960, dtype=np.int16))              # 10 x 20 ms
+        streamed = [m for m in sock.sent if "audio" in m.get("realtimeInput", {})]
+        self.assertGreater(len(streamed), 0)                               # already on its way
+        self.assertEqual(streamed[0]["realtimeInput"]["audio"]["mimeType"], "audio/pcm;rate=16000")
+        got = brain.finish_audio()
+        self.assertEqual(got["heard"], "Hello")
+        self.assertEqual(got["say"], "Hi there!")
+        self.assertIn("activityEnd", [k for m in sock.sent for k in m.get("realtimeInput", {})])
+
+    def test_stream_failure_is_raised_when_the_turn_finishes(self):
+        def broken(url, **kw): raise OSError("no network")
+        brain = GeminiLiveBrain(load_config(CONFIG), "gkey", "Be an owl.", connect=broken)
+        brain.start_audio(48000)                 # must not raise inside the mic loop
+        brain.feed_audio(np.zeros(960, dtype=np.int16))
+        with self.assertRaises(OSError):
+            brain.finish_audio()
+
+    def test_thinking_setting_is_dropped_if_the_model_refuses_it(self):
+        class Refusing(FakeSocket):
+            def recv(self, timeout=None):
+                if any("thinkingConfig" in m.get("setup", {}).get("generationConfig", {}) for m in self.sent):
+                    raise ConnectionError("1007 invalid argument")
+                return super().recv(timeout)
+        socks = iter([Refusing([SETUP]), FakeSocket([SETUP, [
+            content(outputTranscription={"text": "Hi."}), content(turnComplete=True)]])])
+        cfg = load_config(CONFIG)
+        cfg["pipeline"]["gemini_live_thinking"] = "minimal"
+        brain = GeminiLiveBrain(cfg, "gkey", "Be an owl.", connect=lambda url, **kw: next(socks))
+        self.assertEqual(brain.turn(text="hi")["say"], "Hi.")
+        self.assertEqual(brain.thinking, "")
+
     def test_mcp_tool_runs_on_the_pi(self):
         bridge = FakeBridge()
         brain = self.brain([[SETUP, [

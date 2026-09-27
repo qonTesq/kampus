@@ -32,6 +32,8 @@ allowed_tools = []
 #         "openai"      : ChatGPT                                         (OPENAI_API_KEY)
 brain = "gemini-live"
 gemini_live_model = "gemini-3.8-live"
+# Less thinking = faster first words. gemini-3.8-live refuses "minimal" and "low", so "" (default).
+gemini_live_thinking = ""
 # Fastest, lowest-cost Gemini; check your free-tier limits in Google AI Studio.
 gemini_model = "gemini-3.5-flash-lite"
 # Less thinking = faster replies. "" leaves Gemini's default.
@@ -41,6 +43,8 @@ chat_model = "gpt-6-luna"
 transcribe_model = "gpt-4o-mini-transcribe"
 # Flash is ElevenLabs' fastest model and costs half the credits per character.
 tts_model = "eleven_flash_v2_5"
+# ElevenLabs streaming latency optimisation, 0 (off) to 4 (fastest).
+tts_latency = 3
 # ElevenLabs voice ID from the Voices page. ELEVENLABS_VOICE_ID in .env overrides this.
 voice_id = "EXAVITQu4vr4xnSDxMaL"   # "Sarah", a built-in voice (free-plan API accounts can only use built-in voices)
 # Short replies save ElevenLabs credits and sound more natural.

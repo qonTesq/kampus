@@ -273,10 +273,13 @@ class Voice:
         self.http.headers["xi-api-key"] = key
         self.chars_used = 0
 
-    def speak(self, text, audio):
+    def speak(self, text, audio, on_first_audio=None):
         # pcm_24000 = raw 16-bit mono at 24 kHz, exactly what AudioIO.feed_pcm24 plays.
+        params = {"output_format": "pcm_24000"}
+        if self.cfg["pipeline"].get("tts_latency"):
+            params["optimize_streaming_latency"] = self.cfg["pipeline"]["tts_latency"]
         r = self.http.post(f"{ELEVENLABS}/text-to-speech/{self.voice_id}/stream",
-                           params={"output_format": "pcm_24000"}, stream=True, timeout=30,
+                           params=params, stream=True, timeout=30,
                            json={"text": text, "model_id": self.cfg["pipeline"]["tts_model"]})
         r.raise_for_status()
         leftover = b""
@@ -286,6 +289,9 @@ class Voice:
             leftover = chunk[cut:]
             if cut:
                 audio.feed_pcm24(chunk[:cut])
+                if on_first_audio:
+                    on_first_audio()
+                    on_first_audio = None
         self.chars_used += len(text)
 
 
@@ -352,6 +358,7 @@ def main():
         if mcp_tool(cfg):
             print(f"MCP server: {cfg['mcp']['server_url']}", flush=True)
     voice = Voice(cfg, eleven_key, voice_id)
+    streaming_mic = hasattr(brain, "start_audio")      # Gemini Live listens while you talk
     rate, block_ms = cfg["audio"]["input_rate"], cfg["audio"]["block_ms"]
     phrases = cfg["assistant"]["wake_phrases"]
     sleep_after = cfg["assistant"]["sleep_after_seconds"]
@@ -418,27 +425,43 @@ def main():
                 state.speech(False)
             else:
                 state.phase("idle")
+
+                def heard_start():
+                    state.speech(True)
+                    if streaming_mic:
+                        brain.start_audio(rate)
+
                 said = listen(audio, rate, block_ms, threshold, timeout=sleep_after,
-                              on_start=lambda: state.speech(True))
+                              on_start=heard_start,
+                              on_audio=brain.feed_audio if streaming_mic else None)
                 if said is None:            # nobody spoke for sleep_after seconds
+                    if streaming_mic:
+                        brain.close()
                     awake = False
                     go_to_sleep()
                     continue
                 state.speech(False)          # eyes: thinking
 
             try:
-                t0 = time.monotonic()
+                # Delay is measured from the moment the user stopped talking.
+                t0 = said.ended if said else time.monotonic()
                 first_words = []
+
+                def first_audio():
+                    if not first_words:
+                        first_words.append(time.monotonic() - t0)
 
                 def speak_sentence(sentence, expression):
                     if not first_words:          # first sentence: set the eyes, start talking
-                        first_words.append(time.monotonic() - t0)
                         state.phase("idle")
                         state.emotion(expression["emotion"])
-                    voice.speak(sentence, audio)
+                    voice.speak(sentence, audio, on_first_audio=first_audio)
 
                 extra = {"on_sentence": speak_sentence} if getattr(brain, "streams", False) else {}
-                answer = brain.turn(text=text, samples=said.samples if said else None, rate=rate, **extra)
+                if said and streaming_mic:
+                    answer = brain.finish_audio(**extra)
+                else:
+                    answer = brain.turn(text=text, samples=said.samples if said else None, rate=rate, **extra)
                 if answer is None:            # no words in the recording
                     state.phase("idle")
                     continue
@@ -447,13 +470,13 @@ def main():
                 state.phase("idle")
                 state.emotion(answer["emotion"])
                 if not extra:
-                    first_words.append(time.monotonic() - t0)
-                    voice.speak(answer["say"], audio)
+                    voice.speak(answer["say"], audio, on_first_audio=first_audio)
                 timing = getattr(brain, "timing", {})
                 detail = (f"; upload {timing['send']:.1f} s, Gemini's first words after "
                           f"{timing.get('first_text', 0):.1f} s more") if "send" in timing else ""
+                after = "after you stopped" if said else "after your message"
                 print(f"Owl [{answer['emotion']}]: {answer['say']}"
-                      f"  (started speaking after {first_words[0]:.1f} s{detail})" if first_words else "", flush=True)
+                      f"  (first audio {first_words[0]:.1f} s {after}{detail})" if first_words else "", flush=True)
                 wait_for_playback(audio, state)
                 print(f"  ElevenLabs characters used this run: {voice.chars_used}", flush=True)
             except (requests.RequestException, RuntimeError, ValueError, KeyError) as exc:
