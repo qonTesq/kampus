@@ -30,7 +30,7 @@ Campus Wi-Fi (eduroam) won't work for this: it blocks laptop-to-Pi connections.
 
 ## Files
 
-- `eyes_test.py`: two-eye animation for the Pi (Python, `luma.lcd`). The wiring table is at the top of the file.
+- `eyes_test.py`: two-eye animation for the Pi (Python, with a built-in GC9A01 driver using `spidev` and `lgpio`). The wiring table is at the top of the file.
 - `eyes_test/eyes_test.ino`: the same animation for an Arduino Uno. Needs a level shifter, because the Uno's pins are 5V.
 
 ## Phase 2: getting the eyes running on the Pi
@@ -41,7 +41,6 @@ Campus Wi-Fi (eduroam) won't work for this: it blocks laptop-to-Pi connections.
    ```bash
    python3 -m venv ~/kampus-env --system-site-packages
    source ~/kampus-env/bin/activate
-   pip install luma.lcd pillow rpi-lgpio
    python eyes_test.py --one
    ```
 4. Once one eye works, wire the right eye and run `python eyes_test.py`.

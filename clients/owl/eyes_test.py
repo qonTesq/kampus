@@ -18,23 +18,101 @@ import random
 import sys
 import time
 
-from luma.core.interface.serial import spi
-from luma.lcd.device import gc9a01
+import lgpio
+import numpy as np
+import spidev
 from PIL import Image, ImageDraw
 
 SIZE = 240
 SPI_HZ = 40_000_000
 EYES = [
-    dict(device=0, gpio_DC=25, gpio_RST=27),
-    dict(device=1, gpio_DC=24, gpio_RST=22),
+    dict(device=0, dc=25, rst=27),
+    dict(device=1, dc=24, rst=22),
 ]
 if "--one" in sys.argv:
     EYES = EYES[:1]
 
+# GC9A01 power-on sequence (vendor init, as used by Waveshare/Adafruit drivers).
+INIT = [
+    (0xEF, []), (0xEB, [0x14]), (0xFE, []), (0xEF, []), (0xEB, [0x14]),
+    (0x84, [0x40]), (0x85, [0xFF]), (0x86, [0xFF]), (0x87, [0xFF]),
+    (0x88, [0x0A]), (0x89, [0x21]), (0x8A, [0x00]), (0x8B, [0x80]),
+    (0x8C, [0x01]), (0x8D, [0x01]), (0x8E, [0xFF]), (0x8F, [0xFF]),
+    (0xB6, [0x00, 0x20]), (0x36, [0x08]), (0x3A, [0x05]),
+    (0x90, [0x08, 0x08, 0x08, 0x08]), (0xBD, [0x06]), (0xBC, [0x00]),
+    (0xFF, [0x60, 0x01, 0x04]), (0xC3, [0x13]), (0xC4, [0x13]), (0xC9, [0x22]),
+    (0xBE, [0x11]), (0xE1, [0x10, 0x0E]), (0xDF, [0x21, 0x0C, 0x02]),
+    (0xF0, [0x45, 0x09, 0x08, 0x08, 0x26, 0x2A]),
+    (0xF1, [0x43, 0x70, 0x72, 0x36, 0x37, 0x6F]),
+    (0xF2, [0x45, 0x09, 0x08, 0x08, 0x26, 0x2A]),
+    (0xF3, [0x43, 0x70, 0x72, 0x36, 0x37, 0x6F]),
+    (0xED, [0x1B, 0x0B]), (0xAE, [0x77]), (0xCD, [0x63]),
+    (0x70, [0x07, 0x07, 0x04, 0x0E, 0x0F, 0x09, 0x07, 0x08, 0x03]),
+    (0xE8, [0x34]),
+    (0x62, [0x18, 0x0D, 0x71, 0xED, 0x70, 0x70, 0x18, 0x0F, 0x71, 0xEF, 0x70, 0x70]),
+    (0x63, [0x18, 0x11, 0x71, 0xF1, 0x70, 0x70, 0x18, 0x13, 0x71, 0xF3, 0x70, 0x70]),
+    (0x64, [0x28, 0x29, 0xF1, 0x01, 0xF1, 0x00, 0x07]),
+    (0x66, [0x3C, 0x00, 0xCD, 0x67, 0x45, 0x45, 0x10, 0x00, 0x00, 0x00]),
+    (0x67, [0x00, 0x3C, 0x00, 0x00, 0x00, 0x01, 0x54, 0x10, 0x32, 0x98]),
+    (0x74, [0x10, 0x85, 0x80, 0x00, 0x00, 0x4E, 0x00]),
+    (0x98, [0x3E, 0x07]), (0x35, []), (0x21, []),
+]
+
+
+def open_gpiochip():
+    """Find the RP1 chip that drives the 40-pin header (number varies by kernel)."""
+    for n in (0, 4, 10, 11, 12, 13):
+        try:
+            h = lgpio.gpiochip_open(n)
+        except lgpio.error:
+            continue
+        if "rp1" in lgpio.gpio_get_chip_info(h)[3]:
+            return h
+        lgpio.gpiochip_close(h)
+    raise RuntimeError("40-pin header GPIO chip not found")
+
+
+class GC9A01:
+    def __init__(self, chip, device, dc, rst):
+        self.chip, self.dc = chip, dc
+        self.spi = spidev.SpiDev()
+        self.spi.open(0, device)
+        self.spi.max_speed_hz = SPI_HZ
+        self.spi.mode = 0
+        lgpio.gpio_claim_output(chip, dc, 0)
+        lgpio.gpio_claim_output(chip, rst, 1)
+        for level, pause in ((1, 0.01), (0, 0.01), (1, 0.12)):  # hardware reset
+            lgpio.gpio_write(chip, rst, level)
+            time.sleep(pause)
+        for cmd, data in INIT:
+            self.command(cmd, data)
+        self.command(0x11)            # sleep out
+        time.sleep(0.12)
+        self.command(0x29)            # display on
+        time.sleep(0.02)
+
+    def command(self, cmd, data=()):
+        lgpio.gpio_write(self.chip, self.dc, 0)
+        self.spi.writebytes([cmd])
+        if data:
+            lgpio.gpio_write(self.chip, self.dc, 1)
+            self.spi.writebytes2(bytes(data))
+
+    def display(self, img):
+        a = np.asarray(img, dtype=np.uint16)
+        rgb565 = ((a[..., 0] & 0xF8) << 8) | ((a[..., 1] & 0xFC) << 3) | (a[..., 2] >> 3)
+        self.command(0x2A, [0, 0, 0, SIZE - 1])   # column range
+        self.command(0x2B, [0, 0, 0, SIZE - 1])   # row range
+        self.command(0x2C)                        # memory write
+        lgpio.gpio_write(self.chip, self.dc, 1)
+        self.spi.writebytes2(rgb565.astype(">u2").tobytes())
+
+
+CHIP = open_gpiochip()
+
 
 def make_device(cfg):
-    serial = spi(port=0, bus_speed_hz=SPI_HZ, **cfg)
-    return gc9a01(serial, width=SIZE, height=SIZE, rotate=0)
+    return GC9A01(CHIP, **cfg)
 
 
 def draw_eye(px, py, lid):
