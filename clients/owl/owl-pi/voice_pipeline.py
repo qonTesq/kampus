@@ -300,9 +300,15 @@ class Voice:
         params = {"output_format": "pcm_24000"}
         if self.cfg["pipeline"].get("tts_latency"):
             params["optimize_streaming_latency"] = self.cfg["pipeline"]["tts_latency"]
-        r = self.http.post(f"{ELEVENLABS}/text-to-speech/{self.voice_id}/stream",
-                           params=params, stream=True, timeout=30,
-                           json={"text": text, "model_id": self.cfg["pipeline"]["tts_model"]})
+        for attempt in (1, 2):               # one quick retry if the hotspot hiccups
+            try:
+                r = self.http.post(f"{ELEVENLABS}/text-to-speech/{self.voice_id}/stream",
+                                   params=params, stream=True, timeout=(5, 20),
+                                   json={"text": text, "model_id": self.cfg["pipeline"]["tts_model"]})
+                break
+            except requests.ConnectionError:
+                if attempt == 2:
+                    raise
         r.raise_for_status()
         leftover = b""
         for chunk in r.iter_content(4800):
@@ -414,8 +420,12 @@ def main():
         state.phase("idle")
         state.emotion("happy")
         print("Awake! Talk to me (Ctrl+C to stop).", flush=True)
-        voice.speak(cfg["pipeline"]["greeting"], audio)
-        wait_for_playback(audio, state)
+        try:
+            voice.speak(cfg["pipeline"]["greeting"], audio)
+            wait_for_playback(audio, state)
+        except Exception as exc:
+            print(f"  Greeting skipped, voice unreachable: {type(exc).__name__}", flush=True)
+            state.cue()
 
     try:
         threshold = 0
