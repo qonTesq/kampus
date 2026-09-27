@@ -18,7 +18,7 @@ One agent owns the paths in proposal.md. Human contract freeze precedes module c
 
 ## 3. Local control and seven PM fallback gate
 
-- [ ] 3.1 Implement loopback admin page, eligible-client/Sensitive switches, same-origin/CSRF checks and atomic policy persistence; then add mutation/host/restart tests and document accessible keyboard use. Verify the same session changes decisions without tools disappearing. Budget 10 min.
+- [x] 3.1 Implement loopback admin page, eligible-client/Sensitive switches, same-origin/CSRF checks and atomic policy persistence; then add mutation/host/restart tests and document accessible keyboard use. Verify the same session changes decisions without tools disappearing. Budget 10 min.
 - [x] 3.2 Implement explicit no-login mode and test guest Public success, booking/Sensitive refusal and approved Inspector access; document that invalid supplied tokens still fail and anonymous clients cannot be approved by a switch. Budget 10 min.
 - [ ] 3.3 By Sat 7 PM record Claude and ChatGPT login plus tool-call outcomes and both-version Inspector results; activate documented no-login fallback if either OAuth path fails. Verify the fallback before the decision and record Claude custom-connector voice compatibility as a human smoke observation only. Budget 10 min.
 
@@ -26,3 +26,10 @@ One agent owns the paths in proposal.md. Human contract freeze precedes module c
 
 - [ ] 4.1 Run `cargo test -p kampus-core`, `cargo check --workspace` and `cargo clippy --workspace --all-targets`; also check/lint the sandbox feature build wherever used. Verify all exit successfully on the integrated branch, record command results and resolve failures before merge. Budget 10 min.
 - [ ] 4.2 Review the complete forbidden-pattern list in foundation/design.md against this diff, verify applicable output schemas/annotations and denial audit evidence, and obtain human review of owned files and integration requests. Record fixture IDs and any remaining blocker; no unfinished tests or privacy exceptions may be deferred past merge. Budget 10 min.
+
+## Handoff evidence
+
+- Completed 2.1, 2.2, 3.1 and 3.2. Details and local administration instructions: `docs/auth/README.md`.
+- Branch gate passed: formatting, workspace clippy with warnings denied, workspace tests (116), sandbox clippy with warnings denied, and workspace check. Acceptance HTTP suite passed 10 tests on both protocol versions.
+- 4.1 remains open specifically for the integrated branch after module merges. 4.2 has a completed agent forbidden-pattern review; human review remains outstanding.
+- Preserve the existing 1.2/1.3 qualification: offline implementation is done, but real-realm discovery/JWKS, synthetic-user live evidence and human review are still outstanding. 1.1 and 3.3 need deployment access and human connector/voice observations.

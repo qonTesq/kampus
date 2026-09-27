@@ -33,6 +33,8 @@ pub const SUPPORTED_PROTOCOL_VERSIONS: &[ProtocolVersion] =
 #[derive(Debug, thiserror::Error)]
 pub enum AppError {
     #[error(transparent)]
+    Admin(#[from] kampus_core::admin::AdminError),
+    #[error(transparent)]
     Config(#[from] ConfigError),
     #[error("module registration failed: {0}")]
     Registry(#[from] RegistryError),
@@ -67,6 +69,7 @@ pub struct AppOptions {
 /// A fully validated server instance for one school.
 #[derive(Debug)]
 pub struct App {
+    admin: Arc<kampus_core::admin::Admin>,
     init: ModuleInit,
     policy: Arc<PolicyEngine>,
     audit: Arc<JsonlAudit>,
@@ -153,12 +156,20 @@ impl App {
             enabled_modules: init.school.modules.iter().cloned().collect(),
         };
         let policy = Arc::clone(&security.policy);
+        let admin = Arc::new(kampus_core::admin::Admin::new(
+            Arc::clone(&policy),
+            Arc::clone(&audit),
+            Arc::clone(&init.school),
+            known_tools,
+            options.policy_path.clone(),
+        )?);
         let dispatcher = Arc::new(Dispatcher::with_security(
             school_id,
             Arc::new(registry),
             security,
         ));
         Ok(Self {
+            admin,
             init,
             policy,
             audit,
@@ -188,6 +199,11 @@ impl App {
             .tool_names()
             .map(str::to_owned)
             .collect()
+    }
+
+    /// Separate local router; never merge this into the public MCP router.
+    pub fn admin_router(&self, addr: SocketAddr) -> Result<Router, AppError> {
+        Ok(crate::admin::router(Arc::clone(&self.admin), addr)?)
     }
 
     /// The public router: MCP endpoint at the resource path plus registered routes.
@@ -220,6 +236,21 @@ impl App {
             .await
             .map_err(|source| AppError::Listen { addr, source })?;
         tracing::info!(%addr, school = %self.init.school.school.id, "kampus listening");
+        let admin_addr = self.init.school.server.admin_listen;
+        let admin_listener = tokio::net::TcpListener::bind(admin_addr)
+            .await
+            .map_err(|source| AppError::Listen {
+                addr: admin_addr,
+                source,
+            })?;
+        let admin_addr = admin_listener
+            .local_addr()
+            .map_err(|source| AppError::Listen {
+                addr: admin_addr,
+                source,
+            })?;
+        let admin_router = self.admin_router(admin_addr)?;
+        tracing::info!(addr = %admin_addr, "local policy administration listening");
         let audit = Arc::clone(&self.audit);
         let prune_cancel = cancel.clone();
         tokio::spawn(async move {
@@ -236,10 +267,26 @@ impl App {
             }
         });
         let router = self.router(cancel.child_token());
-        axum::serve(listener, router)
-            .with_graceful_shutdown(async move { cancel.cancelled().await })
-            .await
-            .map_err(|source| AppError::Listen { addr, source })
+        let public_cancel = cancel.clone();
+        let admin_cancel = cancel.clone();
+        let public = async move {
+            axum::serve(listener, router)
+                .with_graceful_shutdown(async move { public_cancel.cancelled().await })
+                .await
+                .map_err(|source| AppError::Listen { addr, source })
+        };
+        let local = async move {
+            axum::serve(admin_listener, admin_router)
+                .with_graceful_shutdown(async move { admin_cancel.cancelled().await })
+                .await
+                .map_err(|source| AppError::Listen {
+                    addr: admin_addr,
+                    source,
+                })
+        };
+        let result = tokio::try_join!(public, local).map(|((), ())| ());
+        cancel.cancel();
+        result
     }
 }
 

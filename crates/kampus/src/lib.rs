@@ -3,6 +3,7 @@
 
 #[cfg(feature = "acceptance")]
 mod acceptance;
+mod admin;
 mod app;
 mod auth;
 pub mod registry;

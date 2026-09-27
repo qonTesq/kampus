@@ -139,6 +139,7 @@ fn audit_path() -> std::path::PathBuf {
 
 struct Server {
     base: String,
+    admin: String,
     client: reqwest::Client,
     cancel: CancellationToken,
 }
@@ -159,17 +160,31 @@ async fn spawn(mode: AuthMode) -> Server {
         sandbox_compiled: false,
     };
     let keys = KeySource::from_jwks_json(&realm_key().jwks()).unwrap();
+    let log_path = audit_path();
+    let policy_path = log_path.with_extension("yaml");
+    std::fs::copy(root.join("policy.yaml"), &policy_path).unwrap();
     let options = AppOptions {
         audit_hasher: Some(kampus_core::audit::SubjectHasher::new(
             "temple",
             b"test-salt",
         )),
         keys: Some(keys),
-        audit_path: Some(audit_path()),
-        policy_path: None,
+        audit_path: Some(log_path),
+        policy_path: Some(policy_path),
     };
     let app = App::build_with(school, policy, &env, options).unwrap();
     let cancel = CancellationToken::new();
+    let local = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let local_addr = local.local_addr().unwrap();
+    assert!(app.admin_router("0.0.0.0:8081".parse().unwrap()).is_err());
+    let local_router = app.admin_router(local_addr).unwrap();
+    let local_cancel = cancel.clone();
+    tokio::spawn(async move {
+        axum::serve(local, local_router)
+            .with_graceful_shutdown(async move { local_cancel.cancelled().await })
+            .await
+            .unwrap();
+    });
     let router = app.router(cancel.child_token());
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let addr = listener.local_addr().unwrap();
@@ -182,6 +197,7 @@ async fn spawn(mode: AuthMode) -> Server {
     });
     Server {
         base: format!("http://{addr}"),
+        admin: format!("http://{local_addr}"),
         client: reqwest::Client::new(),
         cancel,
     }
@@ -482,4 +498,176 @@ mod acceptance {
         .await;
         assert_eq!(caller(&rpc_body(anon).await["result"]), "guest");
     }
+}
+
+async fn admin_state(server: &Server) -> Value {
+    server
+        .client
+        .get(format!("{}/state", server.admin))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap()
+}
+
+async fn save_admin(
+    server: &Server,
+    snapshot: &Value,
+    enabled: bool,
+    approved: bool,
+) -> reqwest::Response {
+    server.client.post(format!("{}/state", server.admin))
+        .header("Origin", &server.admin).header("X-Kampus-CSRF", snapshot["csrf"].as_str().unwrap())
+        .json(&json!({"version": snapshot["version"], "sensitive_enabled": enabled, "approvals": {"kampus-chatgpt": approved}}))
+        .send().await.unwrap()
+}
+
+#[tokio::test]
+async fn admin_rejects_rebinding_cross_origin_csrf_and_get_mutations() {
+    let server = spawn(AuthMode::NoLogin).await;
+    let url = format!("{}/state", server.admin);
+    let snapshot = admin_state(&server).await;
+    for host in ["evil.example", "127.0.0.1:1", "localhost.evil.example"] {
+        assert_eq!(
+            server
+                .client
+                .get(&url)
+                .header("Host", host)
+                .send()
+                .await
+                .unwrap()
+                .status(),
+            403
+        );
+    }
+    let body = json!({"version":1,"sensitive_enabled":true,"approvals":{}});
+    for origin in [None, Some("https://evil.example"), Some("null")] {
+        let mut request = server
+            .client
+            .post(&url)
+            .json(&body)
+            .header("X-Kampus-CSRF", snapshot["csrf"].as_str().unwrap());
+        if let Some(origin) = origin {
+            request = request.header("Origin", origin);
+        }
+        assert_eq!(request.send().await.unwrap().status(), 403);
+    }
+    assert_eq!(
+        server
+            .client
+            .post(&url)
+            .header("Origin", &server.admin)
+            .header("X-Kampus-CSRF", "wrong")
+            .json(&body)
+            .send()
+            .await
+            .unwrap()
+            .status(),
+        403
+    );
+    let response = server
+        .client
+        .get(format!("{url}?sensitive_enabled=true"))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(response.status(), 200);
+    assert_eq!(response.headers()["cache-control"], "no-store");
+    assert_eq!(admin_state(&server).await["version"], 1);
+    assert_eq!(
+        server
+            .client
+            .get(format!("{}/state", server.base))
+            .send()
+            .await
+            .unwrap()
+            .status(),
+        404
+    );
+    let bad = server
+        .client
+        .post(&url)
+        .header("Origin", &server.admin)
+        .header("X-Kampus-CSRF", snapshot["csrf"].as_str().unwrap())
+        .json(&json!({"version":1,"sensitive_enabled":true,"approvals":{"kampus-mascot":true}}))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(bad.status(), 400);
+    assert_eq!(admin_state(&server).await["version"], 1);
+}
+
+#[tokio::test]
+async fn same_legacy_session_uses_live_switches_without_changing_tools() {
+    let server = spawn(AuthMode::NoLogin).await;
+    let token = bearer(&claims("kampus-chatgpt", 300));
+    let session = legacy_session(&server, Some(&token)).await;
+    let catalog =
+        rpc_body(modern(&server, None, "tools/list", json!({})).await).await["result"].clone();
+    let snapshot = admin_state(&server).await;
+    assert_eq!(
+        save_admin(&server, &snapshot, true, false).await.status(),
+        200
+    );
+    let denied = rpc_body(
+        legacy(
+            &server,
+            Some(&token),
+            Some(&session),
+            &legacy_call(2, "my_deadlines"),
+        )
+        .await,
+    )
+    .await;
+    assert_eq!(
+        denied["result"]["structuredContent"]["error"]["code"],
+        "permission_denied"
+    );
+    let snapshot = admin_state(&server).await;
+    assert_eq!(
+        save_admin(&server, &snapshot, true, true).await.status(),
+        200
+    );
+    let allowed = rpc_body(
+        legacy(
+            &server,
+            Some(&token),
+            Some(&session),
+            &legacy_call(3, "my_deadlines"),
+        )
+        .await,
+    )
+    .await;
+    // Foundation module is still a placeholder; the audit proves authorization.
+    assert_eq!(
+        allowed["result"]["structuredContent"]["error"]["code"],
+        "unsupported_source"
+    );
+    let snapshot = admin_state(&server).await;
+    assert_eq!(snapshot["audit"][0]["decision"], "allow");
+    assert_eq!(snapshot["audit"][0]["policy_version"], 3);
+    assert_eq!(
+        save_admin(&server, &snapshot, false, true).await.status(),
+        200
+    );
+    let denied = rpc_body(
+        legacy(
+            &server,
+            Some(&token),
+            Some(&session),
+            &legacy_call(4, "my_deadlines"),
+        )
+        .await,
+    )
+    .await;
+    assert_eq!(
+        denied["result"]["structuredContent"]["error"]["code"],
+        "permission_denied"
+    );
+    assert_eq!(
+        catalog,
+        rpc_body(modern(&server, Some(&token), "tools/list", json!({})).await).await["result"]
+    );
 }
