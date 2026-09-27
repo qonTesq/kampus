@@ -6,10 +6,10 @@ One agent owns the paths in proposal.md. Human contract freeze precedes module c
 
 ## 1. SJU configuration and live room proof
 
-- [ ] 1.1 After foundation freeze, author SJU school.yaml/policy.yaml from the documented host/location IDs and conservative policy template; verify schema validation and that unknown Banner/hours sources are disabled rather than copied from Temple. Budget 20 min.
-- [ ] 1.2 Implement two-instance launch/proxy configuration with isolated audiences, paths, ports and local admin listeners; after rooms/auth land, demonstrate both processes running the identical artifact and real Hawk Hill availability by Sun 2 AM. Document start/stop/rollback commands. Budget 30 min.
-- [ ] 1.3 Then add instance tests for audience, cache, policy, booking and binding isolation using real LibCal recordings plus synthetic identity cases; verify a Temple token/confirmation cannot work at SJU and document evidence. Budget 25 min.
-- [ ] 1.4 Configure and smoke-test reusable SEPTA settings only with a verified SJU-area stop from the recorded feed; document the canonical ID and ensure no new school-specific adapter code is required. Budget 15 min.
+- [x] 1.1 After foundation freeze, author SJU school.yaml/policy.yaml from the documented host/location IDs and conservative policy template; verify schema validation and that unknown Banner/hours sources are disabled rather than copied from Temple. Budget 20 min.
+- [x] 1.2 Implement two-instance launch/proxy configuration with isolated audiences, paths, ports and local admin listeners; after rooms/auth land, demonstrate both processes running the identical artifact and real Hawk Hill availability by Sun 2 AM. Document start/stop/rollback commands. Budget 30 min.
+- [x] 1.3 Then add instance tests for audience, cache, policy, booking and binding isolation using real LibCal recordings plus synthetic identity cases; verify a Temple token/confirmation cannot work at SJU and document evidence. Budget 25 min.
+- [x] 1.4 Configure and smoke-test reusable SEPTA settings only with a verified SJU-area stop from the recorded feed; document the canonical ID and ensure no new school-specific adapter code is required. Budget 15 min.
 
 ## 2. Checkpoint and rehearsal
 
@@ -19,5 +19,5 @@ One agent owns the paths in proposal.md. Human contract freeze precedes module c
 
 ## 3. Integration and merge gate
 
-- [ ] 3.1 Run `cargo test -p kampus --features sandbox --test instances`, `cargo check --workspace` and `cargo clippy --workspace --all-targets`; also check/lint the sandbox feature build wherever used. Verify all exit successfully on the integrated branch, record command results and resolve failures before merge. Budget 15 min.
+- [x] 3.1 Run `cargo test -p kampus --features sandbox --test instances`, `cargo check --workspace` and `cargo clippy --workspace --all-targets`; also check/lint the sandbox feature build wherever used. Verify all exit successfully on the integrated branch, record command results and resolve failures before merge. Budget 15 min.
 - [ ] 3.2 Review the complete forbidden-pattern list in foundation/design.md against this diff, verify applicable output schemas/annotations and denial audit evidence, and obtain human review of owned files and integration requests. Record fixture IDs and any remaining blocker; no unfinished tests or privacy exceptions may be deferred past merge. Budget 10 min.

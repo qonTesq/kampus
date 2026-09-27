@@ -1,0 +1,44 @@
+# Local development instance. See README.md for HTTPS and Keycloak setup.
+version: 1
+school:
+  id: sju
+  display_name: Saint Joseph's University
+  timezone: America/New_York
+server:
+  resource_url: http://127.0.0.1:8090/mcp
+  listen: 127.0.0.1:8090
+  admin_listen: 127.0.0.1:8091
+auth:
+  mode: oauth
+  issuer: http://127.0.0.1:8180/realms/kampus
+  audience: kampus-sju
+  roles_claim: realm_access.roles
+modules: [rooms, transit]
+sandbox:
+  enabled: false
+libcal:
+  enabled: true
+  base_url: https://sju.libcal.com
+  locations:
+    - id: "20094"
+      name: Hawk Hill Campus
+      aliases: [Hawk Hill, Drexel Library, Post Learning Commons]
+    - id: "20098"
+      name: University City Campus
+      aliases: [University City]
+  default_location: "20094"
+  booking_simulation: false
+# No verified Banner/hours source or synthetic Canvas service is configured.
+transit:
+  enabled: true
+  providers:
+    - id: septa_rail
+      kind: septa_arrivals
+      base_url: https://www3.septa.org
+  stops:
+    - id: Overbrook
+      name: Overbrook Station
+      provider: septa_rail
+      aliases: [Overbrook Station, Hawk Hill rail]
+  routes: []
+devices: []

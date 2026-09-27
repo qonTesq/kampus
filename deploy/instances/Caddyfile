@@ -1,0 +1,11 @@
+# Include beside the existing Temple and Keycloak sites, not as a replacement.
+# Supply a stable DNS hostname in SJU_DOMAIN before validation/reload.
+{$SJU_DOMAIN} {
+    @public path /mcp /mcp/* /.well-known/oauth-protected-resource/mcp /device/bind
+    handle @public {
+        reverse_proxy 127.0.0.1:8090
+    }
+    handle {
+        respond 404
+    }
+}

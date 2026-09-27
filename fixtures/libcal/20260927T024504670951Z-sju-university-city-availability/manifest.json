@@ -1,0 +1,20 @@
+{
+  "format_version": 1,
+  "kind": "recorded",
+  "captured_at": "2026-09-27T02:45:05.955960+00:00",
+  "source_url": "https://sju.libcal.com/api/1.1/space/items/20098?availability=2026-09-27",
+  "request": {
+    "method": "GET",
+    "form": null,
+    "headers": {
+      "Accept-Encoding": "identity"
+    },
+    "cookies": "omitted"
+  },
+  "license_provenance": "Public vendor response recorded for offline interoperability tests. Upstream retains rights; no additional license is asserted.",
+  "http_status": 200,
+  "content_type": "application/json",
+  "body_file": "body.bin",
+  "sha256": "c48dd1336851d8c232c70cd3594409aae565c9d9f24fa5c224d8e7e21f70c941",
+  "byte_length": 9549
+}
