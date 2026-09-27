@@ -56,8 +56,13 @@ hours:
       name: Charles Library
       url: https://library.temple.edu/hours
       parser:
-        profile: temple-library-hours
-        selectors: {}
+        profile: dated-week-grid
+        selectors:
+          range: '.date-range'
+          dates: '.buildings.d-lg-block > .row:nth-child(2) .hours-dates'
+          rows: '.buildings.d-lg-block .hours-row'
+          library: "h3 a[href='/libraries/charles-library']"
+          cells: ':scope > .col'
       aliases: [Charles, main library]
   default_library: charles
 
