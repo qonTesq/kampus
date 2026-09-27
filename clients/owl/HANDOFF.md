@@ -11,7 +11,7 @@ Robot with animated eyes on two round screens, a mic (Logitech webcam) and a spe
 | 3 | Speaker: JBL Go 3 paired + trusted (18:90:67:87:94:0C), default output | Done 2026-09-26 (owl volume 0.8, system 62%) |
 | 4 | Mic: Logitech Brio 100 webcam, `main.py --audio-test` record + playback | Done 2026-09-26 |
 | 5 | Eyes + mic + speaker together, `owl-pi/soak_test.py` 10 min | Done 2026-09-26 (25 fps, 0 audio glitches, max 43.3°C, no throttling) |
-| 6 | **Talking owl: `owl-pi/voice_pipeline.py`** = ChatGPT (Responses API + MCP tools) + ElevenLabs Flash voice, half-duplex with your-turn blink. `main.py` (Realtime) kept as backup | Built; 32 offline tests + simulated MCP turn pass; **needs OPENAI_API_KEY + ELEVENLABS_API_KEY in .env** |
+| 6 | **Talking owl: `owl-pi/voice_pipeline.py`** = Gemini brain (hears audio directly, `gemini-3.5-flash-lite`) + ElevenLabs Flash voice + MCP via Pi-side bridge; half-duplex with your-turn blink. `brain = "openai"` switches to ChatGPT; `main.py` (Realtime) kept as backup | Built; 36 offline tests + live local MCP check pass; **needs GEMINI_API_KEY + ELEVENLABS_API_KEY in .env** |
 
 ## Hardware
 

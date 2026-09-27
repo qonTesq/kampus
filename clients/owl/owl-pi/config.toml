@@ -24,7 +24,14 @@ server_description = "Kampus campus information"
 allowed_tools = []
 
 [pipeline]
-# Used by voice_pipeline.py: ChatGPT brain + ElevenLabs voice.
+# Used by voice_pipeline.py: AI brain + ElevenLabs voice.
+# brain = "gemini" (GEMINI_API_KEY) or "openai" (OPENAI_API_KEY)
+brain = "gemini"
+# Fastest, lowest-cost Gemini; check your free-tier limits in Google AI Studio.
+gemini_model = "gemini-3.5-flash-lite"
+# Less thinking = faster replies. "" leaves Gemini's default.
+gemini_thinking = "low"
+history_turns = 6
 chat_model = "gpt-6-luna"
 transcribe_model = "gpt-4o-mini-transcribe"
 # Flash is ElevenLabs' fastest model and costs half the credits per character.

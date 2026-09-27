@@ -95,6 +95,91 @@ class BrainTests(unittest.TestCase):
                          {"say": "No tag here.", "emotion": "explaining", "sleep": False})
 
 
+def gemini_reply(obj):
+    return Resp(js={"candidates": [{"content": {"role": "model", "parts": [
+        {"text": "thinking...", "thought": True}, {"text": json.dumps(obj)}]}}]})
+
+
+class FakeTool:
+    name, description = "next_event", "Next campus event"
+    inputSchema = {"type": "object", "properties": {"topic": {"type": "string"}}}
+
+
+class FakeBridge:
+    tools = [FakeTool()]
+
+    def __init__(self): self.calls = []
+
+    def call(self, name, args):
+        self.calls.append((name, args))
+        return "Hackathon demo, Friday 12:00"
+
+
+class GeminiBrainTests(unittest.TestCase):
+    def brain(self, bridge=None):
+        from voice_pipeline import GeminiBrain
+        cfg = config(mcp=False)
+        return GeminiBrain(cfg, "gkey", bridge)
+
+    def test_audio_turn_hears_and_replies_in_one_request(self):
+        import numpy as np
+        sent = []
+        brain = self.brain()
+        reply = gemini_reply({"heard": "Hi owl", "say": "Hello!", "emotion": "happy", "sleep": False})
+        with patch.object(brain.http, "post", side_effect=lambda url, **kw: (sent.append((url, kw["json"])), reply)[1]):
+            got = brain.turn(samples=np.zeros(4800, dtype=np.int16), rate=48000)
+        self.assertEqual(got, {"heard": "Hi owl", "say": "Hello!", "emotion": "happy", "sleep": False})
+        url, body = sent[0]
+        self.assertTrue(url.endswith("/models/gemini-3.5-flash-lite:generateContent"))
+        self.assertEqual(brain.http.headers["x-goog-api-key"], "gkey")
+        self.assertEqual(body["contents"][-1]["parts"][0]["inlineData"]["mimeType"], "audio/wav")
+        self.assertEqual(body["generationConfig"]["responseMimeType"], "application/json")
+        self.assertEqual(body["generationConfig"]["thinkingConfig"], {"thinkingLevel": "low"})
+        self.assertNotIn("tools", body)
+        # memory keeps the transcript as text, never the audio
+        self.assertEqual(brain.history, [{"role": "user", "parts": [{"text": "Hi owl"}]},
+                                         {"role": "model", "parts": [{"text": "Hello!"}]}])
+
+    def test_mcp_tool_call_round_trip(self):
+        sent = []
+        bridge = FakeBridge()
+        brain = self.brain(bridge)
+        call = Resp(js={"candidates": [{"content": {"role": "model", "parts": [
+            {"functionCall": {"name": "next_event", "args": {"topic": "hackathon"}},
+             "thoughtSignature": "sig"}]}}]})
+        final = gemini_reply({"heard": "", "say": "The demo is Friday at noon.", "emotion": "explaining",
+                              "sleep": False})
+        replies = iter([call, final])
+        with patch.object(brain.http, "post",
+                          side_effect=lambda url, **kw: (sent.append(json.loads(json.dumps(kw["json"]))), next(replies))[1]):
+            got = brain.turn(text="When is the demo?")
+        self.assertEqual(got["say"], "The demo is Friday at noon.")
+        self.assertEqual(got["heard"], "When is the demo?")
+        self.assertEqual(bridge.calls, [("next_event", {"topic": "hackathon"})])
+        decl = sent[0]["tools"][0]["functionDeclarations"][0]
+        self.assertEqual(decl["name"], "next_event")
+        self.assertEqual(decl["parametersJsonSchema"]["properties"]["topic"]["type"], "string")
+        followup = sent[1]["contents"]
+        self.assertEqual(followup[-2]["parts"][0]["thoughtSignature"], "sig")   # call echoed back as-is
+        self.assertEqual(followup[-1]["parts"][0]["functionResponse"],
+                         {"name": "next_event", "response": {"result": "Hackathon demo, Friday 12:00"}})
+        self.assertEqual(len(brain.history), 2)                                 # tool steps not kept
+
+    def test_silence_returns_none_and_is_not_remembered(self):
+        import numpy as np
+        brain = self.brain()
+        reply = gemini_reply({"heard": "", "say": "", "emotion": "normal", "sleep": False})
+        with patch.object(brain.http, "post", return_value=reply):
+            self.assertIsNone(brain.turn(samples=np.zeros(480, dtype=np.int16), rate=48000))
+        self.assertEqual(brain.history, [])
+
+    def test_blocked_answer_is_an_error(self):
+        brain = self.brain()
+        with patch.object(brain.http, "post", return_value=Resp(js={"promptFeedback": {"blockReason": "SAFETY"}})):
+            with self.assertRaisesRegex(RuntimeError, "no answer"):
+                brain.turn(text="hi")
+
+
 class VoiceTests(unittest.TestCase):
     def test_streams_pcm_in_whole_samples_and_counts_characters(self):
         fed = []

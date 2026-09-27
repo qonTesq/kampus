@@ -1,23 +1,29 @@
 #!/usr/bin/env python3
-"""Talking owl with a ChatGPT brain and an ElevenLabs voice.
+"""Talking owl: an AI brain (Gemini or ChatGPT) with an ElevenLabs voice.
 
 One conversation turn:
-  webcam mic -> local turn detection (turns.py) -> OpenAI speech-to-text
-  -> ChatGPT reply + eye expression -> ElevenLabs voice -> JBL speaker
+  webcam mic -> local turn detection (turns.py)
+  -> brain: Gemini hears the audio and replies in one call
+            (or OpenAI speech-to-text, then ChatGPT)
+  -> reply + eye expression -> ElevenLabs voice -> JBL speaker
+
+MCP tools: ChatGPT calls the MCP server itself; for Gemini, the Pi calls it
+through mcp_bridge.py (Gemini's API has no remote-MCP support yet).
 
 The owl sleeps (closed eyes, nothing sent to the cloud) until it hears
 "Hey Owl" / "Hello Owl" locally, and goes back to sleep after
 assistant.sleep_after_seconds without speech or when you say goodbye.
 
-Keys live only in .env on the Pi:
-  OPENAI_API_KEY=...        ELEVENLABS_API_KEY=...        ELEVENLABS_VOICE_ID=...
+Keys live only in .env on the Pi (pipeline.brain in config.toml picks the brain):
+  GEMINI_API_KEY=... or OPENAI_API_KEY=...     ELEVENLABS_API_KEY=...
 
   python voice_pipeline.py              # full owl
   python voice_pipeline.py --no-wake    # skip the wake phrase, start awake
-  python voice_pipeline.py --text       # type instead of speaking (tests ChatGPT + voice)
+  python voice_pipeline.py --text       # type instead of speaking (tests brain + voice)
   python voice_pipeline.py --no-display # without the eye screens
 """
 import argparse
+import base64
 import io
 import json
 import re
@@ -34,6 +40,7 @@ from state import EMOTIONS, OwlState
 from turns import calibrate, listen
 
 OPENAI = "https://api.openai.com/v1"
+GEMINI = "https://generativelanguage.googleapis.com/v1beta"
 ELEVENLABS = "https://api.elevenlabs.io/v1"
 
 REPLY_SCHEMA = {
@@ -97,6 +104,16 @@ class Brain:
         r.raise_for_status()
         return r.json().get("text", "").strip()
 
+    def turn(self, text=None, samples=None, rate=None):
+        """One exchange from typed text or recorded speech; None if nothing was said."""
+        if text is None:
+            text = self.transcribe(samples, rate)
+            if not text:
+                return None
+        answer = self.reply(text)
+        answer["heard"] = text
+        return answer
+
     def request(self, text):
         body = {
             "model": self.cfg["pipeline"]["chat_model"],
@@ -125,6 +142,101 @@ class Brain:
         out = "".join(c["text"] for item in data["output"] if item["type"] == "message"
                       for c in item["content"] if c["type"] == "output_text")
         return parse_tagged(out) if self.tagged else json.loads(out)
+
+
+def wav_bytes(samples, rate):
+    buf = io.BytesIO()
+    with wave.open(buf, "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(rate)
+        w.writeframes(samples.astype("<i2").tobytes())
+    return buf.getvalue()
+
+
+GEMINI_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "heard": {"type": "string",
+                  "description": "What the user just said, transcribed; empty if no speech."},
+        "say": {"type": "string"},
+        "emotion": {"type": "string", "enum": list(EMOTIONS)},
+        "sleep": {"type": "boolean"},
+    },
+    "required": ["heard", "say", "emotion", "sleep"],
+}
+MAX_TOOL_ROUNDS = 5
+
+
+class GeminiBrain:
+    """Gemini hears the recorded audio directly and replies in one request.
+
+    MCP tools run on the Pi via an MCPBridge: their schemas are offered to Gemini
+    as function declarations, and each call Gemini asks for is executed and sent
+    back until it gives the final JSON reply. Memory keeps the last few exchanges
+    as plain text (audio is never re-sent).
+    """
+
+    def __init__(self, cfg, key, bridge=None):
+        self.cfg = cfg
+        self.bridge = bridge
+        self.http = requests.Session()
+        self.http.headers["x-goog-api-key"] = key
+        self.history = []
+
+    def reset(self):
+        self.history = []
+
+    def generate(self, contents):
+        p = self.cfg["pipeline"]
+        config = {"responseMimeType": "application/json", "responseJsonSchema": GEMINI_SCHEMA,
+                  "maxOutputTokens": self.cfg["assistant"]["max_response_tokens"]}
+        if p.get("gemini_thinking"):
+            config["thinkingConfig"] = {"thinkingLevel": p["gemini_thinking"]}
+        body = {"systemInstruction": {"parts": [{"text": instructions(self.cfg)}]},
+                "contents": contents, "generationConfig": config}
+        if self.bridge and self.bridge.tools:
+            body["tools"] = [{"functionDeclarations": [
+                {"name": t.name, "description": t.description or t.name,
+                 "parametersJsonSchema": t.inputSchema} for t in self.bridge.tools]}]
+        r = self.http.post(f"{GEMINI}/models/{p['gemini_model']}:generateContent",
+                           json=body, timeout=60)
+        r.raise_for_status()
+        data = r.json()
+        if not data.get("candidates"):
+            raise RuntimeError(f"Gemini gave no answer: {data.get('promptFeedback', data)}")
+        return data["candidates"][0].get("content", {"parts": []})
+
+    def turn(self, text=None, samples=None, rate=None):
+        if text is not None:
+            parts = [{"text": text}]
+        else:
+            parts = [{"inlineData": {"mimeType": "audio/wav",
+                                     "data": base64.b64encode(wav_bytes(samples, rate)).decode()}},
+                     {"text": "(The audio above is the user's spoken turn.)"}]
+        contents = self.history + [{"role": "user", "parts": parts}]
+        for _ in range(MAX_TOOL_ROUNDS):
+            content = self.generate(contents)
+            calls = [part["functionCall"] for part in content.get("parts", []) if "functionCall" in part]
+            if not calls:
+                break
+            contents.append(content)       # keep Gemini's call (and its thought signature)
+            contents.append({"role": "user", "parts": [
+                {"functionResponse": {"name": c["name"],
+                                      "response": {"result": self.bridge.call(c["name"], c.get("args", {}))}}}
+                for c in calls]})
+        else:
+            raise RuntimeError("Gemini kept calling tools without answering")
+        out = "".join(part.get("text", "") for part in content.get("parts", []) if not part.get("thought"))
+        answer = json.loads(out)
+        heard = text if text is not None else answer.get("heard", "").strip()
+        if not heard:
+            return None
+        answer["heard"] = heard
+        self.history += [{"role": "user", "parts": [{"text": heard}]},
+                         {"role": "model", "parts": [{"text": answer["say"]}]}]
+        self.history = self.history[-2 * self.cfg["pipeline"]["history_turns"]:]
+        return answer
 
 
 TAG_RULES = """
@@ -193,19 +305,36 @@ def main():
     from dotenv import load_dotenv
     load_dotenv(ROOT / ".env")
     apply_env(cfg)
-    openai_key = os.environ.get("OPENAI_API_KEY", "").strip()
+    use_gemini = cfg["pipeline"]["brain"] == "gemini"
+    brain_var = "GEMINI_API_KEY" if use_gemini else "OPENAI_API_KEY"
+    brain_key = (os.environ.get(brain_var, "")
+                 or (os.environ.get("GOOGLE_API_KEY", "") if use_gemini else "")).strip()
     eleven_key = os.environ.get("ELEVENLABS_API_KEY", "").strip()
     voice_id = (os.environ.get("ELEVENLABS_VOICE_ID", "").strip()
                 or cfg["pipeline"]["voice_id"].strip())
-    missing = [n for n, v in (("OPENAI_API_KEY", openai_key), ("ELEVENLABS_API_KEY", eleven_key),
+    missing = [n for n, v in ((brain_var, brain_key), ("ELEVENLABS_API_KEY", eleven_key),
                               ("ELEVENLABS_VOICE_ID", voice_id)) if not v]
     if missing:
         raise SystemExit("Add to .env on the Pi: " + ", ".join(missing))
 
     from audio_io import AudioIO
-    brain = Brain(cfg, openai_key)
-    if mcp_tool(cfg):
-        print(f"MCP server: {cfg['mcp']['server_url']}", flush=True)
+    bridge = None
+    if use_gemini:
+        if mcp_tool(cfg):
+            from mcp_bridge import MCPBridge
+            m = cfg["mcp"]
+            try:
+                bridge = MCPBridge(m["server_url"], m.get("authorization", ""), m.get("allowed_tools"))
+                print(f"MCP server: {len(bridge.tools)} tools from {m['server_url']}", flush=True)
+            except RuntimeError as exc:
+                print(f"{exc}; continuing without MCP tools", flush=True)
+        brain = GeminiBrain(cfg, brain_key, bridge)
+        print(f"Brain: Gemini ({cfg['pipeline']['gemini_model']})", flush=True)
+    else:
+        brain = Brain(cfg, brain_key)
+        print(f"Brain: ChatGPT ({cfg['pipeline']['chat_model']})", flush=True)
+        if mcp_tool(cfg):
+            print(f"MCP server: {cfg['mcp']['server_url']}", flush=True)
     voice = Voice(cfg, eleven_key, voice_id)
     rate, block_ms = cfg["audio"]["input_rate"], cfg["audio"]["block_ms"]
     phrases = cfg["assistant"]["wake_phrases"]
@@ -265,6 +394,7 @@ def main():
                     wake_up()
                 continue
 
+            said = text = None
             if args.text:
                 text = input("\nYou: ").strip()
                 if not text:
@@ -279,15 +409,15 @@ def main():
                     go_to_sleep()
                     continue
                 state.speech(False)          # eyes: thinking
-                started = time.monotonic()
-                text = brain.transcribe(said.samples, rate)
-                if not text:
-                    continue
-                print(f"\nYou: {text}  ({time.monotonic() - started:.1f} s to transcribe)")
 
             try:
                 t0 = time.monotonic()
-                answer = brain.reply(text)
+                answer = brain.turn(text=text, samples=said.samples if said else None, rate=rate)
+                if answer is None:            # no words in the recording
+                    state.phase("idle")
+                    continue
+                if said:
+                    print(f"\nYou: {answer['heard']}", flush=True)
                 state.phase("idle")
                 state.emotion(answer["emotion"])
                 print(f"Owl [{answer['emotion']}]: {answer['say']}"
@@ -295,7 +425,7 @@ def main():
                 voice.speak(answer["say"], audio)
                 wait_for_playback(audio, state)
                 print(f"  ElevenLabs characters used this run: {voice.chars_used}", flush=True)
-            except requests.RequestException as exc:
+            except (requests.RequestException, RuntimeError, ValueError, KeyError) as exc:
                 detail = getattr(exc.response, "text", "")[:300] if exc.response is not None else ""
                 print(f"  Cloud request failed: {exc} {detail}", flush=True)
                 state.phase("idle")
@@ -311,6 +441,8 @@ def main():
         audio.close()
         if eyes:
             eyes.close()
+        if bridge:
+            bridge.close()
         print(f"ElevenLabs characters used this run: {voice.chars_used}")
 
 
