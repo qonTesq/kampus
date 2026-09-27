@@ -1,0 +1,56 @@
+# Raspberry Pi 5, two GC9A01 240x240 displays, USB microphone,
+# USB camera (optional), and a Bluetooth speaker selected in Raspberry Pi OS.
+
+[assistant]
+name = "Owl"
+language = "English"
+wake_phrases = ["hey owl", "hello owl"]
+sleep_after_seconds = 300
+allow_cloud_audio = true
+model = "gpt-realtime-2.1"
+voice = "marin"
+max_response_tokens = 900
+
+[wake]
+model_path = "models/vosk-model-small-en-us-0.15"
+
+[audio]
+# Run: python main.py --list-audio
+# Use an integer device ID or a distinctive device name; -1 = system default.
+input_device = -1
+output_device = -1
+input_rate = 48000
+output_rate = 48000
+input_channels = 1
+output_channels = 2
+mic_channel = 0
+block_ms = 20
+# Increase if you hear the assistant answer its own Bluetooth speaker.
+echo_guard_seconds = 0.8
+volume = 0.7
+
+[display]
+enabled = true
+spi_bus = 0
+left_ce = 0
+right_ce = 1
+# BCM GPIO numbering, not physical header pin numbers.
+left_dc_gpio = 25
+right_dc_gpio = 24
+left_reset_gpio = 27
+right_reset_gpio = 22
+spi_hz = 24000000
+fps = 25
+pixel_size = 4
+left_rotation = 0
+right_rotation = 0
+# RGB/BGR bit for most GC9A01 modules. Try false if yellow is the wrong color.
+bgr = true
+invert = true
+
+[camera]
+# Enable only when you want spoken visual requests to send a photo to OpenAI.
+enabled = false
+device = 0
+width = 640
+height = 480
