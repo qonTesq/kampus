@@ -305,7 +305,7 @@ def main():
     from dotenv import load_dotenv
     load_dotenv(ROOT / ".env")
     apply_env(cfg)
-    use_gemini = cfg["pipeline"]["brain"] == "gemini"
+    use_gemini = cfg["pipeline"]["brain"] in ("gemini", "gemini-live")
     brain_var = "GEMINI_API_KEY" if use_gemini else "OPENAI_API_KEY"
     brain_key = (os.environ.get(brain_var, "")
                  or (os.environ.get("GOOGLE_API_KEY", "") if use_gemini else "")).strip()
@@ -328,8 +328,13 @@ def main():
                 print(f"MCP server: {len(bridge.tools)} tools from {m['server_url']}", flush=True)
             except RuntimeError as exc:
                 print(f"{exc}; continuing without MCP tools", flush=True)
-        brain = GeminiBrain(cfg, brain_key, bridge)
-        print(f"Brain: Gemini ({cfg['pipeline']['gemini_model']})", flush=True)
+        if cfg["pipeline"]["brain"] == "gemini-live":
+            from gemini_live import GeminiLiveBrain
+            brain = GeminiLiveBrain(cfg, brain_key, instructions(cfg), bridge)
+            print(f"Brain: Gemini Live ({cfg['pipeline']['gemini_live_model']})", flush=True)
+        else:
+            brain = GeminiBrain(cfg, brain_key, bridge)
+            print(f"Brain: Gemini ({cfg['pipeline']['gemini_model']})", flush=True)
     else:
         brain = Brain(cfg, brain_key)
         print(f"Brain: ChatGPT ({cfg['pipeline']['chat_model']})", flush=True)
@@ -441,6 +446,8 @@ def main():
         audio.close()
         if eyes:
             eyes.close()
+        if hasattr(brain, "close"):
+            brain.close()
         if bridge:
             bridge.close()
         print(f"ElevenLabs characters used this run: {voice.chars_used}")

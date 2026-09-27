@@ -25,8 +25,11 @@ allowed_tools = []
 
 [pipeline]
 # Used by voice_pipeline.py: AI brain + ElevenLabs voice.
-# brain = "gemini" (GEMINI_API_KEY) or "openai" (OPENAI_API_KEY)
-brain = "gemini"
+# brain = "gemini-live" : Gemini Live hears + thinks, ElevenLabs speaks (GEMINI_API_KEY)
+#         "gemini"      : Gemini Flash-Lite, one request per turn        (GEMINI_API_KEY)
+#         "openai"      : ChatGPT                                         (OPENAI_API_KEY)
+brain = "gemini-live"
+gemini_live_model = "gemini-3.8-live"
 # Fastest, lowest-cost Gemini; check your free-tier limits in Google AI Studio.
 gemini_model = "gemini-3.5-flash-lite"
 # Less thinking = faster replies. "" leaves Gemini's default.
