@@ -480,10 +480,20 @@ def main():
                     voice.speak(sentence, audio, on_first_audio=first_audio)
 
                 extra = {"on_sentence": speak_sentence} if getattr(brain, "streams", False) else {}
-                if said and streaming_mic:
-                    answer = brain.finish_audio(**extra)
-                else:
-                    answer = brain.turn(text=text, samples=said.samples if said else None, rate=rate, **extra)
+                try:
+                    if said and streaming_mic:
+                        answer = brain.finish_audio(**extra)
+                    else:
+                        answer = brain.turn(text=text, samples=said.samples if said else None,
+                                            rate=rate, **extra)
+                except Exception as exc:
+                    if first_words:           # already said part of an answer: don't repeat it
+                        raise
+                    # The cloud dropped the turn (e.g. Gemini Live "1011 internal error"):
+                    # resend the same recording once on a fresh connection.
+                    print(f"  Connection dropped ({type(exc).__name__}); retrying once...", flush=True)
+                    answer = brain.turn(text=text, samples=said.samples if said else None,
+                                        rate=rate, **extra)
                 if answer is None:            # no words in the recording
                     state.phase("idle")
                     continue
@@ -501,12 +511,18 @@ def main():
                       f"  (first audio {first_words[0]:.1f} s {after}{detail})" if first_words else "", flush=True)
                 wait_for_playback(audio, state)
                 print(f"  ElevenLabs characters used this run: {voice.chars_used}", flush=True)
-            except (requests.RequestException, RuntimeError, ValueError, KeyError) as exc:
+            except Exception as exc:          # never let one bad turn stop the owl
                 response = getattr(exc, "response", None)
                 detail = getattr(response, "text", "")[:300] if response is not None else ""
-                print(f"  Cloud request failed: {exc} {detail}", flush=True)
+                print(f"  Cloud request failed: {type(exc).__name__}: {exc} {detail}", flush=True)
                 state.phase("idle")
                 state.emotion("confused")
+                if not first_words:
+                    try:
+                        voice.speak("Sorry, I lost my connection. Could you ask again?", audio)
+                        wait_for_playback(audio, state)
+                    except Exception:
+                        pass
                 continue
 
             if answer["sleep"] and not args.text:
