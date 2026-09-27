@@ -12,6 +12,7 @@ class Snapshot:
     last_human: float = 0.0
     user_speaking: bool = False
     level: float = 0.0
+    cue: float = 0.0   # time of the last "your turn" cue (mic reopened)
 
 class OwlState:
     def __init__(self, timeout=300, clock=time.monotonic):
@@ -49,6 +50,11 @@ class OwlState:
             raise ValueError("Unsupported expression")
         with self.lock:
             self.data.emotion = value
+
+    def cue(self):
+        """Signal that the mic just reopened: the eyes give a quick blink."""
+        with self.lock:
+            self.data.cue = self.clock()
 
     def level(self, value):
         with self.lock:

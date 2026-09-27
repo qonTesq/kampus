@@ -128,4 +128,21 @@ class ProtocolTests(unittest.TestCase):
         self.assertFalse(session["audio"]["input"]["turn_detection"]["create_response"])
         self.assertEqual(session["tools"][0]["name"], "prepare_reply")
 
+
+class TurnCueTests(unittest.TestCase):
+    def test_mic_reopening_triggers_one_blink(self):
+        clock = [100.0]
+        state = OwlState(300, clock=lambda: clock[0])
+        state.wake(); state.phase("idle"); state.emotion("normal")
+        eyes = Animator(seed=1)
+        eyes.pose(state.snapshot(), 100.0)
+        eyes.blink_start, eyes.next_blink, eyes.emotion = None, 10**9, "normal"
+        self.assertEqual(eyes.pose(state.snapshot(), 101.0)[1], 1.0)     # eyes open
+        clock[0] = 102.0
+        state.cue()
+        eyes.pose(state.snapshot(), 102.0)
+        self.assertLess(eyes.pose(state.snapshot(), 102.2)[1], .5)       # blinking
+        eyes.pose(state.snapshot(), 103.0)
+        self.assertEqual(eyes.pose(state.snapshot(), 103.1)[1], 1.0)     # one blink only
+
 if __name__ == "__main__": unittest.main()

@@ -139,9 +139,11 @@ def heard_wake_phrase(model, samples, rate, phrases):
     return phrase_matches(json.loads(rec.FinalResult()).get("text", ""), phrases)
 
 
-def wait_for_playback(audio):
+def wait_for_playback(audio, state=None):
     while audio.playing():
         time.sleep(0.05)
+    if state:
+        state.cue()                            # mic is live again: blink "your turn"
 
 
 def main():
@@ -198,7 +200,7 @@ def main():
         state.emotion("happy")
         print("Awake! Talk to me (Ctrl+C to stop).", flush=True)
         voice.speak(cfg["pipeline"]["greeting"], audio)
-        wait_for_playback(audio)
+        wait_for_playback(audio, state)
 
     try:
         threshold = 0
@@ -252,7 +254,7 @@ def main():
                 print(f"Owl [{answer['emotion']}]: {answer['say']}"
                       f"  ({time.monotonic() - t0:.1f} s to think)", flush=True)
                 voice.speak(answer["say"], audio)
-                wait_for_playback(audio)
+                wait_for_playback(audio, state)
                 print(f"  ElevenLabs characters used this run: {voice.chars_used}", flush=True)
             except requests.RequestException as exc:
                 detail = getattr(exc.response, "text", "")[:300] if exc.response is not None else ""

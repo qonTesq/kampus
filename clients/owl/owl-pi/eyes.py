@@ -72,6 +72,7 @@ class Animator:
         self.target = "sleeping"
         self.blink_start = None
         self.next_blink = 0
+        self.last_cue = 0.0
         self.next_gaze = 0
         self.gaze_start = 0
         self.gaze = np.zeros(2)
@@ -85,6 +86,10 @@ class Animator:
         if desired != self.target:
             self.target = desired
             self.blink_start = now
+        if snapshot.cue != self.last_cue:      # "your turn": mic just reopened
+            self.last_cue = snapshot.cue
+            if self.blink_start is None and self.emotion != "sleeping":
+                self.blink_start = now
         if self.blink_start is None and now >= self.next_blink and self.emotion != "sleeping":
             self.blink_start = now
         opening = 1.0

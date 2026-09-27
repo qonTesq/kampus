@@ -260,9 +260,13 @@ class VoiceSession:
         await asyncio.wait_for(self.ready.wait(), timeout=25)
         started = time.monotonic()
         settled_at = None
+        was_playing = False
         while True:
             if self.eye_loop.error: raise RuntimeError("Eye display failed") from self.eye_loop.error
             playing = self.audio.playing()
+            if was_playing and not playing and not self.busy:
+                self.state.cue()               # mic is live again: blink "your turn"
+            was_playing = playing
             self.state.level(self.audio.level)
             if playing:
                 self.state.phase("speaking")
