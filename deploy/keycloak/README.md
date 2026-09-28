@@ -1,6 +1,10 @@
 # Keycloak + Caddy on the VM
 
-Keycloak 26.7.4 (26.6 or later is required) is the authorization server; kampus is only a resource server. Caddy terminates HTTPS for both hostnames. The `kampus` binary runs on the host on `127.0.0.1:8080`.
+Keycloak 26.7.4 (26.6 or later is required) is the authorization server; kampus is only a resource server. Caddy terminates HTTPS for both hostnames. The `kampus` binary runs on the host on port 8080.
+
+**Listen address:** Caddy runs in Docker and reaches kampus through `host.docker.internal` (the Docker bridge), so kampus must **not** bind only to `127.0.0.1`. Set `server.listen: 0.0.0.0:8080` (or the Docker bridge address) and make sure the VM firewall only allows 22, 80 and 443, so port 8080 isn't reachable from outside. The admin listener (`server.admin_listen`) stays on `127.0.0.1`.
+
+For running without a VM (a laptop or any machine behind a Cloudflare Tunnel, with no open ports), see [../cloudflare-tunnel/README.md](../cloudflare-tunnel/README.md).
 
 **Not yet run.** Docker isn't installed on the dev machine; these files are untested until brought up on the VM.
 

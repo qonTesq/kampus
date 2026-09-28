@@ -1,6 +1,6 @@
 # kampus-canvas
 
-Owner: the `canvas-mock` change (`openspec/changes/canvas-mock/`).
+Owner: the `canvas-mock` change (`openspec/changes/archive/2026-09-28-canvas-mock/`).
 
 ## Contract
 Implements `DeadlineProvider` against a loopback Canvas-shaped fake. Everything here is sandbox only.

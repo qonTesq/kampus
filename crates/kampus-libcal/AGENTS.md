@@ -1,6 +1,6 @@
 # kampus-libcal
 
-Owner: the `public-rooms` change (`openspec/changes/public-rooms/`).
+Owner: the `public-rooms` change (`openspec/changes/archive/2026-09-28-public-rooms/`).
 
 ## Contract
 Implements `RoomProvider` (live LibCal space availability) and `BookingProvider` (sandbox simulation only, behind `sandbox`; no real booking HTTP request in any build).

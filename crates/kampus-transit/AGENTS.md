@@ -1,6 +1,6 @@
 # kampus-transit
 
-Owner: the `public-transit` change (`openspec/changes/public-transit/`).
+Owner: the `public-transit` change (`openspec/changes/archive/2026-09-28-public-transit/`).
 
 ## Contract
 Implements `TransitProvider`: SEPTA Regional Rail arrivals (live), static GTFS subset (scheduled), Flight replay (sandbox only).

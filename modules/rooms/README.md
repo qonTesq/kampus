@@ -1,6 +1,6 @@
 # rooms module
 
-Study rooms from Springshare LibCal (`crates/kampus-libcal`), configured per school in `school.yaml` `libcal`. Contract: `module.yaml` and `openspec/changes/public-rooms/`.
+Study rooms from Springshare LibCal (`crates/kampus-libcal`), configured per school in `school.yaml` `libcal`. Contract: `module.yaml` and `openspec/changes/archive/2026-09-28-public-rooms/`.
 
 ## Tools
 

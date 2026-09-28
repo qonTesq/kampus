@@ -1,6 +1,6 @@
 # kampus-banner
 
-Owner: the `public-courses` change (`openspec/changes/public-courses/`).
+Owner: the `public-courses` change (`openspec/changes/archive/2026-09-28-public-courses/`).
 
 ## Contract
 Implements `CourseProvider` for Banner 9 class search.

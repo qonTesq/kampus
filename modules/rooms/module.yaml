@@ -1,4 +1,4 @@
-# rooms module, version 1. Contract: openspec/changes/public-rooms/design.md
+# rooms module, version 1. Contract: openspec/changes/archive/2026-09-28-public-rooms/design.md
 # `output_schema` describes `data` in the success envelope; the server wraps it.
 version: 1
 id: rooms

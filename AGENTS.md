@@ -77,7 +77,7 @@ The toolchain is pinned in `rust-toolchain.toml`, so artifacts stay compatible a
 ## Parallel work
 
 - **One agent per module, in its own worktree and branch, touching only its own crate(s), its fixtures and the single registration line.** Example: `git worktree add ../kampus-wt/public-rooms -b change/public-rooms`.
-- Ownership is listed in `openspec/changes/foundation/design.md` (Layout and ownership) and in each change's design.
+- Ownership is listed in `openspec/changes/archive/2026-09-28-foundation/design.md` (Layout and ownership) and in each change's design.
 - **Contracts are frozen:** `crates/kampus-core/src/contracts/`, the `module.yaml` schema, the `school.yaml`/`policy.yaml` schemas and `docs/contracts/`. Changing them needs a human. If yours doesn't fit, stop and ask; don't work around it.
 - Implement first against recorded real responses, then write the tests in the same branch before merge. The auth change's bad-token tests come right after login works.
 - Tick your change's `tasks.md` boxes as you finish them. Merges happen locally through the integrator. Never push and never add a remote.

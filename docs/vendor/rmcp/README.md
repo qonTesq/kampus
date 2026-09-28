@@ -25,4 +25,4 @@ Code against **these files**, not memory. rmcp went through v1, v2 and v3 in 202
 - `call_tool` returns `Result<CallToolResponse, ErrorData>`. Use `Ok(CallToolResult::structured_error(..))` for tool failures the caller should see, and `Err(ErrorData)` only for unroutable requests. `CallToolResult::structured(v)` sets `structuredContent` and text content to `v.to_string()`.
 - `Tool` and `ToolAnnotations` are `#[non_exhaustive]`: build them with `Tool::new(..)` and assign fields, or `ToolAnnotations::with_title(..).read_only(..).destructive(..)`.
 - The HTTP request `http::request::Parts` (including axum extensions set by middleware) is available to handlers as `ctx.extensions.get::<http::request::Parts>()`. That's how kampus passes the verified `Principal` per request.
-- rmcp has no server-side JWT or resource-metadata helper. The auth change writes it, following `openspec/changes/auth-policy-audit/design.md`.
+- rmcp has no server-side JWT or resource-metadata helper. The auth change writes it, following `openspec/changes/archive/2026-09-28-auth-policy-audit/design.md`.

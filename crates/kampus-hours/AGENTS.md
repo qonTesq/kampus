@@ -1,6 +1,6 @@
 # kampus-hours
 
-Owner: the `public-library-hours` change (`openspec/changes/public-library-hours/`).
+Owner: the `public-library-hours` change (`openspec/changes/archive/2026-09-28-public-library-hours/`).
 
 ## Contract
 Implements `HoursProvider` by scraping the configured hours page with `scraper`.

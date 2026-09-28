@@ -1,6 +1,6 @@
 # kampus-device
 
-Owner: the `device-binding` change (`openspec/changes/device-binding/`).
+Owner: the `device-binding` change (`openspec/changes/archive/2026-09-28-device-binding/`).
 
 ## Contract
 Provides `POST /device/bind` (registered through `registry::routes`) and an `IdentityResolver`.
