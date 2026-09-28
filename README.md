@@ -4,7 +4,7 @@
 
 kampus is an open-source [MCP](https://modelcontextprotocol.io) server that connects a university's systems (study rooms, courses, transit, library hours, coursework) to the AI assistants students already use, like Claude and ChatGPT. The school stays in control: it decides **which assistant** may see **which data**, for **which role**, and every call is checked and audited.
 
-🥈 **Runner-up (2nd place)** at a 24-hour university hackathon, September 2026.
+🥈 **Runner-up (2nd place) at OwlHacks 2026** (September 2026).
 
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 ![Rust 1.96](https://img.shields.io/badge/rust-1.96-orange.svg)
