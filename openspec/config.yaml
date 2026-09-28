@@ -2,7 +2,7 @@ schema: spec-driven
 
 context: |
   kampus is a self-hosted, policy-controlled campus connector. Planning sources of
-  truth are campus-ai-connector-report.md sections 3-6, 8 and 9.
+  truth are docs/research/campus-ai-connector-report.md sections 3-6, 8 and 9.
   This plan covers software only: the Rust server, its configuration and served
   interfaces, including POST /device/bind. Exclude Pi code, voice clients, NFC
   wiring, audio, printing, real university SSO integration, and stretch tools.

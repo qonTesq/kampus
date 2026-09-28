@@ -24,3 +24,6 @@ CLAUDE.md
 *.swp
 .DS_Store
 Thumbs.db
+
+# Runtime audit logs and local state
+data/

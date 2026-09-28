@@ -1,5 +1,5 @@
 # Temple University: the reference school (school.yaml version 1).
-# Values come from campus-ai-connector-report.md section 4 (verified 2026-09-26).
+# Values come from docs/research/campus-ai-connector-report.md section 4 (verified 2026-09-26).
 # Secrets are never written here; *_env fields name environment variables.
 #
 # server/auth below are LOCAL DEVELOPMENT values. For the VM, set

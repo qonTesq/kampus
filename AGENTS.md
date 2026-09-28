@@ -1,6 +1,6 @@
 # kampus: agent instructions
 
-kampus is a self-hosted, policy-controlled bridge between a university's systems and any AI assistant, speaking MCP. Spec: `openspec/changes/<change>/` (proposal, design, specs, tasks). Background: `campus-ai-connector-report.md` sections 3, 5 and 6. Don't edit the report or `pitch.md`.
+kampus is a self-hosted, policy-controlled bridge between a university's systems and any AI assistant, speaking MCP. Living specs: `openspec/specs/`. New work starts as an OpenSpec change in `openspec/changes/<change>/` (proposal, design, specs, tasks); finished changes are archived. Background: `docs/research/campus-ai-connector-report.md` sections 3, 5 and 6.
 
 This is the only agent instruction file. **Never create `CLAUDE.md`** or any tool-specific rule file (`.cursor/rules`, `.github/copilot-instructions.md`, …). The nearest `AGENTS.md` to the file you edit takes precedence for that folder.
 
