@@ -98,7 +98,7 @@ impl DeadlineProvider for Counting {
 
 fn with_counting() -> (Deadlines, Arc<Counting>) {
     let provider = Arc::new(Counting::default());
-    let profiles = Box::new(|s: &str| (s == SUBJECT_A).then(|| "synthetic-a".to_owned()));
+    let profiles = Box::new(|s: &str| Ok((s == SUBJECT_A).then(|| "synthetic-a".to_owned())));
     let source = Source::new(Arc::clone(&provider) as Arc<dyn DeadlineProvider>, profiles);
     (
         Deadlines::new(&init(school()), Some(source)).unwrap(),
@@ -342,7 +342,7 @@ mod sandbox {
         );
         let held = Arc::clone(&canvas);
         let profiles =
-            Box::new(move |s: &str| held.profiles.synthetic_user_for(s).map(str::to_owned));
+            Box::new(move |s: &str| Ok(held.profiles.synthetic_user_for(s).map(str::to_owned)));
         let source = Source::new(Arc::new(canvas.provider.clone()), profiles);
         (
             Deadlines::new(&init(school()), Some(source)).unwrap(),
@@ -405,6 +405,27 @@ mod sandbox {
         // Seed offsets +3h, +10h, +20h, +72h from the fake's start.
         assert_eq!(got, ["7002", "7003", "7004", "7005"]);
         assert_eq!(out.provenance.source_kind, SourceKind::Sandbox);
+    }
+
+    #[tokio::test]
+    async fn registration_does_not_start_the_fake_until_first_use() {
+        // What `kampus check` does: build the module, never call it.
+        let port = free_port();
+        let m = module(&init(sandbox_school(true, true, port))).unwrap();
+        assert!(
+            std::net::TcpListener::bind(("127.0.0.1", port)).is_ok(),
+            "registering the module must not bind the fake's port"
+        );
+        // The first served call starts it.
+        let now = Utc::now();
+        let args = json!({
+            "from": (now - chrono::TimeDelta::hours(1)).to_rfc3339(),
+            "to": (now + chrono::TimeDelta::days(4)).to_rfc3339(),
+        });
+        let mut c = ctx(student(STUDENT_A));
+        c.now = now;
+        assert!(m.call(TOOL, args, &c).await.is_ok());
+        assert!(std::net::TcpListener::bind(("127.0.0.1", port)).is_err());
     }
 
     #[tokio::test]

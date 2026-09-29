@@ -74,6 +74,28 @@ async fn main() -> ExitCode {
 
     let built = SchoolConfig::load(&args.school)
         .and_then(|school| PolicyConfig::load(&args.policy).map(|policy| (school, policy)));
+
+    // `check` validates only: no audit log, listeners or sandbox services.
+    if args.command == "check" {
+        return match built
+            .map_err(kampus::AppError::from)
+            .and_then(|(school, policy)| App::check(school, &policy, &Env::process()))
+        {
+            Ok(report) => {
+                tracing::info!(
+                    school = %report.school_id,
+                    tools = report.tools,
+                    "configuration valid"
+                );
+                ExitCode::SUCCESS
+            }
+            Err(error) => {
+                tracing::error!("configuration refused: {error}");
+                ExitCode::FAILURE
+            }
+        };
+    }
+
     let app = match built
         .map_err(kampus::AppError::from)
         .and_then(|(school, policy)| {
@@ -91,15 +113,6 @@ async fn main() -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
-
-    if args.command == "check" {
-        tracing::info!(
-            school = %app.school().school.id,
-            tools = app.tool_names().len(),
-            "configuration valid"
-        );
-        return ExitCode::SUCCESS;
-    }
 
     let cancel = CancellationToken::new();
     let on_signal = cancel.clone();

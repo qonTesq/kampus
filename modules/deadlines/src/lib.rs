@@ -37,8 +37,9 @@ const MAX_RANGE_DAYS: i64 = 31;
 const READS_PER_MINUTE: u32 = 30;
 const READ_BURST: u32 = 10;
 
-/// Verified subject → registered synthetic user ID.
-type ProfileLookup = dyn Fn(&str) -> Option<String> + Send + Sync;
+/// Verified subject → registered synthetic user ID; an error when the
+/// source cannot be reached.
+type ProfileLookup = dyn Fn(&str) -> Result<Option<String>, ToolError> + Send + Sync;
 
 /// Where deadlines come from. Only a sandbox build constructs one from
 /// configuration; tests inject their own.
@@ -102,7 +103,7 @@ impl Deadlines {
                 "My deadlines is only available to signed-in students.",
             ));
         }
-        let synthetic_user_id = (source.profiles)(&ctx.principal.subject).ok_or_else(|| {
+        let synthetic_user_id = (source.profiles)(&ctx.principal.subject)?.ok_or_else(|| {
             ToolError::permission_denied(
                 "No synthetic demo profile is registered for this account.",
             )
@@ -160,19 +161,73 @@ fn configured_source(init: &ModuleInit) -> Result<Option<Source>, RegistryError>
     if !school.sandbox.enabled || !init.is_enabled(MODULE_ID) {
         return Ok(None);
     }
-    let canvas = Arc::new(
-        kampus_canvas::SandboxCanvas::start(&canvas.base_url)
-            .map_err(|e| module_error(&e.to_string()))?,
-    );
-    let provider = Arc::new(canvas.provider.clone());
-    // The lookup owns the running fake, keeping it up as long as the module.
+    // Started on first use, so registering the module (as `kampus check`
+    // does) binds nothing.
+    let lazy = Arc::new(sandbox::LazyCanvas::new(canvas.clone()));
+    let provider = Arc::clone(&lazy);
     let profiles = Box::new(move |subject: &str| {
-        canvas
+        Ok(lazy
+            .running()?
             .profiles
             .synthetic_user_for(subject)
-            .map(str::to_owned)
+            .map(str::to_owned))
     });
     Ok(Some(Source::new(provider, profiles)))
+}
+
+#[cfg(feature = "sandbox")]
+mod sandbox {
+    use std::sync::{Arc, Mutex};
+
+    use kampus_canvas::SandboxCanvas;
+    use kampus_core::config::CanvasConfig;
+    use kampus_core::contracts::providers::{
+        DeadlineProvider, DeadlineQuery, Deadlines, ProviderResult,
+    };
+    use kampus_core::contracts::{BoxFuture, ToolError};
+
+    /// The synthetic Canvas fake, started by the first call that needs it
+    /// and kept running as long as the module.
+    #[derive(Debug)]
+    pub(super) struct LazyCanvas {
+        config: CanvasConfig,
+        running: Mutex<Option<Arc<SandboxCanvas>>>,
+    }
+
+    impl LazyCanvas {
+        pub(super) fn new(config: CanvasConfig) -> Self {
+            Self {
+                config,
+                running: Mutex::new(None),
+            }
+        }
+
+        /// The running fake; a failed start is retried by the next call.
+        pub(super) fn running(&self) -> Result<Arc<SandboxCanvas>, ToolError> {
+            let mut running = self
+                .running
+                .lock()
+                .map_err(|_| ToolError::upstream_unavailable())?;
+            if let Some(canvas) = running.as_ref() {
+                return Ok(Arc::clone(canvas));
+            }
+            let canvas = Arc::new(
+                SandboxCanvas::start(&self.config.base_url)
+                    .map_err(|_| ToolError::upstream_unavailable())?,
+            );
+            *running = Some(Arc::clone(&canvas));
+            Ok(canvas)
+        }
+    }
+
+    impl DeadlineProvider for LazyCanvas {
+        fn list<'a>(
+            &'a self,
+            query: &'a DeadlineQuery,
+        ) -> BoxFuture<'a, ProviderResult<Deadlines>> {
+            Box::pin(async move { self.running()?.provider.list(query).await })
+        }
+    }
 }
 
 /// Production builds contain no Canvas simulation at all.

@@ -49,8 +49,8 @@ Each fix starts with a test that reproduces the finding and fails on the unfixed
 
 ## 9. Validation vs activation (finding 13)
 
-- [ ] 9.1 Failing test: `App::check` on a sandbox school with Canvas enabled and a non-existent audit path creates no audit file and leaves the Canvas port free
-- [ ] 9.2 Split `App::check` from activation; lazy Canvas start in `modules/deadlines`; `main.rs` `check` uses `App::check` (logging untouched)
+- [x] 9.1 Failing test: `App::check` on a sandbox school with Canvas enabled and a non-existent audit path creates no audit file and leaves the Canvas port free
+- [x] 9.2 Split `App::check` from activation; lazy Canvas start in `modules/deadlines`; `main.rs` `check` uses `App::check` (logging untouched)
 
 ## 10. Docs and review
 

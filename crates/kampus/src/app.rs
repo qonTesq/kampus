@@ -69,6 +69,14 @@ pub struct AppOptions {
     pub policy_path: Option<PathBuf>,
 }
 
+/// What `kampus check` found valid.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CheckReport {
+    pub school_id: String,
+    /// Registered tools.
+    pub tools: usize,
+}
+
 /// A fully validated server instance for one school.
 #[derive(Debug)]
 pub struct App {
@@ -93,6 +101,22 @@ impl App {
         Self::build_with(school, policy, env, AppOptions::default())
     }
 
+    /// Validate both files, register every module and check the policy
+    /// against the registered tools, activating nothing: no audit log is
+    /// opened or pruned, nothing listens and no sandbox service starts.
+    /// This is `kampus check`.
+    pub fn check(
+        school: SchoolConfig,
+        policy: &PolicyConfig,
+        env: &Env<'_>,
+    ) -> Result<CheckReport, AppError> {
+        let (init, _registry, known_tools) = validate(school, policy, env)?;
+        Ok(CheckReport {
+            school_id: init.school.school.id.clone(),
+            tools: known_tools.len(),
+        })
+    }
+
     /// [`App::build`] with explicit runtime inputs (tests pass local keys
     /// and a temporary audit path).
     pub fn build_with(
@@ -101,22 +125,8 @@ impl App {
         env: &Env<'_>,
         options: AppOptions,
     ) -> Result<Self, AppError> {
-        school.validate(env)?;
-        let init = ModuleInit {
-            runtime: Arc::new(SharedRuntime::for_school(&school)),
-            school: Arc::new(school),
-        };
-        let registry = ToolRegistry::new(registry::modules(&init)?)?;
-        if let Some(unknown) = init
-            .school
-            .modules
-            .iter()
-            .find(|m| !registry.module_ids().contains(m))
-        {
-            return Err(AppError::UnknownModule(unknown.clone()));
-        }
-        let known_tools: BTreeSet<String> = registry.tool_names().map(str::to_owned).collect();
-        policy.validate(&init.school, &known_tools, env)?;
+        let (init, registry, known_tools) = validate(school, &policy, env)?;
+        // Activation starts here.
         let scopes = registry
             .tools()
             .flat_map(|t| t.descriptor.scopes.iter().cloned())
@@ -311,6 +321,33 @@ impl App {
         cancel.cancel();
         result
     }
+}
+
+/// The shared validation half of [`App::check`] and [`App::build_with`]:
+/// school, module registration, unknown modules, then policy against the
+/// registered tools. Module construction activates nothing.
+fn validate(
+    school: SchoolConfig,
+    policy: &PolicyConfig,
+    env: &Env<'_>,
+) -> Result<(ModuleInit, ToolRegistry, BTreeSet<String>), AppError> {
+    school.validate(env)?;
+    let init = ModuleInit {
+        runtime: Arc::new(SharedRuntime::for_school(&school)),
+        school: Arc::new(school),
+    };
+    let registry = ToolRegistry::new(registry::modules(&init)?)?;
+    if let Some(unknown) = init
+        .school
+        .modules
+        .iter()
+        .find(|m| !registry.module_ids().contains(m))
+    {
+        return Err(AppError::UnknownModule(unknown.clone()));
+    }
+    let known_tools: BTreeSet<String> = registry.tool_names().map(str::to_owned).collect();
+    policy.validate(&init.school, &known_tools, env)?;
+    Ok((init, registry, known_tools))
 }
 
 fn mcp_path(school: &SchoolConfig) -> &str {
