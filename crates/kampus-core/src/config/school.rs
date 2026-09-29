@@ -1,5 +1,5 @@
 use std::collections::{BTreeMap, BTreeSet};
-use std::net::SocketAddr;
+use std::net::{IpAddr, SocketAddr};
 use std::path::PathBuf;
 
 use chrono::{NaiveDate, NaiveTime};
@@ -56,6 +56,110 @@ pub struct ServerConfig {
     pub listen: SocketAddr,
     /// Local admin listener; must be loopback.
     pub admin_listen: SocketAddr,
+    /// Reverse proxies whose forwarded client address is believed. Off
+    /// unless configured: forwarded headers are ignored by default.
+    #[serde(default)]
+    pub trusted_proxy: Option<TrustedProxy>,
+}
+
+/// Which forwarded header carries the client address.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ForwardedHeader {
+    /// `CF-Connecting-IP` (Cloudflare Tunnel): one address.
+    CfConnectingIp,
+    /// `X-Forwarded-For`: the rightmost address that is not a trusted peer.
+    XForwardedFor,
+}
+
+impl ForwardedHeader {
+    /// The lowercase HTTP header name.
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::CfConnectingIp => "cf-connecting-ip",
+            Self::XForwardedFor => "x-forwarded-for",
+        }
+    }
+}
+
+/// `server.trusted_proxy`: used only to key guest rate limits (in memory).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TrustedProxy {
+    pub header: ForwardedHeader,
+    /// Proxy peer addresses or CIDR ranges (`127.0.0.1`, `10.0.0.0/8`, `::1`).
+    pub peers: Vec<String>,
+}
+
+impl TrustedProxy {
+    /// Whether `ip` is one of the configured proxy peers.
+    pub fn trusts(&self, ip: IpAddr) -> bool {
+        let ip = ip.to_canonical();
+        self.peers
+            .iter()
+            .filter_map(|p| parse_range(p))
+            .any(|(net, len)| in_range(ip, net, len))
+    }
+
+    /// The client address of a connection from `peer`, given every value of
+    /// the configured header. Headers from untrusted peers, and values that
+    /// do not parse, are ignored in favour of `peer`.
+    pub fn client_ip<'a>(&self, peer: IpAddr, values: impl IntoIterator<Item = &'a str>) -> IpAddr {
+        if !self.trusts(peer) {
+            return peer;
+        }
+        let hops: Option<Vec<IpAddr>> = values
+            .into_iter()
+            .flat_map(|v| v.split(','))
+            .map(|hop| hop.trim().parse::<IpAddr>().ok())
+            .collect();
+        let Some(hops) = hops.filter(|h| !h.is_empty()) else {
+            return peer;
+        };
+        match self.header {
+            ForwardedHeader::CfConnectingIp => match hops.as_slice() {
+                [only] => *only,
+                _ => peer,
+            },
+            ForwardedHeader::XForwardedFor => hops
+                .iter()
+                .rev()
+                .find(|hop| !self.trusts(**hop))
+                .or(hops.first())
+                .copied()
+                .unwrap_or(peer),
+        }
+    }
+}
+
+/// `addr` or `addr/prefix`, with the prefix within the address family.
+pub fn parse_range(text: &str) -> Option<(IpAddr, u8)> {
+    let (addr, prefix) = match text.trim().split_once('/') {
+        Some((addr, prefix)) => (addr, Some(prefix)),
+        None => (text.trim(), None),
+    };
+    let addr: IpAddr = addr.parse().ok()?;
+    let max = if addr.is_ipv4() { 32 } else { 128 };
+    let prefix = match prefix {
+        Some(p) => p.parse::<u8>().ok().filter(|p| *p <= max)?,
+        None => max,
+    };
+    Some((addr.to_canonical(), prefix))
+}
+
+fn in_range(ip: IpAddr, net: IpAddr, prefix: u8) -> bool {
+    let mask = |bits: u32| u128::MAX.checked_shl(bits - u32::from(prefix)).unwrap_or(0);
+    match (ip, net) {
+        (IpAddr::V4(ip), IpAddr::V4(net)) => {
+            let mask = mask(32) & u128::from(u32::MAX);
+            u128::from(u32::from(ip)) & mask == u128::from(u32::from(net)) & mask
+        }
+        (IpAddr::V6(ip), IpAddr::V6(net)) => {
+            let mask = mask(128);
+            u128::from(ip) & mask == u128::from(net) & mask
+        }
+        _ => false,
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
@@ -313,13 +417,7 @@ pub(super) fn validate(c: &SchoolConfig, env: &Env<'_>) -> Vec<super::ConfigIssu
     if c.school.timezone.parse::<chrono_tz::Tz>().is_err() {
         v.push("school.timezone", "unknown IANA timezone");
     }
-    v.url("server.resource_url", &c.server.resource_url);
-    if !c.server.admin_listen.ip().is_loopback() {
-        v.push("server.admin_listen", "must be a loopback address");
-    }
-    if c.server.admin_listen == c.server.listen {
-        v.push("server.admin_listen", "must differ from server.listen");
-    }
+    validate_server(&mut v, &c.server);
     v.url("auth.issuer", &c.auth.issuer);
     if c.auth.audience.trim().is_empty() {
         v.push("auth.audience", "must not be empty");
@@ -431,6 +529,36 @@ fn validate_devices(v: &mut Issues, devices: &[DeviceConfig], env: &Env<'_>) {
             if s.role == Role::Admin {
                 v.push(format!("{sf}.role"), "stickers cannot grant admin");
             }
+        }
+    }
+}
+
+fn validate_server(v: &mut Issues, server: &ServerConfig) {
+    v.url("server.resource_url", &server.resource_url);
+    if !server.admin_listen.ip().is_loopback() {
+        v.push("server.admin_listen", "must be a loopback address");
+    }
+    if server.admin_listen == server.listen {
+        v.push("server.admin_listen", "must differ from server.listen");
+    }
+    if let Some(proxy) = &server.trusted_proxy {
+        validate_proxy(v, proxy);
+    }
+}
+
+fn validate_proxy(v: &mut Issues, proxy: &TrustedProxy) {
+    if proxy.peers.is_empty() {
+        v.push(
+            "server.trusted_proxy.peers",
+            "must list at least one proxy address",
+        );
+    }
+    for (i, peer) in proxy.peers.iter().enumerate() {
+        if parse_range(peer).is_none() {
+            v.push(
+                format!("server.trusted_proxy.peers[{i}]"),
+                "must be an IP address or CIDR range",
+            );
         }
     }
 }

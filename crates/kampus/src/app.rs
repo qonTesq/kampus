@@ -240,6 +240,11 @@ impl App {
                 crate::auth::authenticate,
             ))
             .layer(middleware::from_fn(protocol_version_guard))
+            // Guest admission key; independent of the layers above.
+            .layer(middleware::from_fn_with_state(
+                Arc::new(school.server.trusted_proxy.clone()),
+                crate::client::client_addr,
+            ))
             .merge(crate::auth::metadata_routes(&self.auth))
             .merge(registry::routes(&self.init).layer(axum::Extension(Arc::clone(&self.devices))))
     }

@@ -16,10 +16,10 @@ pub use policy::{
     RegisteredClient, Rule,
 };
 pub use school::{
-    AuthConfig, AuthMode, BannerConfig, CanvasConfig, DeviceConfig, DeviceSticker, GtfsValidity,
-    HoursConfig, LibCalConfig, LibCalLocation, Library, MascotConfig, ParserProfile, SandboxConfig,
-    SchoolConfig, SchoolInfo, ServerConfig, ServiceWindow, TransitConfig, TransitProvider,
-    TransitRoute, TransitStop, UpstreamLimits,
+    AuthConfig, AuthMode, BannerConfig, CanvasConfig, DeviceConfig, DeviceSticker, ForwardedHeader,
+    GtfsValidity, HoursConfig, LibCalConfig, LibCalLocation, Library, MascotConfig, ParserProfile,
+    SandboxConfig, SchoolConfig, SchoolInfo, ServerConfig, ServiceWindow, TransitConfig,
+    TransitProvider, TransitRoute, TransitStop, TrustedProxy, UpstreamLimits, parse_range,
 };
 pub use validate::{ConfigIssue, Env};
 

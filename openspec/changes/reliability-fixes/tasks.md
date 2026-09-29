@@ -44,8 +44,8 @@ Each fix starts with a test that reproduces the finding and fails on the unfixed
 
 - [x] 8.1 Failing dispatch tests: 45 guest `confirm_booking` calls hit the admission limit before policy, with one audit row each; two guests with different client addresses have independent buckets; the global guest cap refuses guests but not users; the concurrency limit refuses with `builtin:overloaded`
 - [x] 8.2 Add the `PolicyLimits` fields (optional, validated positive), `CallerLimits` admission, and `Dispatcher::call_from`
-- [ ] 8.3 Failing tests for client identity: untrusted peers' forwarding headers are ignored; a trusted peer's `CF-Connecting-IP` and rightmost untrusted `X-Forwarded-For` are used; config validation rejects bad peers
-- [ ] 8.4 Add `server.trusted_proxy`, CIDR parsing, the middleware `ClientAddr` extension and `server.rs` `call_from`
+- [x] 8.3 Failing tests for client identity: untrusted peers' forwarding headers are ignored; a trusted peer's `CF-Connecting-IP` and rightmost untrusted `X-Forwarded-For` are used; config validation rejects bad peers
+- [x] 8.4 Add `server.trusted_proxy`, CIDR parsing, the middleware `ClientAddr` extension and `server.rs` `call_from`
 
 ## 9. Validation vs activation (finding 13)
 

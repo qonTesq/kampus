@@ -6,6 +6,7 @@ mod acceptance;
 mod admin;
 mod app;
 mod auth;
+mod client;
 pub mod registry;
 mod server;
 mod session;

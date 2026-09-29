@@ -2,6 +2,7 @@
 //! dispatcher. The only place rmcp types appear.
 
 use std::borrow::Cow;
+use std::net::IpAddr;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 
@@ -18,6 +19,7 @@ use rmcp::{ErrorData as McpError, RoleServer, ServerHandler};
 use serde_json::Value;
 
 use crate::app::SUPPORTED_PROTOCOL_VERSIONS;
+use crate::client::ClientAddr;
 
 /// One rmcp handler instance; cheap to clone per session.
 #[derive(Debug, Clone)]
@@ -80,6 +82,14 @@ fn principal(ctx: &RequestContext<RoleServer>) -> Principal {
         .unwrap_or_else(Principal::guest)
 }
 
+/// The client address the router resolved for this request, if any.
+fn client(ctx: &RequestContext<RoleServer>) -> Option<IpAddr> {
+    ctx.extensions
+        .get::<http::request::Parts>()
+        .and_then(|parts| parts.extensions.get::<ClientAddr>())
+        .map(|ClientAddr(ip)| *ip)
+}
+
 impl ServerHandler for KampusMcp {
     fn get_info(&self) -> ServerConfig {
         (*self.info).clone()
@@ -110,7 +120,13 @@ impl ServerHandler for KampusMcp {
         let request_id = format!("r{:x}", self.next_request.fetch_add(1, Ordering::Relaxed));
         let projected = self
             .dispatcher
-            .call(&request.name, args, principal(&ctx), request_id)
+            .call_from(
+                &request.name,
+                args,
+                principal(&ctx),
+                request_id,
+                client(&ctx),
+            )
             .await
             .map_err(|_| McpError::invalid_params("unknown tool", None))?;
         // `structured*` also emits the same value, serialized, as compatibility text.

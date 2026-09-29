@@ -280,3 +280,123 @@ fn defaults_match_frozen_values() {
         (1, 2, 5000)
     );
 }
+
+// ---- trusted proxy and admission limits -------------------------------------
+
+fn proxy(header: ForwardedHeader, peers: &[&str]) -> TrustedProxy {
+    TrustedProxy {
+        header,
+        peers: peers.iter().map(|p| (*p).to_owned()).collect(),
+    }
+}
+
+fn ip(text: &str) -> std::net::IpAddr {
+    text.parse().unwrap()
+}
+
+#[test]
+fn forwarded_headers_count_only_from_trusted_peers() {
+    let cf = proxy(
+        ForwardedHeader::CfConnectingIp,
+        &["127.0.0.1", "10.0.0.0/8"],
+    );
+    // Untrusted peer: the header is ignored.
+    assert_eq!(
+        cf.client_ip(ip("198.51.100.9"), ["203.0.113.5"]),
+        ip("198.51.100.9")
+    );
+    // Trusted peers (exact and CIDR): the header is used.
+    assert_eq!(
+        cf.client_ip(ip("127.0.0.1"), ["203.0.113.5"]),
+        ip("203.0.113.5")
+    );
+    assert_eq!(
+        cf.client_ip(ip("10.20.30.40"), ["2001:db8::7"]),
+        ip("2001:db8::7")
+    );
+    // Missing, garbage or duplicated values fall back to the peer.
+    assert_eq!(cf.client_ip(ip("127.0.0.1"), []), ip("127.0.0.1"));
+    assert_eq!(
+        cf.client_ip(ip("127.0.0.1"), ["not-an-ip"]),
+        ip("127.0.0.1")
+    );
+    assert_eq!(
+        cf.client_ip(ip("127.0.0.1"), ["203.0.113.5", "203.0.113.6"]),
+        ip("127.0.0.1")
+    );
+    // An IPv4-mapped peer is the same peer.
+    assert_eq!(
+        cf.client_ip(ip("::ffff:127.0.0.1"), ["203.0.113.5"]),
+        ip("203.0.113.5")
+    );
+}
+
+#[test]
+fn x_forwarded_for_uses_the_rightmost_untrusted_hop() {
+    let xff = proxy(ForwardedHeader::XForwardedFor, &["127.0.0.1", "10.0.0.0/8"]);
+    // A client-supplied spoofed hop on the left is skipped.
+    assert_eq!(
+        xff.client_ip(ip("127.0.0.1"), ["6.6.6.6, 203.0.113.5, 10.1.1.1"]),
+        ip("203.0.113.5")
+    );
+    // Multiple header lines form one list.
+    assert_eq!(
+        xff.client_ip(ip("127.0.0.1"), ["6.6.6.6", "203.0.113.5"]),
+        ip("203.0.113.5")
+    );
+    assert_eq!(
+        xff.client_ip(ip("127.0.0.1"), ["garbage, 1.2.3.4"]),
+        ip("127.0.0.1")
+    );
+    assert_eq!(
+        xff.client_ip(ip("192.0.2.1"), ["203.0.113.5"]),
+        ip("192.0.2.1")
+    );
+}
+
+#[test]
+fn trusted_proxy_is_optional_and_validated() {
+    assert_eq!(school().server.trusted_proxy, None);
+    let mut s = school();
+    s.server.trusted_proxy = Some(proxy(
+        ForwardedHeader::CfConnectingIp,
+        &["127.0.0.1", "::1", "10.0.0.0/8", "fd00::/8"],
+    ));
+    s.validate(&env(false)).unwrap();
+    s.server.trusted_proxy = Some(proxy(ForwardedHeader::XForwardedFor, &[]));
+    assert_eq!(
+        school_issues(&s, &env(false)),
+        ["server.trusted_proxy.peers"]
+    );
+    s.server.trusted_proxy = Some(proxy(
+        ForwardedHeader::XForwardedFor,
+        &["127.0.0.1", "10.0.0.0/33", "example.org"],
+    ));
+    assert_eq!(
+        school_issues(&s, &env(false)),
+        [
+            "server.trusted_proxy.peers[1]",
+            "server.trusted_proxy.peers[2]"
+        ]
+    );
+    let yaml = TEMPLE_SCHOOL.replacen(
+        "server:\n",
+        "server:\n  trusted_proxy: { header: x_forwarded_for, peers: [\"127.0.0.1\"] }\n",
+        1,
+    );
+    let parsed = SchoolConfig::from_yaml(&yaml).unwrap();
+    assert_eq!(
+        parsed.server.trusted_proxy.map(|p| p.header),
+        Some(ForwardedHeader::XForwardedFor)
+    );
+}
+
+#[test]
+fn admission_limits_default_and_must_be_positive() {
+    let p = policy();
+    assert_eq!(p.limits.calls_per_minute, 120);
+    assert_eq!(p.limits.max_concurrent_calls, 64);
+    let mut zero = policy();
+    zero.limits.max_concurrent_calls = 0;
+    assert_eq!(policy_issues(&zero, &env(false)), ["limits"]);
+}
