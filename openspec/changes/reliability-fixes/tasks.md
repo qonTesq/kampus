@@ -37,8 +37,8 @@ Each fix starts with a test that reproduces the finding and fails on the unfixed
 
 ## 7. Audit writer (finding 4, audit half; quick win)
 
-- [ ] 7.1 Failing tests: concurrent records are committed in fewer batches than rows (batch counter), each acked only after the write; a full queue fails with `AuditError` after bounded wait; `recent` keeps only the last N rows (checked through the public result on a large log) and prune still works
-- [ ] 7.2 Implement the writer thread, group commit, streaming prune and ring-buffer `recent`
+- [x] 7.1 Failing tests: concurrent records are committed in fewer batches than rows (batch counter), each acked only after the write; a full queue fails with `AuditError` after bounded wait; `recent` keeps only the last N rows (checked through the public result on a large log) and prune still works
+- [x] 7.2 Implement the writer thread, group commit, streaming prune and ring-buffer `recent`
 
 ## 8. Admission and guest identity (findings 4, 5)
 

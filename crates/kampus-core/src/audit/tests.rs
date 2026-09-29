@@ -1,9 +1,13 @@
 use std::collections::BTreeSet;
+use std::fs;
+use std::path::PathBuf;
+use std::sync::Arc;
+use std::time::Duration;
 
-use chrono::TimeDelta;
+use chrono::{DateTime, TimeDelta, Utc};
 
 use super::*;
-use crate::contracts::{AuditDecision, DataClass, Role};
+use crate::contracts::{AuditDecision, AuditEvent, AuditSink, DataClass, Role};
 
 fn temp_path(name: &str) -> PathBuf {
     let dir = std::env::temp_dir().join(format!(
@@ -82,6 +86,102 @@ async fn prunes_rows_past_retention() {
     assert_eq!(rules, ["new", "recent"]);
     assert_eq!(audit.prune(now).unwrap(), 0);
     assert!(!path.with_extension("jsonl.tmp").exists());
+    let _ = fs::remove_dir_all(path.parent().unwrap());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn concurrent_rows_are_group_committed_and_each_is_durable() {
+    let path = temp_path("batch");
+    let audit = std::sync::Arc::new(JsonlAudit::open(&path, 24).unwrap());
+    let now = Utc::now();
+    let tasks: Vec<_> = (0..64)
+        .map(|i| {
+            let audit = std::sync::Arc::clone(&audit);
+            tokio::spawn(async move { audit.record(&event(now, &format!("r{i}"))).await })
+        })
+        .collect();
+    for task in tasks {
+        task.await.unwrap().unwrap();
+    }
+    // Every acknowledged row is on disk.
+    let text = fs::read_to_string(&path).unwrap();
+    assert_eq!(text.lines().count(), 64);
+    assert!(
+        audit.syncs() < 64,
+        "one fsync per row: {} for 64 rows",
+        audit.syncs()
+    );
+    let _ = fs::remove_dir_all(path.parent().unwrap());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn saturated_writer_fails_closed_after_a_bounded_wait() {
+    let path = temp_path("backpressure");
+    let audit = Arc::new(JsonlAudit::open_small(path.clone(), 2).unwrap());
+    // Stall the writer for 3 s by holding the file lock on another thread.
+    let (locked, is_locked) = std::sync::mpsc::channel();
+    let holder = {
+        let audit = Arc::clone(&audit);
+        std::thread::spawn(move || {
+            let _guard = audit.hold();
+            locked.send(()).unwrap();
+            std::thread::sleep(Duration::from_secs(3));
+        })
+    };
+    is_locked.recv().unwrap();
+    let now = Utc::now();
+    let started = std::time::Instant::now();
+    let tasks: Vec<_> = (0..12)
+        .map(|i| {
+            let audit = Arc::clone(&audit);
+            tokio::spawn(async move {
+                let result = audit.record(&event(now, &format!("r{i}"))).await;
+                (result, started.elapsed())
+            })
+        })
+        .collect();
+    let mut accepted = 0;
+    let mut refused = 0;
+    for task in tasks {
+        match task.await.unwrap() {
+            (Ok(()), _) => accepted += 1,
+            (Err(AuditError), waited) => {
+                refused += 1;
+                assert!(waited < Duration::from_secs(3), "refusal waited {waited:?}");
+            }
+        }
+    }
+    holder.join().unwrap();
+    assert!(refused > 0, "a saturated queue must refuse");
+    assert!(
+        accepted > 0,
+        "queued rows are written once the writer resumes"
+    );
+    // Exactly the acknowledged rows are on disk.
+    assert_eq!(fs::read_to_string(&path).unwrap().lines().count(), accepted);
+    let _ = fs::remove_dir_all(path.parent().unwrap());
+}
+
+#[tokio::test]
+async fn recent_reads_the_tail_of_a_large_log() {
+    let path = temp_path("large");
+    fs::create_dir_all(path.parent().unwrap()).unwrap();
+    let now = Utc::now();
+    let mut text = String::new();
+    for i in 0..5000 {
+        text.push_str(&serde_json::to_string(&event(now, &format!("r{i}"))).unwrap());
+        text.push('\n');
+    }
+    fs::write(&path, text).unwrap();
+    let audit = JsonlAudit::open(&path, 24).unwrap();
+    let rules: Vec<String> = audit
+        .recent(3)
+        .unwrap()
+        .into_iter()
+        .map(|e| e.rule)
+        .collect();
+    assert_eq!(rules, ["r4999", "r4998", "r4997"]);
+    assert!(audit.recent(0).unwrap().is_empty());
     let _ = fs::remove_dir_all(path.parent().unwrap());
 }
 
