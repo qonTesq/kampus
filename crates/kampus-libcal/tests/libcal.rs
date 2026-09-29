@@ -352,6 +352,113 @@ async fn server_errors_retry_once_then_fail_typed() {
     assert_eq!(server.hits(), 2, "one retry");
 }
 
+/// Raw loopback server answering each connection with the next scripted
+/// bytes; `hang` keeps the connection open afterwards instead of closing.
+async fn scripted(replies: Vec<(Vec<u8>, bool)>) -> (String, Arc<std::sync::Mutex<usize>>) {
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let base = format!("http://{}", listener.local_addr().unwrap());
+    let hits = Arc::new(std::sync::Mutex::new(0));
+    let count = Arc::clone(&hits);
+    tokio::spawn(async move {
+        for (bytes, hang) in replies {
+            let (mut socket, _) = listener.accept().await.unwrap();
+            let mut head = Vec::new();
+            while !head.windows(4).any(|w| w == b"\r\n\r\n") {
+                if socket.read_buf(&mut head).await.unwrap_or(0) == 0 {
+                    break;
+                }
+            }
+            *count.lock().unwrap() += 1;
+            let _ = socket.write_all(&bytes).await;
+            if hang {
+                tokio::spawn(async move {
+                    tokio::time::sleep(std::time::Duration::from_mins(1)).await;
+                    drop(socket);
+                });
+            }
+        }
+    });
+    (base, hits)
+}
+
+fn http(status: &str, headers: &str, body: &[u8]) -> Vec<u8> {
+    let mut out = format!(
+        "HTTP/1.1 {status}\r\n{headers}Content-Length: {}\r\nConnection: close\r\n\r\n",
+        body.len()
+    )
+    .into_bytes();
+    out.extend_from_slice(body);
+    out
+}
+
+fn provider_at(base: &str) -> LibCal {
+    LibCal::new(
+        "temple",
+        "America/New_York",
+        &config(base),
+        Arc::new(SharedRuntime::new()),
+    )
+    .unwrap()
+}
+
+#[tokio::test]
+async fn oversized_body_without_length_is_refused_while_streaming() {
+    // Synthetic: 1 MiB + 1 byte with no Content-Length, then the connection
+    // stays open. A bounded reader stops at the cap instead of buffering.
+    let mut reply = b"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n".to_vec();
+    reply.extend(vec![b' '; 1024 * 1024 + 1]);
+    let (base, hits) = scripted(vec![(reply, true)]).await;
+    let q = query("2026-09-27T14:00:00-04:00", "2026-09-27T16:00:00-04:00");
+    let started = std::time::Instant::now();
+    let err = provider_at(&base).find(&q).await.unwrap_err();
+    assert_eq!(err.code, ErrorCode::UpstreamInvalidResponse);
+    assert!(started.elapsed() < std::time::Duration::from_secs(3));
+    assert_eq!(*hits.lock().unwrap(), 1, "an oversized body is not retried");
+}
+
+#[tokio::test]
+async fn short_retry_after_is_honored_before_the_retry() {
+    let (base, hits) = scripted(vec![
+        (
+            http("429 Too Many Requests", "Retry-After: 1\r\n", b""),
+            false,
+        ),
+        (
+            http(
+                "200 OK",
+                "Content-Type: application/json\r\n",
+                &fixture_body(NEXT_DAY),
+            ),
+            false,
+        ),
+    ])
+    .await;
+    let q = query("2026-09-27T14:00:00-04:00", "2026-09-27T16:00:00-04:00");
+    let started = std::time::Instant::now();
+    let found = provider_at(&base).find(&q).await.unwrap();
+    assert!(!found.value.is_empty());
+    assert!(started.elapsed() >= std::time::Duration::from_secs(1));
+    assert_eq!(*hits.lock().unwrap(), 2);
+}
+
+#[tokio::test]
+async fn retry_after_beyond_the_deadline_returns_at_once() {
+    let (base, hits) = scripted(vec![
+        (
+            http("429 Too Many Requests", "Retry-After: 60\r\n", b""),
+            false,
+        ),
+        (http("200 OK", "", b"[]"), false),
+    ])
+    .await;
+    let q = query("2026-09-27T14:00:00-04:00", "2026-09-27T16:00:00-04:00");
+    let err = provider_at(&base).find(&q).await.unwrap_err();
+    assert_eq!(err.code, ErrorCode::UpstreamUnavailable);
+    assert_eq!(err.retry_after_seconds, Some(60));
+    assert_eq!(*hits.lock().unwrap(), 1, "no early retry");
+}
+
 #[tokio::test]
 async fn unreachable_upstream_is_unavailable() {
     let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();

@@ -16,8 +16,8 @@ Each fix starts with a test that reproduces the finding and fails on the unfixed
 
 ## 3. Shared bounded upstream helper, LibCal body cap and Retry-After (findings 7, 9; quick win)
 
-- [ ] 3.1 Failing LibCal tests: oversized chunked body without `Content-Length` refused (bounded read); 429 with a short `Retry-After` waits at least that long and then retries; 429 with a `Retry-After` beyond the deadline returns at once with the retry hint
-- [ ] 3.2 Add `runtime::upstream` bounded GET and `read_bounded`; move the hours and transit `http.rs` loops onto it (their existing tests keep passing); switch LibCal `fetch.rs` to it
+- [x] 3.1 Failing LibCal tests: oversized chunked body without `Content-Length` refused (bounded read); 429 with a short `Retry-After` waits at least that long and then retries; 429 with a `Retry-After` beyond the deadline returns at once with the retry hint
+- [x] 3.2 Add `runtime::upstream` bounded GET and `read_bounded`; move the hours and transit `http.rs` loops onto it (their existing tests keep passing); switch LibCal `fetch.rs` to it
 
 ## 4. Host budgets from config (finding 8)
 

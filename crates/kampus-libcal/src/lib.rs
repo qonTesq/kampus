@@ -22,7 +22,7 @@ use kampus_core::contracts::providers::{
 };
 use kampus_core::contracts::{BoxFuture, Provenance, SourceKind, ToolError};
 use kampus_core::output::{cap_items, limits};
-use kampus_core::runtime::{CacheKey, SharedRuntime, defaults};
+use kampus_core::runtime::{BoundedGet, CacheKey, SharedRuntime, defaults};
 use url::Url;
 
 #[cfg(feature = "sandbox")]
@@ -62,7 +62,7 @@ pub struct LibCal {
     timezone: Tz,
     locations: Vec<LibCalLocation>,
     default_location: String,
-    client: reqwest::Client,
+    upstream: BoundedGet,
     runtime: Arc<SharedRuntime>,
 }
 
@@ -98,11 +98,12 @@ impl LibCal {
         Ok(Self {
             school_id: school_id.to_owned(),
             base_url: config.base_url.clone(),
+            upstream: BoundedGet::new(client, host.clone(), fetch::MAX_BODY_BYTES)
+                .accept("application/json"),
             host,
             timezone,
             locations: config.locations.clone(),
             default_location: config.default_location.clone(),
-            client,
             runtime,
         })
     }

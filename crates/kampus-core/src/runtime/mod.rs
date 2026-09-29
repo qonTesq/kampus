@@ -2,14 +2,19 @@
 //! HTTP defaults. Authorization always runs before any of these are touched.
 
 mod cache;
+mod deadline;
 mod limit;
 mod upstream;
 
 use std::fmt;
 
 pub use cache::{CacheKey, Cached, PublicCache};
+pub use deadline::{deadline, with_deadline};
 pub use limit::RateLimiter;
-pub use upstream::{UpstreamError, upstream_client, upstream_client_builder};
+pub use upstream::{
+    BoundedGet, UpstreamError, UpstreamResponse, read_bounded, status_error, upstream_client,
+    upstream_client_builder,
+};
 
 /// Frozen numeric defaults (see `docs/contracts/runtime.md`).
 pub mod defaults {
