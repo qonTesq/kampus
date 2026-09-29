@@ -133,8 +133,14 @@ pub(crate) fn live_window(at: DateTime<Utc>, now: DateTime<Utc>) -> Result<(), T
     Ok(())
 }
 
-/// Departures not yet gone at `query.at` (allowing reported delay),
-/// optionally for one line, earliest first.
+/// When a train actually leaves: its scheduled time plus any reported delay.
+fn effective_departure(d: &Departure) -> Option<DateTime<Utc>> {
+    d.departure_at
+        .map(|t| t + TimeDelta::seconds(i64::from(d.delay_seconds.unwrap_or(0).max(0))))
+}
+
+/// Departures not yet gone at `query.at`, optionally for one line, ordered
+/// by effective (delay-adjusted) time; untimed trains last.
 fn select(all: &[Departure], query: &DepartureQuery) -> Departures {
     let mut departures: Vec<Departure> = all
         .iter()
@@ -144,14 +150,13 @@ fn select(all: &[Departure], query: &DepartureQuery) -> Departures {
                 .as_ref()
                 .is_none_or(|r| d.route_id.as_ref() == Some(r))
         })
-        .filter(|d| {
-            d.departure_at.is_none_or(|t| {
-                t + TimeDelta::seconds(i64::from(d.delay_seconds.unwrap_or(0).max(0))) >= query.at
-            })
-        })
+        .filter(|d| effective_departure(d).is_none_or(|t| t >= query.at))
         .cloned()
         .collect();
-    departures.sort_by_key(|d| (d.departure_at.is_none(), d.departure_at));
+    departures.sort_by_key(|d| {
+        let effective = effective_departure(d);
+        (effective.is_none(), effective)
+    });
     departures.truncate(query.limit);
     Departures {
         stop_id: query.stop_id.clone(),
@@ -286,13 +291,21 @@ mod tests {
             train("next", "B", at(21, 30), None),
             train("later", "A", at(21, 50), Some(0)),
         ];
-        let got = select(&board, &query(None, at(21, 20), 2));
-        let ids: Vec<_> = got
-            .departures
-            .iter()
-            .map(|d| d.trip_id.as_deref().unwrap())
-            .collect();
-        assert_eq!(ids, ["next", "late"]);
+        let ids = |limit| {
+            select(&board, &query(None, at(21, 20), limit))
+                .departures
+                .iter()
+                .map(|d| d.trip_id.clone().unwrap())
+                .collect::<Vec<_>>()
+        };
+        // Effective times: next 21:30, later 21:50, late 21:40 + 50 min = 22:30.
+        assert_eq!(ids(5), ["next", "later", "late"]);
+        assert_eq!(ids(2), ["next", "later"]);
+        // Reported time and delay are returned unchanged.
+        let got = select(&board, &query(None, at(21, 20), 5));
+        let late = got.departures.last().unwrap();
+        assert_eq!(late.departure_at, Some(at(21, 40)));
+        assert_eq!(late.delay_seconds, Some(50 * 60));
         assert_eq!(got.service_status, ServiceStatus::Running);
         let got = select(&board, &query(Some("B"), at(21, 20), 5));
         assert_eq!(got.departures.len(), 1);

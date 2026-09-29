@@ -104,9 +104,18 @@ fn fall_back_day_measures_times_from_noon_minus_twelve_hours() {
             limit: 1,
         })
         .unwrap();
-    let first = got.departures[0].departure_at.unwrap();
-    let local = first.with_timezone(&New_York);
-    assert!(local.time() >= NaiveTime::from_hms_opt(9, 55, 0).unwrap());
+    // Computed by hand from the raw subset: service 19 (Sunday) runs on
+    // 2026-11-01 with no calendar exception, and its first B1 departure at
+    // stop 32148 at or after 09:55 is trip 978546 at 10:00:00. Noon-12h on
+    // that day is 00:00 EST = 05:00 UTC, so 10:00:00 is 15:00 UTC.
+    let first = &got.departures[0];
+    assert_eq!(first.trip_id.as_deref(), Some("978546"));
+    assert_eq!(
+        first.departure_at,
+        Some(Utc.with_ymd_and_hms(2026, 11, 1, 15, 0, 0).unwrap())
+    );
+    let local = first.departure_at.unwrap().with_timezone(&New_York);
+    assert_eq!(local.time(), NaiveTime::from_hms_opt(10, 0, 0).unwrap());
     assert_eq!(local.offset().to_string(), "EST");
 }
 

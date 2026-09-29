@@ -4,9 +4,9 @@ Each fix starts with a test that reproduces the finding and fails on the unfixed
 
 ## 1. Rail ordering (finding 11)
 
-- [ ] 1.1 Correct `select_keeps_delayed_trains_filters_line_and_limits` to expect delay-adjusted order (next 21:30, later 21:50, late 22:30) and see it fail
-- [ ] 1.2 Use one effective departure time for filter and sort in `septa::select`; the test passes
-- [ ] 1.3 Quick win: the DST test asserts an independently computed exact departure (the first B1 ≥ 09:55 EST on 2026-11-01, from `stop_times.txt` and the fall-back offset)
+- [x] 1.1 Correct `select_keeps_delayed_trains_filters_line_and_limits` to expect delay-adjusted order (next 21:30, later 21:50, late 22:30) and see it fail
+- [x] 1.2 Use one effective departure time for filter and sort in `septa::select`; the test passes
+- [x] 1.3 Quick win: the DST test asserts an independently computed exact departure (the first B1 ≥ 09:55 EST on 2026-11-01, from `stop_times.txt` and the fall-back offset)
 
 ## 2. Cache outcomes, stale age and fresh reads (findings 6-cache, 10, 12)
 
