@@ -32,8 +32,8 @@ Each fix starts with a test that reproduces the finding and fails on the unfixed
 
 ## 6. JWKS refresh (finding 3)
 
-- [ ] 6.1 Failing tests: with JWKS answering 503 after the first fetch, four unknown-`kid` tokens cause at most one refetch and a valid cached-`kid` token still verifies; after TTL with the endpoint down, the backoff suppresses repeat fetches; a cached-`kid` lookup does not wait for a slow in-flight refresh
-- [ ] 6.2 Implement the state/gate split, backoff, generation re-check and bounded refresh
+- [x] 6.1 Failing tests: with JWKS answering 503 after the first fetch, four unknown-`kid` tokens cause at most one refetch and a valid cached-`kid` token still verifies; after TTL with the endpoint down, the backoff suppresses repeat fetches; a cached-`kid` lookup does not wait for a slow in-flight refresh
+- [x] 6.2 Implement the state/gate split, backoff, generation re-check and bounded refresh
 
 ## 7. Audit writer (finding 4, audit half; quick win)
 

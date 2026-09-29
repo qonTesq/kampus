@@ -510,11 +510,14 @@ fn open_and_protected_requests() {
 
 // ---- trusted discovery, caching and key rotation ----------------------------
 
-/// A minimal realm on 127.0.0.1: discovery + JWKS, counting key fetches.
+/// A minimal realm on 127.0.0.1: discovery + JWKS, counting key fetches
+/// (failed ones too). `certs_status` and `certs_delay` script the key endpoint.
 struct Realm {
     issuer: String,
     keys: Arc<Mutex<JwkSet>>,
     jwks_fetches: Arc<Mutex<u32>>,
+    certs_status: Arc<Mutex<u16>>,
+    certs_delay: Arc<Mutex<std::time::Duration>>,
 }
 
 async fn realm(initial: JwkSet, jwks_origin_override: Option<&'static str>) -> Realm {
@@ -523,41 +526,145 @@ async fn realm(initial: JwkSet, jwks_origin_override: Option<&'static str>) -> R
     let issuer = format!("{base}/realms/kampus");
     let keys = Arc::new(Mutex::new(initial));
     let jwks_fetches = Arc::new(Mutex::new(0));
-    let (served_keys, fetches, served_issuer) =
-        (Arc::clone(&keys), Arc::clone(&jwks_fetches), issuer.clone());
+    let certs_status = Arc::new(Mutex::new(200));
+    let certs_delay = Arc::new(Mutex::new(std::time::Duration::ZERO));
     let jwks_uri = format!(
         "{}/realms/kampus/protocol/openid-connect/certs",
         jwks_origin_override.unwrap_or(&base)
+    );
+    let served = (
+        Arc::clone(&keys),
+        Arc::clone(&jwks_fetches),
+        Arc::clone(&certs_status),
+        Arc::clone(&certs_delay),
+        issuer.clone(),
+        jwks_uri,
     );
     tokio::spawn(async move {
         loop {
             let Ok((mut stream, _)) = listener.accept().await else {
                 return;
             };
-            let mut buf = vec![0; 4096];
-            let n = stream.read(&mut buf).await.unwrap_or(0);
-            let request = String::from_utf8_lossy(&buf[..n]);
-            let path = request.split_whitespace().nth(1).unwrap_or("").to_owned();
-            let body = if path.ends_with("/.well-known/openid-configuration") {
-                json!({ "issuer": served_issuer, "jwks_uri": jwks_uri }).to_string()
-            } else if path.ends_with("/certs") {
-                *fetches.lock().unwrap() += 1;
-                serde_json::to_string(&*served_keys.lock().unwrap()).unwrap()
-            } else {
-                String::new()
-            };
-            let response = format!(
-                "HTTP/1.1 200 OK\r\ncontent-type: application/json\r\ncontent-length: {}\r\nconnection: close\r\n\r\n{body}",
-                body.len()
-            );
-            let _ = stream.write_all(response.as_bytes()).await;
+            let (keys, fetches, status, delay, issuer, jwks_uri) = served.clone();
+            tokio::spawn(async move {
+                let mut buf = vec![0; 4096];
+                let n = stream.read(&mut buf).await.unwrap_or(0);
+                let request = String::from_utf8_lossy(&buf[..n]);
+                let path = request.split_whitespace().nth(1).unwrap_or("").to_owned();
+                let (code, body) = if path.ends_with("/.well-known/openid-configuration") {
+                    (
+                        200,
+                        json!({ "issuer": issuer, "jwks_uri": jwks_uri }).to_string(),
+                    )
+                } else if path.ends_with("/certs") {
+                    *fetches.lock().unwrap() += 1;
+                    let wait = *delay.lock().unwrap();
+                    tokio::time::sleep(wait).await;
+                    let code = *status.lock().unwrap();
+                    (code, serde_json::to_string(&*keys.lock().unwrap()).unwrap())
+                } else {
+                    (404, String::new())
+                };
+                let response = format!(
+                    "HTTP/1.1 {code} X\r\ncontent-type: application/json\r\ncontent-length: {}\r\nconnection: close\r\n\r\n{body}",
+                    body.len()
+                );
+                let _ = stream.write_all(response.as_bytes()).await;
+            });
         }
     });
     Realm {
         issuer,
         keys,
         jwks_fetches,
+        certs_status,
+        certs_delay,
     }
+}
+
+fn fetches(realm: &Realm) -> u32 {
+    *realm.jwks_fetches.lock().unwrap()
+}
+
+#[tokio::test]
+async fn outage_keeps_cached_keys_and_rate_limits_unknown_kids() {
+    let old = TestKey::new("k-old");
+    let realm = realm(keyset(&[&old]), None).await;
+    let auth = discovery_auth(&realm);
+    let token = |k: &TestKey| k.token(&with(claims(), "iss", json!(realm.issuer)));
+    assert!(auth.verify(&token(&old)).await.is_ok());
+    assert_eq!(fetches(&realm), 1);
+
+    // The key endpoint goes down; four tokens with unknown kids arrive.
+    *realm.certs_status.lock().unwrap() = 503;
+    for i in 0..4 {
+        let stranger = TestKey::new(&format!("k-unknown-{i}"));
+        assert_eq!(
+            auth.verify(&token(&stranger)).await,
+            Err(AuthError::UnknownKey)
+        );
+    }
+    assert_eq!(fetches(&realm), 2, "one forced refresh per cooldown");
+    // The still-valid cached key keeps working.
+    assert!(auth.verify(&token(&old)).await.is_ok());
+    assert_eq!(fetches(&realm), 2);
+}
+
+#[tokio::test]
+async fn expired_keys_fail_closed_and_back_off_while_the_provider_is_down() {
+    let key = TestKey::new("k");
+    let realm = realm(keyset(&[&key]), None).await;
+    let mut s = settings(AuthMode::Oauth);
+    s.issuer = realm.issuer.parse().unwrap();
+    let issuer = s.issuer.clone();
+    let auth = Authenticator {
+        settings: s,
+        keys: KeyCache::with_timings(
+            KeySource::Discovery {
+                client: reqwest::Client::new(),
+                issuer,
+            },
+            jwks::Timings {
+                ttl: std::time::Duration::from_millis(200),
+                ..jwks::Timings::DEFAULT
+            },
+        ),
+    };
+    let token = key.token(&with(claims(), "iss", json!(realm.issuer)));
+    assert!(auth.verify(&token).await.is_ok());
+    *realm.certs_status.lock().unwrap() = 503;
+    tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+    for _ in 0..4 {
+        assert_eq!(auth.verify(&token).await, Err(AuthError::KeysUnavailable));
+    }
+    assert_eq!(fetches(&realm), 2, "failed refreshes back off");
+}
+
+#[tokio::test]
+async fn cached_key_lookups_never_wait_for_a_slow_refresh() {
+    let old = TestKey::new("k-old");
+    let realm = realm(keyset(&[&old]), None).await;
+    let auth = Arc::new(discovery_auth(&realm));
+    let token = |k: &TestKey| k.token(&with(claims(), "iss", json!(realm.issuer)));
+    assert!(auth.verify(&token(&old)).await.is_ok());
+
+    *realm.certs_delay.lock().unwrap() = std::time::Duration::from_secs(3);
+    let stranger = token(&TestKey::new("k-rotated"));
+    let refreshing = {
+        let auth = Arc::clone(&auth);
+        tokio::spawn(async move { auth.verify(&stranger).await })
+    };
+    tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+    let known = tokio::time::timeout(
+        std::time::Duration::from_millis(500),
+        auth.verify(&token(&old)),
+    )
+    .await;
+    assert!(
+        matches!(known, Ok(Ok(_))),
+        "cached kid blocked behind I/O: {known:?}"
+    );
+    assert_eq!(refreshing.await.unwrap(), Err(AuthError::UnknownKey));
 }
 
 fn discovery_auth(realm: &Realm) -> Authenticator {
