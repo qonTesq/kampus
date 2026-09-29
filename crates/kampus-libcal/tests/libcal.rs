@@ -255,6 +255,27 @@ async fn fresh_reads_bypass_the_public_cache() {
 }
 
 #[tokio::test]
+async fn back_to_back_fresh_checks_each_read_upstream() {
+    let server = FixtureServer::start().await;
+    let runtime = Arc::new(SharedRuntime::new());
+    let provider = libcal("temple", &server, &runtime);
+    let wanted = slot("2026-09-27T14:00:00-04:00", "2026-09-27T15:00:00-04:00");
+    let first = provider
+        .is_free("8404", "58701", &wanted, Freshness::Fresh)
+        .await
+        .unwrap();
+    assert!(first.value);
+    // The room is taken upstream right after the first confirmation's check.
+    server.route(NEXT_DAY_PATH, Reply::recorded(EMPTY_DAY));
+    let second = provider
+        .is_free("8404", "58701", &wanted, Freshness::Fresh)
+        .await
+        .unwrap();
+    assert!(!second.value, "a completed fresh read must not be reused");
+    assert_eq!(server.hits(), 2);
+}
+
+#[tokio::test]
 async fn is_free_rejects_unaligned_and_unknown_rooms() {
     let server = FixtureServer::start().await;
     let runtime = Arc::new(SharedRuntime::new());

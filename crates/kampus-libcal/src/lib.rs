@@ -14,7 +14,7 @@ use std::fmt;
 use std::sync::Arc;
 use std::time::Duration;
 
-use chrono::{DateTime, FixedOffset, NaiveDate, TimeDelta, Utc};
+use chrono::{DateTime, FixedOffset, NaiveDate, TimeDelta};
 use chrono_tz::Tz;
 use kampus_core::config::{LibCalConfig, LibCalLocation};
 use kampus_core::contracts::providers::{
@@ -31,8 +31,6 @@ pub use parse::{covers, parse_availability};
 
 /// Provider name in cache keys.
 const PROVIDER: &str = "libcal";
-/// Window in which concurrent fresh reads share one upstream request.
-const FRESH_WINDOW: Duration = Duration::from_secs(2);
 /// A query never spans more local days than this.
 const MAX_DAYS: usize = 8;
 
@@ -225,9 +223,9 @@ impl LibCal {
         freshness: Freshness,
     ) -> ProviderResult<Vec<Room>> {
         let url = self.availability_url(location_id, date)?;
-        let (prefix, ttl) = match freshness {
-            Freshness::Cached => ("", defaults::ROOMS_TTL),
-            Freshness::Fresh => ("fresh:", FRESH_WINDOW),
+        let prefix = match freshness {
+            Freshness::Cached => "",
+            Freshness::Fresh => "fresh:",
         };
         let key = CacheKey {
             school_id: self.school_id.clone(),
@@ -235,18 +233,20 @@ impl LibCal {
             config_version: self.base_url.as_str().to_owned(),
             request: format!("{prefix}{location_id}/{date}"),
         };
-        let cached = self
-            .runtime
-            .cache
-            .get_or_fetch(key, ttl, async {
-                let body = self.get(url).await?;
-                let rooms = parse_availability(&body)?;
-                serde_json::to_value(rooms).map_err(|_| ToolError::configuration_error())
-            })
-            .await?;
+        let fetch = async {
+            let body = self.get(url).await?;
+            let rooms = parse_availability(&body)?;
+            serde_json::to_value(rooms).map_err(|_| ToolError::configuration_error())
+        };
+        let cache = &self.runtime.cache;
+        let cached = match freshness {
+            Freshness::Cached => cache.get_or_fetch(key, defaults::ROOMS_TTL, fetch).await?,
+            // Shares only a read already in flight; never a completed one.
+            Freshness::Fresh => cache.get_fresh(key, fetch).await?,
+        };
         let rooms: Vec<Room> =
             serde_json::from_value(cached.value).map_err(|_| ToolError::configuration_error())?;
-        let fetched_at = Utc::now() - TimeDelta::from_std(cached.age).unwrap_or(TimeDelta::zero());
+        let fetched_at = cached.fetched_at;
         Ok(Sourced {
             value: rooms,
             provenance: Provenance {

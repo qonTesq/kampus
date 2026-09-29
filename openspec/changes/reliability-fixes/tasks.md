@@ -10,9 +10,9 @@ Each fix starts with a test that reproduces the finding and fails on the unfixed
 
 ## 2. Cache outcomes, stale age and fresh reads (findings 6-cache, 10, 12)
 
-- [ ] 2.1 Failing tests in `runtime/cache.rs`: concurrent waiters on a failing fetch run it once; the stale bound is measured after a slow failed fetch; `Cached.fetched_at` is the real store time; `get_fresh` never reuses a completed result and shares an overlapping one
-- [ ] 2.2 Implement the completion-counter slot, post-fetch age, `fetched_at` and `get_fresh`
-- [ ] 2.3 LibCal: failing fresh-to-fresh test (free, taken upstream, fresh again → not free, two upstream hits); switch `Freshness::Fresh` to `get_fresh` and use `fetched_at`
+- [x] 2.1 Failing tests in `runtime/cache.rs`: concurrent waiters on a failing fetch run it once; the stale bound is measured after a slow failed fetch; `Cached.fetched_at` is the real store time; `get_fresh` never reuses a completed result and shares an overlapping one
+- [x] 2.2 Implement the completion-counter slot, post-fetch age, `fetched_at` and `get_fresh`
+- [x] 2.3 LibCal: failing fresh-to-fresh test (free, taken upstream, fresh again → not free, two upstream hits); switch `Freshness::Fresh` to `get_fresh` and use `fetched_at`
 
 ## 3. Shared bounded upstream helper, LibCal body cap and Retry-After (findings 7, 9; quick win)
 
