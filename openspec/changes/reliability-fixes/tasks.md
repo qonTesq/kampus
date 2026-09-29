@@ -27,8 +27,8 @@ Each fix starts with a test that reproduces the finding and fails on the unfixed
 
 ## 5. One call deadline (finding 6)
 
-- [ ] 5.1 Failing dispatch test: a module that blocks past the deadline returns a retryable timeout error at the deadline and is audited `builtin:deadline_exceeded`; a cache waiter behind a slow fetch times out at its own deadline
-- [ ] 5.2 Add the task-local deadline, the dispatcher `timeout_at`, and adapter use of `runtime::deadline()` (hours, transit, LibCal, Banner)
+- [x] 5.1 Failing dispatch test: a module that blocks past the deadline returns a retryable timeout error at the deadline and is audited `builtin:deadline_exceeded`; a cache waiter behind a slow fetch times out at its own deadline
+- [x] 5.2 Add the task-local deadline, the dispatcher `timeout_at`, and adapter use of `runtime::deadline()` (hours, transit, LibCal, Banner)
 
 ## 6. JWKS refresh (finding 3)
 

@@ -179,7 +179,7 @@ impl Banner {
                 "Use a configured term and bounded page.",
             ));
         }
-        let deadline = Instant::now() + defaults::CALL_DEADLINE;
+        let deadline = kampus_core::runtime::deadline();
         tokio::time::timeout_at(deadline, async {
             let mut result = self.attempt(query, deadline).await;
             if let Err(error) = &result

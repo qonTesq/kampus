@@ -21,12 +21,13 @@ use serde_json::Value;
 use crate::audit::SubjectHasher;
 use crate::config::PolicyLimits;
 use crate::contracts::{
-    AuditDecision, AuditEvent, AuditSink, AuthKind, CallContext, Envelope, IdentityResolver, Meta,
-    Operation, Principal, RegisteredTool, ResolvedIdentity, ToolError, ToolRegistry,
+    AuditDecision, AuditEvent, AuditSink, AuthKind, CallContext, Envelope, ErrorCode,
+    IdentityResolver, Meta, Operation, Principal, RegisteredTool, ResolvedIdentity, ToolError,
+    ToolRegistry,
 };
 use crate::output::project;
 use crate::policy::{PolicyEngine, effective_class};
-use crate::runtime::RateLimiter;
+use crate::runtime::{RateLimiter, defaults, with_deadline};
 
 /// Module ID of the development-only hello-world module.
 pub const ACCEPTANCE_MODULE: &str = "acceptance";
@@ -35,6 +36,8 @@ pub const ACCEPTANCE_MODULE: &str = "acceptance";
 pub mod rules {
     pub const INVALID_ARGUMENTS: &str = "builtin:invalid_arguments";
     pub const RATE_LIMITED: &str = "builtin:rate_limited";
+    /// An allowed call that did not finish within the call deadline.
+    pub const DEADLINE_EXCEEDED: &str = "builtin:deadline_exceeded";
     /// The development acceptance tool (never in the demo build).
     pub const ACCEPTANCE: &str = "builtin:acceptance";
 }
@@ -148,9 +151,12 @@ impl Dispatcher {
         request_id: String,
     ) -> Result<Value, UnknownTool> {
         let registered = self.registry.get(tool).ok_or(UnknownTool)?;
+        // The one deadline of this call: queueing, cache waits, retries and
+        // provider work all end here.
+        let deadline = tokio::time::Instant::now() + defaults::CALL_DEADLINE;
         let Some(security) = &self.security else {
             return Ok(self
-                .placeholder(registered, args, principal, request_id)
+                .placeholder(registered, args, principal, request_id, deadline)
                 .await);
         };
         let started = Instant::now();
@@ -213,7 +219,7 @@ impl Dispatcher {
             return Ok(refuse(rules::RATE_LIMITED, limited).await);
         }
 
-        let envelope =
+        let (envelope, rule_id) =
             if module_id == ACCEPTANCE_MODULE || security.enabled_modules.contains(module_id) {
                 let ctx = CallContext {
                     school_id: self.school_id.clone(),
@@ -223,9 +229,12 @@ impl Dispatcher {
                     policy_version: revision.version,
                     binding_generation,
                 };
-                self.run(registered, args, &ctx).await
+                match self.run(registered, args, &ctx, deadline).await {
+                    Some(envelope) => (envelope, rule_id),
+                    None => (timed_out(), rules::DEADLINE_EXCEEDED.to_owned()),
+                }
             } else {
-                ToolError::unsupported_source().into()
+                (ToolError::unsupported_source().into(), rule_id)
             };
         let projected = project(registered, &envelope);
         // The allow is recorded even when the module failed; no payload is.
@@ -236,18 +245,27 @@ impl Dispatcher {
         }
     }
 
-    async fn run(&self, registered: &RegisteredTool, args: Value, ctx: &CallContext) -> Envelope {
-        match registered
+    /// Run the module under `deadline`; `None` when the deadline passed.
+    async fn run(
+        &self,
+        registered: &RegisteredTool,
+        args: Value,
+        ctx: &CallContext,
+        deadline: tokio::time::Instant,
+    ) -> Option<Envelope> {
+        let call = registered
             .module
-            .call(&registered.descriptor.name, args, ctx)
+            .call(&registered.descriptor.name, args, ctx);
+        let result = tokio::time::timeout_at(deadline, with_deadline(deadline, call))
             .await
-        {
+            .ok()?;
+        Some(match result {
             Ok(success) => Envelope::Ok {
                 data: success.data,
                 meta: Meta::new(&self.school_id, success.provenance),
             },
             Err(error) => error.into(),
-        }
+        })
     }
 
     /// Foundation behavior without security: validate, run only the
@@ -258,6 +276,7 @@ impl Dispatcher {
         args: Value,
         principal: Principal,
         request_id: String,
+        deadline: tokio::time::Instant,
     ) -> Value {
         if let Err(error) = registered.validate_input(&args) {
             return project(registered, &error.into());
@@ -275,9 +294,21 @@ impl Dispatcher {
             policy_version: 0,
             binding_generation: None,
         };
-        let envelope = self.run(registered, args, &ctx).await;
+        let envelope = self
+            .run(registered, args, &ctx, deadline)
+            .await
+            .unwrap_or_else(timed_out);
         project(registered, &envelope)
     }
+}
+
+/// The result of a call that ran out of time (retryable).
+fn timed_out() -> Envelope {
+    ToolError::new(
+        ErrorCode::UpstreamUnavailable,
+        "The call did not finish in time.",
+    )
+    .into()
 }
 
 /// Device principals go through the resolver; a resolution that changes the

@@ -79,32 +79,28 @@ impl HoursProvider for PageHours {
                 config_version: source.version.clone(),
                 request: format!("{}:{}", query.library_id, query.date),
             };
-            let cached = tokio::time::timeout(
-                defaults::CALL_DEADLINE,
-                self.runtime
-                    .cache
-                    .get_or_fetch(key, defaults::HOURS_TTL, async {
-                        let response = source.upstream.get(&source.library.url).await?;
-                        if response.status != 200 {
-                            return Err(http::status_error(response.status));
-                        }
-                        let html = std::str::from_utf8(&response.body)
-                            .map_err(|_| ToolError::upstream_invalid_response())?;
-                        let day = source.parser.parse(
-                            html,
-                            &source.library,
-                            query.date,
-                            self.timezone,
-                        )?;
-                        serde_json::to_value(CachedDay {
-                            day,
-                            fetched_at: Utc::now(),
-                        })
-                        .map_err(|_| ToolError::upstream_invalid_response())
-                    }),
-            )
-            .await
-            .map_err(|_| ToolError::upstream_unavailable())??;
+            // The dispatcher's call deadline bounds the cache wait and fetch.
+            let cached = self
+                .runtime
+                .cache
+                .get_or_fetch(key, defaults::HOURS_TTL, async {
+                    let response = source.upstream.get(&source.library.url).await?;
+                    if response.status != 200 {
+                        return Err(http::status_error(response.status));
+                    }
+                    let html = std::str::from_utf8(&response.body)
+                        .map_err(|_| ToolError::upstream_invalid_response())?;
+                    let day =
+                        source
+                            .parser
+                            .parse(html, &source.library, query.date, self.timezone)?;
+                    serde_json::to_value(CachedDay {
+                        day,
+                        fetched_at: Utc::now(),
+                    })
+                    .map_err(|_| ToolError::upstream_invalid_response())
+                })
+                .await?;
             let value: CachedDay = serde_json::from_value(cached.value)
                 .map_err(|_| ToolError::upstream_invalid_response())?;
             Ok(Sourced {

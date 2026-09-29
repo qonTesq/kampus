@@ -5,6 +5,7 @@
 use std::collections::BTreeSet;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
 use chrono::DateTime;
 use serde_json::json;
@@ -33,7 +34,7 @@ impl Module for Counting {
 
     fn call<'a>(
         &'a self,
-        _tool: &'a str,
+        tool: &'a str,
         _args: Value,
         ctx: &'a CallContext,
     ) -> BoxFuture<'a, Result<ToolSuccess, ToolError>> {
@@ -41,6 +42,21 @@ impl Module for Counting {
         Box::pin(async move {
             if self.descriptor.id != "probe" {
                 return Err(ToolError::unsupported_source());
+            }
+            if tool == "probe_slow" {
+                // An upstream that never answers in time, behind the shared cache.
+                let key = crate::runtime::CacheKey {
+                    school_id: "temple".into(),
+                    provider: "slow".into(),
+                    config_version: "1".into(),
+                    request: "x".into(),
+                };
+                SLOW_CACHE
+                    .get_or_fetch(key, Duration::from_mins(1), async {
+                        tokio::time::sleep(Duration::from_mins(1)).await;
+                        Ok(json!({}))
+                    })
+                    .await?;
             }
             let provenance = Provenance {
                 source_kind: SourceKind::Sandbox,
@@ -54,10 +70,23 @@ impl Module for Counting {
     }
 }
 
+static SLOW_CACHE: std::sync::LazyLock<crate::runtime::PublicCache> =
+    std::sync::LazyLock::new(|| crate::runtime::PublicCache::new(16));
+
 const PROBE_YAML: &str = r"
 version: 1
 id: probe
 tools:
+  - name: probe_slow
+    title: Slow probe
+    description: Test-only public tool whose upstream never answers in time.
+    data_class: public
+    roles: [guest, student]
+    write: false
+    readOnlyHint: true
+    destructiveHint: false
+    input_schema: { type: object }
+    output_schema: { type: object }
   - name: probe_public
     title: Public probe
     description: Test-only public response.
@@ -137,6 +166,7 @@ fn demo_policy() -> PolicyConfig {
     let mut policy = PolicyConfig::from_yaml(TEMPLE_POLICY).unwrap();
     policy.sensitive_enabled = true;
     policy.rules[0].tools.insert("probe_public".into());
+    policy.rules[0].tools.insert("probe_slow".into());
     policy.rules.push(Rule {
         id: "probe-approved".into(),
         effect: Effect::Allow,
@@ -356,6 +386,29 @@ async fn confirm_is_rate_limited_per_user_and_audited() {
         )
         .await;
     assert_ne!(code(&r), "rate_limited");
+}
+
+#[tokio::test(start_paused = true)]
+async fn one_deadline_covers_cache_waits_and_is_audited() {
+    let h = harness();
+    let guest = Principal::guest();
+    let started = tokio::time::Instant::now();
+    // The first call owns the slow fetch; the second waits on the cache.
+    let (owner, waiter) = tokio::join!(
+        h.call("probe_slow", json!({}), &guest),
+        h.call("probe_slow", json!({}), &guest)
+    );
+    assert_eq!(started.elapsed(), crate::runtime::defaults::CALL_DEADLINE);
+    for result in [&owner, &waiter] {
+        assert_eq!(code(result), "upstream_unavailable");
+        assert_eq!(result["error"]["retryable"], true);
+    }
+    let rows = h.rows();
+    assert_eq!(rows.len(), 2);
+    for row in &rows {
+        assert_eq!(row.decision, AuditDecision::Allow);
+        assert_eq!(row.rule, rules::DEADLINE_EXCEEDED);
+    }
 }
 
 #[tokio::test]
