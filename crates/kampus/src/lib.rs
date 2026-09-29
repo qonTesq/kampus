@@ -8,6 +8,7 @@ mod app;
 mod auth;
 pub mod registry;
 mod server;
+mod session;
 
 pub use app::{App, AppError, AppOptions, SUPPORTED_PROTOCOL_VERSIONS};
 pub use server::KampusMcp;

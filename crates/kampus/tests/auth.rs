@@ -151,9 +151,14 @@ impl Drop for Server {
 }
 
 async fn spawn(mode: AuthMode) -> Server {
+    spawn_with(mode, |_| {}).await
+}
+
+async fn spawn_with(mode: AuthMode, edit: impl FnOnce(&mut SchoolConfig)) -> Server {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../schools/temple");
     let mut school = SchoolConfig::load(&root.join("school.yaml")).unwrap();
     school.auth.mode = mode;
+    edit(&mut school);
     let policy = PolicyConfig::load(&root.join("policy.yaml")).unwrap();
     let env = Env {
         has_var: &|_| true,
@@ -254,6 +259,18 @@ async fn legacy(
     session: Option<&str>,
     body: &Value,
 ) -> reqwest::Response {
+    legacy_request(server, auth, session, body)
+        .send()
+        .await
+        .unwrap()
+}
+
+fn legacy_request(
+    server: &Server,
+    auth: Option<&str>,
+    session: Option<&str>,
+    body: &Value,
+) -> reqwest::RequestBuilder {
     let mut request = server
         .client
         .post(format!("{}/mcp", server.base))
@@ -267,7 +284,7 @@ async fn legacy(
     if let Some(auth) = auth {
         request = request.header("Authorization", auth);
     }
-    request.send().await.unwrap()
+    request
 }
 
 async fn legacy_session(server: &Server, auth: Option<&str>) -> String {
@@ -488,12 +505,23 @@ mod acceptance {
         )
         .await;
         assert_eq!(caller(&rpc_body(authed).await["result"]), "user");
-        // Same session, no credential: the earlier caller's identity is not reused.
+        // Same session, no credential: the login claimed the session, so the
+        // anonymous request is refused instead of borrowing the user's identity.
         let anon = legacy(
             &server,
             None,
             Some(&session),
             &legacy_call(3, "kampus_hello"),
+        )
+        .await;
+        assert_eq!(anon.status(), 404);
+        // An anonymous caller's own session still runs as guest.
+        let guest_session = legacy_session(&server, None).await;
+        let anon = legacy(
+            &server,
+            None,
+            Some(&guest_session),
+            &legacy_call(4, "kampus_hello"),
         )
         .await;
         assert_eq!(caller(&rpc_body(anon).await["result"]), "guest");
@@ -670,4 +698,229 @@ async fn same_legacy_session_uses_live_switches_without_changing_tools() {
         catalog,
         rpc_body(modern(&server, Some(&token), "tools/list", json!({})).await).await["result"]
     );
+}
+
+// ---- legacy session ownership -------------------------------------------------
+
+/// A raw request on a legacy session (GET/DELETE carry no body).
+async fn on_session(
+    server: &Server,
+    method: reqwest::Method,
+    auth: Option<&str>,
+    session: &str,
+    last_event_id: Option<&str>,
+) -> reqwest::Response {
+    let mut request = server
+        .client
+        .request(method, format!("{}/mcp", server.base))
+        .header("Accept", "application/json, text/event-stream")
+        .header("MCP-Protocol-Version", LEGACY)
+        .header("Mcp-Session-Id", session);
+    if let Some(auth) = auth {
+        request = request.header("Authorization", auth);
+    }
+    if let Some(id) = last_event_id {
+        request = request.header("Last-Event-ID", id);
+    }
+    request.send().await.unwrap()
+}
+
+/// The body of a stream that must end by itself (delivered or refused).
+async fn finite_body(response: reqwest::Response) -> String {
+    tokio::time::timeout(std::time::Duration::from_secs(10), response.text())
+        .await
+        .expect("stream must end instead of hanging")
+        .unwrap()
+}
+
+fn user_token(subject: &str, azp: &str) -> String {
+    let mut c = claims(azp, 300);
+    c["sub"] = json!(subject);
+    bearer(&c)
+}
+
+/// Injected into the upstream board so it reaches the owner's tool result.
+const RESULT_SENTINEL: &str = "Zqownersresult";
+
+/// A SEPTA stub serving the recorded Temple board after a delay, so a call
+/// stays in flight. Departures are moved into the future (the tool returns
+/// only trains not yet gone) and one destination becomes the sentinel.
+async fn slow_septa() -> String {
+    let body =
+        include_str!("../../../fixtures/septa/20260926T210517445804Z-temple-arrivals/body.bin")
+            .replace("2026-09-26", "2099-09-26")
+            .replace("Norristown", RESULT_SENTINEL);
+    let router = axum::Router::new().fallback(move || {
+        let body = body.clone();
+        async move {
+            tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+            ([("content-type", "application/json")], body)
+        }
+    });
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    tokio::spawn(async move { axum::serve(listener, router).await.unwrap() });
+    format!("http://{addr}")
+}
+
+fn point_septa_at(school: &mut SchoolConfig, base: &str) {
+    for provider in &mut school.transit.as_mut().unwrap().providers {
+        if provider.kind == "septa_arrivals" {
+            provider.base_url = Some(base.parse().unwrap());
+        }
+    }
+}
+
+/// The reviewer's reproduction: while an approved caller's call is in
+/// flight, its session ID plus the (predictable) event ID of its result
+/// stream must not let anyone else take the result, read the session's
+/// streams, post into it or close it.
+#[tokio::test]
+async fn legacy_session_is_bound_to_its_owner() {
+    let septa = slow_septa().await;
+    let server = spawn_with(AuthMode::NoLogin, |school| point_septa_at(school, &septa)).await;
+    let owner = user_token("synthetic-student-a", "kampus-chatgpt");
+    let session = legacy_session(&server, Some(&owner)).await;
+    let departures = json!({ "jsonrpc": "2.0", "id": 7, "method": "tools/call",
+        "params": { "name": "next_departures", "arguments": { "stop": "Temple" } } });
+    let request = legacy_request(&server, Some(&owner), Some(&session), &departures);
+    let in_flight = tokio::spawn(async move { finite_body(request.send().await.unwrap()).await });
+    tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+    // The session's first result stream: priming event 0/0, result 1/0.
+    let event_id = "0/0";
+
+    // A guest, a different student on the same approved client, and a
+    // different client of the same student.
+    let other_student = user_token("synthetic-student-b", "kampus-chatgpt");
+    let other_client = user_token("synthetic-student-a", "kampus-claude");
+    for intruder in [
+        None,
+        Some(other_student.as_str()),
+        Some(other_client.as_str()),
+    ] {
+        let resumed = on_session(
+            &server,
+            reqwest::Method::GET,
+            intruder,
+            &session,
+            Some(event_id),
+        )
+        .await;
+        let status = resumed.status();
+        let body = finite_body(resumed).await;
+        assert!(
+            !body.contains(RESULT_SENTINEL),
+            "{intruder:?} took the owner's result: {body}"
+        );
+        assert_eq!(status, 404, "resume as {intruder:?}");
+
+        let standalone = on_session(&server, reqwest::Method::GET, intruder, &session, None).await;
+        assert_eq!(standalone.status(), 404, "stream as {intruder:?}");
+
+        let cancel = json!({ "jsonrpc": "2.0", "method": "notifications/cancelled",
+                             "params": { "requestId": 7 } });
+        let response = legacy(&server, intruder, Some(&session), &cancel).await;
+        assert_eq!(response.status(), 404, "cancel as {intruder:?}");
+        let response = legacy(
+            &server,
+            intruder,
+            Some(&session),
+            &legacy_call(8, "my_deadlines"),
+        )
+        .await;
+        assert_eq!(response.status(), 404, "call as {intruder:?}");
+
+        let closed = on_session(&server, reqwest::Method::DELETE, intruder, &session, None).await;
+        assert_eq!(closed.status(), 404, "delete as {intruder:?}");
+    }
+
+    // A foreign session is indistinguishable from one that never existed.
+    for id in ["00000000-0000-0000-0000-000000000000", session.as_str()] {
+        let response = on_session(&server, reqwest::Method::GET, None, id, Some(event_id)).await;
+        assert_eq!(response.status(), 404);
+        assert_eq!(
+            response.text().await.unwrap(),
+            "Not Found: Session not found"
+        );
+    }
+
+    // Even the owner gets no replay: a buffered result was authorized under
+    // the policy of its time, so it is re-requested as a new, audited call.
+    let resumed = on_session(
+        &server,
+        reqwest::Method::GET,
+        Some(&owner),
+        &session,
+        Some(event_id),
+    )
+    .await;
+    assert_eq!(resumed.status(), 200);
+    assert_eq!(finite_body(resumed).await, "");
+
+    // The owner's call was neither diverted nor cancelled, and it is the
+    // only call that reached dispatch and audit.
+    let delivered = in_flight.await.unwrap();
+    assert!(delivered.contains("\"id\":7"), "{delivered}");
+    assert!(delivered.contains(RESULT_SENTINEL), "{delivered}");
+    let audit = admin_state(&server).await["audit"].clone();
+    assert_eq!(audit.as_array().unwrap().len(), 1, "{audit}");
+    assert_eq!(audit[0]["tool"], "next_departures");
+
+    let closed = on_session(
+        &server,
+        reqwest::Method::DELETE,
+        Some(&owner),
+        &session,
+        None,
+    )
+    .await;
+    assert!(closed.status().is_success());
+    let gone = legacy(&server, Some(&owner), Some(&session), &departures).await;
+    assert_eq!(gone.status(), 404);
+}
+
+/// Legacy OAuth clients initialize anonymously and present a token only when
+/// a call is challenged; the first verified identity claims the session.
+#[tokio::test]
+async fn anonymous_legacy_session_is_claimed_once_by_login() {
+    let server = spawn(AuthMode::Oauth).await;
+    let session = legacy_session(&server, None).await;
+    let token = valid();
+    let response = legacy(
+        &server,
+        Some(&token),
+        Some(&session),
+        &legacy_call(2, "my_deadlines"),
+    )
+    .await;
+    assert_eq!(response.status(), 200);
+
+    // Claimed: open methods without a token, and other users, are refused.
+    let list = json!({ "jsonrpc": "2.0", "id": 3, "method": "tools/list", "params": {} });
+    let response = legacy(&server, None, Some(&session), &list).await;
+    assert_eq!(response.status(), 404);
+    let other = user_token("synthetic-student-b", "kampus-claude");
+    let response = legacy(&server, Some(&other), Some(&session), &list).await;
+    assert_eq!(response.status(), 404);
+    let response = legacy(&server, Some(&token), Some(&session), &list).await;
+    assert_eq!(response.status(), 200);
+}
+
+#[tokio::test]
+async fn duplicated_session_headers_are_refused() {
+    let server = spawn(AuthMode::NoLogin).await;
+    let session = legacy_session(&server, None).await;
+    let list = json!({ "jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {} });
+    let response = server
+        .client
+        .post(format!("{}/mcp", server.base))
+        .header("Accept", "application/json, text/event-stream")
+        .header("MCP-Protocol-Version", LEGACY)
+        .header("Mcp-Session-Id", &session)
+        .header("Mcp-Session-Id", "00000000-0000-0000-0000-000000000000")
+        .json(&list)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(response.status(), 404);
 }

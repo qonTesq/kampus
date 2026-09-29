@@ -24,6 +24,7 @@ use tokio_util::sync::CancellationToken;
 
 use crate::registry;
 use crate::server::KampusMcp;
+use crate::session::SessionOwners;
 
 /// Served MCP revisions: current stateless `2026-07-28` plus legacy
 /// `2025-11-25` sessions (rmcp `legacy_session_mode`).
@@ -224,13 +225,16 @@ impl App {
         let config = StreamableHttpServerConfig::default()
             .with_allowed_hosts(allowed_hosts(school))
             .with_cancellation_token(cancel);
-        let service = StreamableHttpService::new(
-            move || Ok(mcp.clone()),
-            Arc::new(LocalSessionManager::default()),
-            config,
-        );
+        let sessions = Arc::new(LocalSessionManager::default());
+        let owners = Arc::new(SessionOwners::new(&school.school.id, Arc::clone(&sessions)));
+        let service = StreamableHttpService::new(move || Ok(mcp.clone()), sessions, config);
         Router::new()
             .nest_service(mcp_path(school), service)
+            // Runs after authentication: needs the verified principal.
+            .layer(middleware::from_fn_with_state(
+                owners,
+                crate::session::guard,
+            ))
             .layer(middleware::from_fn_with_state(
                 Arc::clone(&self.auth),
                 crate::auth::authenticate,
