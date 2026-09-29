@@ -27,7 +27,7 @@ publish = false
 # change (see AGENTS.md); module crates use `dep.workspace = true`.
 [workspace.dependencies]
 # MCP SDK: exact pin. Read docs/vendor/rmcp/ before touching rmcp code.
-rmcp = { version = "=3.4.1", default-features = false, features = [
+rmcp = { version = "=3.5.0", default-features = false, features = [
     "server",
     "transport-streamable-http-server",
 ] }

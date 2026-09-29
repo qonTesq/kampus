@@ -1,21 +1,21 @@
-Source: https://docs.rs/rmcp/3.4.1/rmcp/handler/server/trait.ServerHandler.html
-Fetched: 2026-09-26
+Source: https://docs.rs/rmcp/3.5.0/rmcp/handler/server/trait.ServerHandler.html
+Fetched: 2026-09-28
 
 ServerHandler in rmcp::handler::server - Rust
 
                     Docs.rs
 
-                rmcp-3.4.1
+                rmcp-3.5.0
 
-                        rmcp 3.4.1
+                        rmcp 3.5.0
 
                              Docs.rs crate page
 
                             Apache-2.0
 
-                                 23 September 2026
+                                 28 September 2026
 
-Links
+                            Links
 
                                          Homepage
 
@@ -25,7 +25,7 @@ Links
 
                                      Source
 
-Owners
+                            Owners
 
                                          4t145
 
@@ -33,7 +33,7 @@ Owners
 
                                          alexhancock
 
-Dependencies
+                            Dependencies
 
                 async-trait ^0.1.89
 
@@ -137,7 +137,7 @@ Dependencies
 
                         optional
 
-                rmcp-macros ^3.4.1
+                rmcp-macros ^3.5.0
 
                     normal
 
@@ -249,6 +249,10 @@ Dependencies
 
                     dev
 
+                serde_json ^1.0
+
+                    dev
+
                 tokio ^1
 
                     dev
@@ -273,9 +277,9 @@ Dependencies
 
                     normal
 
-Versions
+                            Versions
 
-                                        49.04%
+                                        49.15%
                                         of the crate is documented
 
                     Platform
@@ -285,37 +289,22 @@ Versions
                     Feature flags
 
                         docs.rs
-
- About docs.rs
- Badges
- Builds
- Metadata
- Shorthand URLs
- Download
- Rustdoc JSON
- Build queue
- Privacy policy
+                         About docs.rs Badges Builds Metadata Shorthand URLs Download Rustdoc JSON Build queue Privacy policy
 
                         Rust
 
-Rust website
+                            Rust website
+                            The Book
 
-The Book
+                            Standard Library API Reference
 
-Standard Library API Reference
+                            Rust by Example
 
-Rust by Example
+                            The Cargo Guide
 
-The Cargo Guide
+                            Clippy Documentation
 
-Clippy Documentation
-
-Skip to main content
-ServerHandler
-
-rmcp::handler::server
-Trait ServerHandler Copy item pathSource 
-pub trait ServerHandler:
+Skip to main contentServerHandlerrmcp3.5.0ServerHandlerProvided Methodsaccepted_subscription_filtercall_toolcancel_taskcompletediscoverget_infoget_promptget_taskget_toolinitializelist_promptslist_resource_templateslist_resourceslist_toolslistennegotiate_initializeon_cancelledon_custom_notificationon_custom_requeston_initializedon_progresson_roots_list_changedpingread_resourceset_levelsubscribesupported_protocol_versionsunsubscribeupdate_taskDyn CompatibilityImplementations on Foreign TypesArc<T>Box<T>ImplementorsIn rmcp::handler::serverrmcp::handler::serverTrait ServerHandler Copy item pathSource pub trait ServerHandler:
     Sized
     + Send
     + Sync
@@ -447,27 +436,18 @@ Show 29 methods    // Provided methods
         request: CancelTaskParams,
         context: RequestContext<RoleServer>,
     ) -> impl Future<Output = Result<(), McpError>> + MaybeSendFuture + '_ { ... }
-}
-Available on crate feature server and non-crate feature local only.
-Provided Methods§
-Source
-fn ping(
+}Available on crate feature server and non-crate feature local only.Provided Methods§Sourcefn ping(
     &self,
     context: RequestContext<RoleServer>,
-) -> impl Future<Output = Result<(), McpError>> + MaybeSendFuture + '_Source
-fn initialize(
+) -> impl Future<Output = Result<(), McpError>> + MaybeSendFuture + '_Sourcefn initialize(
     &self,
     request: InitializeRequestParams,
     context: RequestContext<RoleServer>,
-) -> impl Future<Output = Result<InitializeResult, McpError>> + MaybeSendFuture + '_Source
-fn negotiate_initialize(
+) -> impl Future<Output = Result<InitializeResult, McpError>> + MaybeSendFuture + '_Sourcefn negotiate_initialize(
     &self,
     request: &InitializeRequestParams,
-) -> Result<InitializeResult, McpError>
-
-Build the initialize response for request, negotiating the
+) -> Result<InitializeResult, McpError>Build the initialize response for request, negotiating the
 protocol version against Self::supported_protocol_versions.
-
 This is the whole body of the default Self::initialize minus its
 set_peer_info side effect, so a server that overrides initialize
 to add its own can call this instead of restating the negotiation
@@ -496,115 +476,81 @@ impl ServerHandler for MyServer {
         self.negotiate_initialize(&request)
     }
 }§Errors
-
 Returns ErrorCode::UNSUPPORTED_PROTOCOL_VERSION when this server
 supports no version that still has an initialize handshake.
-Source
-fn supported_protocol_versions(&self) -> Cow<'static, [ProtocolVersion]>
-
-Return the protocol versions supported by this server.
-
+Sourcefn supported_protocol_versions(&self) -> Cow<'static, [ProtocolVersion]>Return the protocol versions supported by this server.
 Defaults to every version this SDK knows. Override it to narrow the
 set to the revisions the server actually implements: the returned
 list is advertised by Self::discover, bounds what initialize
 negotiation may agree to, and is what per-request versions are
 validated against.
-
 To support everything up to some ceiling, use
 ProtocolVersion::known_up_to rather than filtering
 ProtocolVersion::KNOWN_VERSIONS by hand.
-Source
-fn discover(
+Sourcefn discover(
     &self,
     context: RequestContext<RoleServer>,
-) -> impl Future<Output = Result<DiscoverResult, McpError>> + MaybeSendFuture + '_
-
-Return this server’s discovery information.
-Source
-fn complete(
+) -> impl Future<Output = Result<DiscoverResult, McpError>> + MaybeSendFuture + '_Return this server’s discovery information.
+Sourcefn complete(
     &self,
     request: CompleteRequestParams,
     context: RequestContext<RoleServer>,
-) -> impl Future<Output = Result<CompleteResult, McpError>> + MaybeSendFuture + '_Source
-fn set_level(
+) -> impl Future<Output = Result<CompleteResult, McpError>> + MaybeSendFuture + '_Sourcefn set_level(
     &self,
     request: SetLevelRequestParams,
     context: RequestContext<RoleServer>,
-) -> impl Future<Output = Result<(), McpError>> + MaybeSendFuture + '_Source
-fn get_prompt(
+) -> impl Future<Output = Result<(), McpError>> + MaybeSendFuture + '_Sourcefn get_prompt(
     &self,
     request: GetPromptRequestParams,
     context: RequestContext<RoleServer>,
-) -> impl Future<Output = Result<GetPromptResponse, McpError>> + MaybeSendFuture + '_Source
-fn list_prompts(
+) -> impl Future<Output = Result<GetPromptResponse, McpError>> + MaybeSendFuture + '_Sourcefn list_prompts(
     &self,
     request: Option<PaginatedRequestParams>,
     context: RequestContext<RoleServer>,
-) -> impl Future<Output = Result<ListPromptsResult, McpError>> + MaybeSendFuture + '_Source
-fn list_resources(
+) -> impl Future<Output = Result<ListPromptsResult, McpError>> + MaybeSendFuture + '_Sourcefn list_resources(
     &self,
     request: Option<PaginatedRequestParams>,
     context: RequestContext<RoleServer>,
-) -> impl Future<Output = Result<ListResourcesResult, McpError>> + MaybeSendFuture + '_Source
-fn list_resource_templates(
+) -> impl Future<Output = Result<ListResourcesResult, McpError>> + MaybeSendFuture + '_Sourcefn list_resource_templates(
     &self,
     request: Option<PaginatedRequestParams>,
     context: RequestContext<RoleServer>,
-) -> impl Future<Output = Result<ListResourceTemplatesResult, McpError>> + MaybeSendFuture + '_Source
-fn read_resource(
+) -> impl Future<Output = Result<ListResourceTemplatesResult, McpError>> + MaybeSendFuture + '_Sourcefn read_resource(
     &self,
     request: ReadResourceRequestParams,
     context: RequestContext<RoleServer>,
-) -> impl Future<Output = Result<ReadResourceResponse, McpError>> + MaybeSendFuture + '_Source
-fn accepted_subscription_filter(
+) -> impl Future<Output = Result<ReadResourceResponse, McpError>> + MaybeSendFuture + '_Sourcefn accepted_subscription_filter(
     &self,
     requested: &SubscriptionFilter,
-) -> Option<SubscriptionFilter>
-
-Return the subset of a requested notification filter this server accepts.
-
+) -> Option<SubscriptionFilter>Return the subset of a requested notification filter this server accepts.
 Returning None leaves subscriptions/listen unimplemented. The SDK
 intersects the returned filter with both requested and the notification
 capabilities advertised by Self::get_info before acknowledging it.
 Categories that were not requested or advertised are always removed.
-Source
-fn listen(
+Sourcefn listen(
     &self,
     context: SubscriptionContext,
-) -> impl Future<Output = Result<(), McpError>> + MaybeSendFuture + '_
-
-Run one established subscription until it is cancelled or closed gracefully.
-
+) -> impl Future<Output = Result<(), McpError>> + MaybeSendFuture + '_Run one established subscription until it is cancelled or closed gracefully.
 The SDK sends the acknowledgment before invoking this method. Returning
 Ok(()) sends the final SubscriptionsListenResult defined by the
 2026-07-28 schema, marking graceful server teardown. Explicit
 stdio cancellation uses notifications/cancelled instead.
-Source
-fn subscribe(
+Sourcefn subscribe(
     &self,
     request: SubscribeRequestParams,
     context: RequestContext<RoleServer>,
-) -> impl Future<Output = Result<(), McpError>> + MaybeSendFuture + '_
-👎Deprecated: 
-resources/subscribe is legacy-only; implement accepted_subscription_filter and listen for protocol version 2026-07-28
-Source
-fn unsubscribe(
+) -> impl Future<Output = Result<(), McpError>> + MaybeSendFuture + '_👎Deprecated: resources/subscribe is legacy-only; implement accepted_subscription_filter and listen for protocol version 2026-07-28
+Sourcefn unsubscribe(
     &self,
     request: UnsubscribeRequestParams,
     context: RequestContext<RoleServer>,
-) -> impl Future<Output = Result<(), McpError>> + MaybeSendFuture + '_
-👎Deprecated: 
-resources/unsubscribe is legacy-only; subscriptions/listen is cancelled through its request lifecycle
-Source
-fn call_tool(
+) -> impl Future<Output = Result<(), McpError>> + MaybeSendFuture + '_👎Deprecated: resources/unsubscribe is legacy-only; subscriptions/listen is cancelled through its request lifecycle
+Sourcefn call_tool(
     &self,
     request: CallToolRequestParams,
     context: RequestContext<RoleServer>,
-) -> impl Future<Output = Result<CallToolResponse, McpError>> + MaybeSendFuture + '_
-
-Handle a tools/call request from a client.
+) -> impl Future<Output = Result<CallToolResponse, McpError>> + MaybeSendFuture + '_Handle a tools/call request from a client.
 §Choosing a return value
-
 MCP distinguishes two failure modes; the API forces you to pick
 the right one explicitly because they reach the caller’s UI very
 differently:
@@ -629,403 +575,248 @@ missing due to internal error”. If you want the caller to read
 your error, use Ok(CallToolResult::error(...)).
 
 See CallToolResult::error for a worked example.
-Source
-fn list_tools(
+Sourcefn list_tools(
     &self,
     request: Option<PaginatedRequestParams>,
     context: RequestContext<RoleServer>,
-) -> impl Future<Output = Result<ListToolsResult, McpError>> + MaybeSendFuture + '_Source
-fn get_tool(&self, _name: &str) -> Option<Tool>
-
-Get a tool definition by name.
-
+) -> impl Future<Output = Result<ListToolsResult, McpError>> + MaybeSendFuture + '_Sourcefn get_tool(&self, _name: &str) -> Option<Tool>Get a tool definition by name.
 The default implementation returns None, which bypasses validation.
 When using #[tool_handler], this method is automatically implemented.
-Source
-fn on_custom_request(
+Sourcefn on_custom_request(
     &self,
     request: CustomRequest,
     context: RequestContext<RoleServer>,
-) -> impl Future<Output = Result<CustomResult, McpError>> + MaybeSendFuture + '_Source
-fn on_cancelled(
+) -> impl Future<Output = Result<CustomResult, McpError>> + MaybeSendFuture + '_Sourcefn on_cancelled(
     &self,
     notification: CancelledNotificationParam,
     context: NotificationContext<RoleServer>,
-) -> impl Future<Output = ()> + MaybeSendFuture + '_Source
-fn on_progress(
+) -> impl Future<Output = ()> + MaybeSendFuture + '_Sourcefn on_progress(
     &self,
     notification: ProgressNotificationParam,
     context: NotificationContext<RoleServer>,
-) -> impl Future<Output = ()> + MaybeSendFuture + '_Source
-fn on_initialized(
+) -> impl Future<Output = ()> + MaybeSendFuture + '_Sourcefn on_initialized(
     &self,
     context: NotificationContext<RoleServer>,
-) -> impl Future<Output = ()> + MaybeSendFuture + '_Source
-fn on_roots_list_changed(
+) -> impl Future<Output = ()> + MaybeSendFuture + '_Sourcefn on_roots_list_changed(
     &self,
     context: NotificationContext<RoleServer>,
-) -> impl Future<Output = ()> + MaybeSendFuture + '_Source
-fn on_custom_notification(
+) -> impl Future<Output = ()> + MaybeSendFuture + '_Sourcefn on_custom_notification(
     &self,
     notification: CustomNotification,
     context: NotificationContext<RoleServer>,
-) -> impl Future<Output = ()> + MaybeSendFuture + '_Source
-fn get_info(&self) -> ServerConfigSource
-fn get_task(
+) -> impl Future<Output = ()> + MaybeSendFuture + '_Sourcefn get_info(&self) -> ServerConfigSourcefn get_task(
     &self,
     request: GetTaskParams,
     context: RequestContext<RoleServer>,
-) -> impl Future<Output = Result<GetTaskResult, McpError>> + MaybeSendFuture + '_
-
-SEP-2663 tasks/get: return the current DetailedTask state.
-Source
-fn update_task(
+) -> impl Future<Output = Result<GetTaskResult, McpError>> + MaybeSendFuture + '_SEP-2663 tasks/get: return the current DetailedTask state.
+Sourcefn update_task(
     &self,
     request: UpdateTaskParams,
     context: RequestContext<RoleServer>,
-) -> impl Future<Output = Result<(), McpError>> + MaybeSendFuture + '_
-
-SEP-2663 tasks/update: accept responses to outstanding in-task
+) -> impl Future<Output = Result<(), McpError>> + MaybeSendFuture + '_SEP-2663 tasks/update: accept responses to outstanding in-task
 input requests. Returns an empty acknowledgement on success.
-Source
-fn cancel_task(
+Sourcefn cancel_task(
     &self,
     request: CancelTaskParams,
     context: RequestContext<RoleServer>,
-) -> impl Future<Output = Result<(), McpError>> + MaybeSendFuture + '_
-
-SEP-2663 tasks/cancel: cooperative cancellation. Returns an empty
+) -> impl Future<Output = Result<(), McpError>> + MaybeSendFuture + '_SEP-2663 tasks/cancel: cooperative cancellation. Returns an empty
 acknowledgement; the task’s observable status may lag.
-
-Dyn Compatibility§
-
-This trait is not dyn compatible.
-In older versions of Rust, dyn compatibility was called "object safety".
-Implementations on Foreign Types§Source§
-impl<T: ServerHandler> ServerHandler for Arc<T>
-Source§
-fn ping(
+Dyn Compatibility§This trait is not dyn compatible.In older versions of Rust, dyn compatibility was called "object safety".Implementations on Foreign Types§Source§impl<T: ServerHandler> ServerHandler for Arc<T>Source§fn ping(
     &self,
     context: RequestContext<RoleServer>,
-) -> impl Future<Output = Result<(), McpError>> + MaybeSendFuture + '_
-Available on non-crate feature local only.Source§
-fn initialize(
+) -> impl Future<Output = Result<(), McpError>> + MaybeSendFuture + '_Available on non-crate feature local only.Source§fn initialize(
     &self,
     request: InitializeRequestParams,
     context: RequestContext<RoleServer>,
-) -> impl Future<Output = Result<InitializeResult, McpError>> + MaybeSendFuture + '_
-Available on non-crate feature local only.Source§
-fn negotiate_initialize(
+) -> impl Future<Output = Result<InitializeResult, McpError>> + MaybeSendFuture + '_Available on non-crate feature local only.Source§fn negotiate_initialize(
     &self,
     request: &InitializeRequestParams,
-) -> Result<InitializeResult, McpError>
-Available on non-crate feature local only.Source§
-fn supported_protocol_versions(&self) -> Cow<'static, [ProtocolVersion]>
-Available on non-crate feature local only.Source§
-fn discover(
+) -> Result<InitializeResult, McpError>Available on non-crate feature local only.Source§fn supported_protocol_versions(&self) -> Cow<'static, [ProtocolVersion]>Available on non-crate feature local only.Source§fn discover(
     &self,
     context: RequestContext<RoleServer>,
-) -> impl Future<Output = Result<DiscoverResult, McpError>> + MaybeSendFuture + '_
-Available on non-crate feature local only.Source§
-fn complete(
+) -> impl Future<Output = Result<DiscoverResult, McpError>> + MaybeSendFuture + '_Available on non-crate feature local only.Source§fn complete(
     &self,
     request: CompleteRequestParams,
     context: RequestContext<RoleServer>,
-) -> impl Future<Output = Result<CompleteResult, McpError>> + MaybeSendFuture + '_
-Available on non-crate feature local only.Source§
-fn set_level(
+) -> impl Future<Output = Result<CompleteResult, McpError>> + MaybeSendFuture + '_Available on non-crate feature local only.Source§fn set_level(
     &self,
     request: SetLevelRequestParams,
     context: RequestContext<RoleServer>,
-) -> impl Future<Output = Result<(), McpError>> + MaybeSendFuture + '_
-Available on non-crate feature local only.Source§
-fn get_prompt(
+) -> impl Future<Output = Result<(), McpError>> + MaybeSendFuture + '_Available on non-crate feature local only.Source§fn get_prompt(
     &self,
     request: GetPromptRequestParams,
     context: RequestContext<RoleServer>,
-) -> impl Future<Output = Result<GetPromptResponse, McpError>> + MaybeSendFuture + '_
-Available on non-crate feature local only.Source§
-fn list_prompts(
+) -> impl Future<Output = Result<GetPromptResponse, McpError>> + MaybeSendFuture + '_Available on non-crate feature local only.Source§fn list_prompts(
     &self,
     request: Option<PaginatedRequestParams>,
     context: RequestContext<RoleServer>,
-) -> impl Future<Output = Result<ListPromptsResult, McpError>> + MaybeSendFuture + '_
-Available on non-crate feature local only.Source§
-fn list_resources(
+) -> impl Future<Output = Result<ListPromptsResult, McpError>> + MaybeSendFuture + '_Available on non-crate feature local only.Source§fn list_resources(
     &self,
     request: Option<PaginatedRequestParams>,
     context: RequestContext<RoleServer>,
-) -> impl Future<Output = Result<ListResourcesResult, McpError>> + MaybeSendFuture + '_
-Available on non-crate feature local only.Source§
-fn list_resource_templates(
+) -> impl Future<Output = Result<ListResourcesResult, McpError>> + MaybeSendFuture + '_Available on non-crate feature local only.Source§fn list_resource_templates(
     &self,
     request: Option<PaginatedRequestParams>,
     context: RequestContext<RoleServer>,
-) -> impl Future<Output = Result<ListResourceTemplatesResult, McpError>> + MaybeSendFuture + '_
-Available on non-crate feature local only.Source§
-fn read_resource(
+) -> impl Future<Output = Result<ListResourceTemplatesResult, McpError>> + MaybeSendFuture + '_Available on non-crate feature local only.Source§fn read_resource(
     &self,
     request: ReadResourceRequestParams,
     context: RequestContext<RoleServer>,
-) -> impl Future<Output = Result<ReadResourceResponse, McpError>> + MaybeSendFuture + '_
-Available on non-crate feature local only.Source§
-fn accepted_subscription_filter(
+) -> impl Future<Output = Result<ReadResourceResponse, McpError>> + MaybeSendFuture + '_Available on non-crate feature local only.Source§fn accepted_subscription_filter(
     &self,
     requested: &SubscriptionFilter,
-) -> Option<SubscriptionFilter>
-Available on non-crate feature local only.Source§
-fn listen(
+) -> Option<SubscriptionFilter>Available on non-crate feature local only.Source§fn listen(
     &self,
     context: SubscriptionContext,
-) -> impl Future<Output = Result<(), McpError>> + MaybeSendFuture + '_
-Available on non-crate feature local only.Source§
-fn subscribe(
+) -> impl Future<Output = Result<(), McpError>> + MaybeSendFuture + '_Available on non-crate feature local only.Source§fn subscribe(
     &self,
     request: SubscribeRequestParams,
     context: RequestContext<RoleServer>,
-) -> impl Future<Output = Result<(), McpError>> + MaybeSendFuture + '_
-👎Deprecated: 
-resources/subscribe is legacy-only; implement accepted_subscription_filter and listen for protocol version 2026-07-28
-
-Available on non-crate feature local only.Source§
-fn unsubscribe(
+) -> impl Future<Output = Result<(), McpError>> + MaybeSendFuture + '_👎Deprecated: resources/subscribe is legacy-only; implement accepted_subscription_filter and listen for protocol version 2026-07-28
+Available on non-crate feature local only.Source§fn unsubscribe(
     &self,
     request: UnsubscribeRequestParams,
     context: RequestContext<RoleServer>,
-) -> impl Future<Output = Result<(), McpError>> + MaybeSendFuture + '_
-👎Deprecated: 
-resources/unsubscribe is legacy-only; subscriptions/listen is cancelled through its request lifecycle
-
-Available on non-crate feature local only.Source§
-fn call_tool(
+) -> impl Future<Output = Result<(), McpError>> + MaybeSendFuture + '_👎Deprecated: resources/unsubscribe is legacy-only; subscriptions/listen is cancelled through its request lifecycle
+Available on non-crate feature local only.Source§fn call_tool(
     &self,
     request: CallToolRequestParams,
     context: RequestContext<RoleServer>,
-) -> impl Future<Output = Result<CallToolResponse, McpError>> + MaybeSendFuture + '_
-Available on non-crate feature local only.Source§
-fn list_tools(
+) -> impl Future<Output = Result<CallToolResponse, McpError>> + MaybeSendFuture + '_Available on non-crate feature local only.Source§fn list_tools(
     &self,
     request: Option<PaginatedRequestParams>,
     context: RequestContext<RoleServer>,
-) -> impl Future<Output = Result<ListToolsResult, McpError>> + MaybeSendFuture + '_
-Available on non-crate feature local only.Source§
-fn get_tool(&self, name: &str) -> Option<Tool>
-Available on non-crate feature local only.Source§
-fn on_custom_request(
+) -> impl Future<Output = Result<ListToolsResult, McpError>> + MaybeSendFuture + '_Available on non-crate feature local only.Source§fn get_tool(&self, name: &str) -> Option<Tool>Available on non-crate feature local only.Source§fn on_custom_request(
     &self,
     request: CustomRequest,
     context: RequestContext<RoleServer>,
-) -> impl Future<Output = Result<CustomResult, McpError>> + MaybeSendFuture + '_
-Available on non-crate feature local only.Source§
-fn on_cancelled(
+) -> impl Future<Output = Result<CustomResult, McpError>> + MaybeSendFuture + '_Available on non-crate feature local only.Source§fn on_cancelled(
     &self,
     notification: CancelledNotificationParam,
     context: NotificationContext<RoleServer>,
-) -> impl Future<Output = ()> + MaybeSendFuture + '_
-Available on non-crate feature local only.Source§
-fn on_progress(
+) -> impl Future<Output = ()> + MaybeSendFuture + '_Available on non-crate feature local only.Source§fn on_progress(
     &self,
     notification: ProgressNotificationParam,
     context: NotificationContext<RoleServer>,
-) -> impl Future<Output = ()> + MaybeSendFuture + '_
-Available on non-crate feature local only.Source§
-fn on_initialized(
+) -> impl Future<Output = ()> + MaybeSendFuture + '_Available on non-crate feature local only.Source§fn on_initialized(
     &self,
     context: NotificationContext<RoleServer>,
-) -> impl Future<Output = ()> + MaybeSendFuture + '_
-Available on non-crate feature local only.Source§
-fn on_roots_list_changed(
+) -> impl Future<Output = ()> + MaybeSendFuture + '_Available on non-crate feature local only.Source§fn on_roots_list_changed(
     &self,
     context: NotificationContext<RoleServer>,
-) -> impl Future<Output = ()> + MaybeSendFuture + '_
-Available on non-crate feature local only.Source§
-fn on_custom_notification(
+) -> impl Future<Output = ()> + MaybeSendFuture + '_Available on non-crate feature local only.Source§fn on_custom_notification(
     &self,
     notification: CustomNotification,
     context: NotificationContext<RoleServer>,
-) -> impl Future<Output = ()> + MaybeSendFuture + '_
-Available on non-crate feature local only.Source§
-fn get_info(&self) -> ServerConfig
-Available on non-crate feature local only.Source§
-fn get_task(
+) -> impl Future<Output = ()> + MaybeSendFuture + '_Available on non-crate feature local only.Source§fn get_info(&self) -> ServerConfigAvailable on non-crate feature local only.Source§fn get_task(
     &self,
     request: GetTaskParams,
     context: RequestContext<RoleServer>,
-) -> impl Future<Output = Result<GetTaskResult, McpError>> + MaybeSendFuture + '_
-Available on non-crate feature local only.Source§
-fn update_task(
+) -> impl Future<Output = Result<GetTaskResult, McpError>> + MaybeSendFuture + '_Available on non-crate feature local only.Source§fn update_task(
     &self,
     request: UpdateTaskParams,
     context: RequestContext<RoleServer>,
-) -> impl Future<Output = Result<(), McpError>> + MaybeSendFuture + '_
-Available on non-crate feature local only.Source§
-fn cancel_task(
+) -> impl Future<Output = Result<(), McpError>> + MaybeSendFuture + '_Available on non-crate feature local only.Source§fn cancel_task(
     &self,
     request: CancelTaskParams,
     context: RequestContext<RoleServer>,
-) -> impl Future<Output = Result<(), McpError>> + MaybeSendFuture + '_
-Available on non-crate feature local only.Source§
-impl<T: ServerHandler> ServerHandler for Box<T>
-Source§
-fn ping(
+) -> impl Future<Output = Result<(), McpError>> + MaybeSendFuture + '_Available on non-crate feature local only.Source§impl<T: ServerHandler> ServerHandler for Box<T>Source§fn ping(
     &self,
     context: RequestContext<RoleServer>,
-) -> impl Future<Output = Result<(), McpError>> + MaybeSendFuture + '_
-Available on non-crate feature local only.Source§
-fn initialize(
+) -> impl Future<Output = Result<(), McpError>> + MaybeSendFuture + '_Available on non-crate feature local only.Source§fn initialize(
     &self,
     request: InitializeRequestParams,
     context: RequestContext<RoleServer>,
-) -> impl Future<Output = Result<InitializeResult, McpError>> + MaybeSendFuture + '_
-Available on non-crate feature local only.Source§
-fn negotiate_initialize(
+) -> impl Future<Output = Result<InitializeResult, McpError>> + MaybeSendFuture + '_Available on non-crate feature local only.Source§fn negotiate_initialize(
     &self,
     request: &InitializeRequestParams,
-) -> Result<InitializeResult, McpError>
-Available on non-crate feature local only.Source§
-fn supported_protocol_versions(&self) -> Cow<'static, [ProtocolVersion]>
-Available on non-crate feature local only.Source§
-fn discover(
+) -> Result<InitializeResult, McpError>Available on non-crate feature local only.Source§fn supported_protocol_versions(&self) -> Cow<'static, [ProtocolVersion]>Available on non-crate feature local only.Source§fn discover(
     &self,
     context: RequestContext<RoleServer>,
-) -> impl Future<Output = Result<DiscoverResult, McpError>> + MaybeSendFuture + '_
-Available on non-crate feature local only.Source§
-fn complete(
+) -> impl Future<Output = Result<DiscoverResult, McpError>> + MaybeSendFuture + '_Available on non-crate feature local only.Source§fn complete(
     &self,
     request: CompleteRequestParams,
     context: RequestContext<RoleServer>,
-) -> impl Future<Output = Result<CompleteResult, McpError>> + MaybeSendFuture + '_
-Available on non-crate feature local only.Source§
-fn set_level(
+) -> impl Future<Output = Result<CompleteResult, McpError>> + MaybeSendFuture + '_Available on non-crate feature local only.Source§fn set_level(
     &self,
     request: SetLevelRequestParams,
     context: RequestContext<RoleServer>,
-) -> impl Future<Output = Result<(), McpError>> + MaybeSendFuture + '_
-Available on non-crate feature local only.Source§
-fn get_prompt(
+) -> impl Future<Output = Result<(), McpError>> + MaybeSendFuture + '_Available on non-crate feature local only.Source§fn get_prompt(
     &self,
     request: GetPromptRequestParams,
     context: RequestContext<RoleServer>,
-) -> impl Future<Output = Result<GetPromptResponse, McpError>> + MaybeSendFuture + '_
-Available on non-crate feature local only.Source§
-fn list_prompts(
+) -> impl Future<Output = Result<GetPromptResponse, McpError>> + MaybeSendFuture + '_Available on non-crate feature local only.Source§fn list_prompts(
     &self,
     request: Option<PaginatedRequestParams>,
     context: RequestContext<RoleServer>,
-) -> impl Future<Output = Result<ListPromptsResult, McpError>> + MaybeSendFuture + '_
-Available on non-crate feature local only.Source§
-fn list_resources(
+) -> impl Future<Output = Result<ListPromptsResult, McpError>> + MaybeSendFuture + '_Available on non-crate feature local only.Source§fn list_resources(
     &self,
     request: Option<PaginatedRequestParams>,
     context: RequestContext<RoleServer>,
-) -> impl Future<Output = Result<ListResourcesResult, McpError>> + MaybeSendFuture + '_
-Available on non-crate feature local only.Source§
-fn list_resource_templates(
+) -> impl Future<Output = Result<ListResourcesResult, McpError>> + MaybeSendFuture + '_Available on non-crate feature local only.Source§fn list_resource_templates(
     &self,
     request: Option<PaginatedRequestParams>,
     context: RequestContext<RoleServer>,
-) -> impl Future<Output = Result<ListResourceTemplatesResult, McpError>> + MaybeSendFuture + '_
-Available on non-crate feature local only.Source§
-fn read_resource(
+) -> impl Future<Output = Result<ListResourceTemplatesResult, McpError>> + MaybeSendFuture + '_Available on non-crate feature local only.Source§fn read_resource(
     &self,
     request: ReadResourceRequestParams,
     context: RequestContext<RoleServer>,
-) -> impl Future<Output = Result<ReadResourceResponse, McpError>> + MaybeSendFuture + '_
-Available on non-crate feature local only.Source§
-fn accepted_subscription_filter(
+) -> impl Future<Output = Result<ReadResourceResponse, McpError>> + MaybeSendFuture + '_Available on non-crate feature local only.Source§fn accepted_subscription_filter(
     &self,
     requested: &SubscriptionFilter,
-) -> Option<SubscriptionFilter>
-Available on non-crate feature local only.Source§
-fn listen(
+) -> Option<SubscriptionFilter>Available on non-crate feature local only.Source§fn listen(
     &self,
     context: SubscriptionContext,
-) -> impl Future<Output = Result<(), McpError>> + MaybeSendFuture + '_
-Available on non-crate feature local only.Source§
-fn subscribe(
+) -> impl Future<Output = Result<(), McpError>> + MaybeSendFuture + '_Available on non-crate feature local only.Source§fn subscribe(
     &self,
     request: SubscribeRequestParams,
     context: RequestContext<RoleServer>,
-) -> impl Future<Output = Result<(), McpError>> + MaybeSendFuture + '_
-👎Deprecated: 
-resources/subscribe is legacy-only; implement accepted_subscription_filter and listen for protocol version 2026-07-28
-
-Available on non-crate feature local only.Source§
-fn unsubscribe(
+) -> impl Future<Output = Result<(), McpError>> + MaybeSendFuture + '_👎Deprecated: resources/subscribe is legacy-only; implement accepted_subscription_filter and listen for protocol version 2026-07-28
+Available on non-crate feature local only.Source§fn unsubscribe(
     &self,
     request: UnsubscribeRequestParams,
     context: RequestContext<RoleServer>,
-) -> impl Future<Output = Result<(), McpError>> + MaybeSendFuture + '_
-👎Deprecated: 
-resources/unsubscribe is legacy-only; subscriptions/listen is cancelled through its request lifecycle
-
-Available on non-crate feature local only.Source§
-fn call_tool(
+) -> impl Future<Output = Result<(), McpError>> + MaybeSendFuture + '_👎Deprecated: resources/unsubscribe is legacy-only; subscriptions/listen is cancelled through its request lifecycle
+Available on non-crate feature local only.Source§fn call_tool(
     &self,
     request: CallToolRequestParams,
     context: RequestContext<RoleServer>,
-) -> impl Future<Output = Result<CallToolResponse, McpError>> + MaybeSendFuture + '_
-Available on non-crate feature local only.Source§
-fn list_tools(
+) -> impl Future<Output = Result<CallToolResponse, McpError>> + MaybeSendFuture + '_Available on non-crate feature local only.Source§fn list_tools(
     &self,
     request: Option<PaginatedRequestParams>,
     context: RequestContext<RoleServer>,
-) -> impl Future<Output = Result<ListToolsResult, McpError>> + MaybeSendFuture + '_
-Available on non-crate feature local only.Source§
-fn get_tool(&self, name: &str) -> Option<Tool>
-Available on non-crate feature local only.Source§
-fn on_custom_request(
+) -> impl Future<Output = Result<ListToolsResult, McpError>> + MaybeSendFuture + '_Available on non-crate feature local only.Source§fn get_tool(&self, name: &str) -> Option<Tool>Available on non-crate feature local only.Source§fn on_custom_request(
     &self,
     request: CustomRequest,
     context: RequestContext<RoleServer>,
-) -> impl Future<Output = Result<CustomResult, McpError>> + MaybeSendFuture + '_
-Available on non-crate feature local only.Source§
-fn on_cancelled(
+) -> impl Future<Output = Result<CustomResult, McpError>> + MaybeSendFuture + '_Available on non-crate feature local only.Source§fn on_cancelled(
     &self,
     notification: CancelledNotificationParam,
     context: NotificationContext<RoleServer>,
-) -> impl Future<Output = ()> + MaybeSendFuture + '_
-Available on non-crate feature local only.Source§
-fn on_progress(
+) -> impl Future<Output = ()> + MaybeSendFuture + '_Available on non-crate feature local only.Source§fn on_progress(
     &self,
     notification: ProgressNotificationParam,
     context: NotificationContext<RoleServer>,
-) -> impl Future<Output = ()> + MaybeSendFuture + '_
-Available on non-crate feature local only.Source§
-fn on_initialized(
+) -> impl Future<Output = ()> + MaybeSendFuture + '_Available on non-crate feature local only.Source§fn on_initialized(
     &self,
     context: NotificationContext<RoleServer>,
-) -> impl Future<Output = ()> + MaybeSendFuture + '_
-Available on non-crate feature local only.Source§
-fn on_roots_list_changed(
+) -> impl Future<Output = ()> + MaybeSendFuture + '_Available on non-crate feature local only.Source§fn on_roots_list_changed(
     &self,
     context: NotificationContext<RoleServer>,
-) -> impl Future<Output = ()> + MaybeSendFuture + '_
-Available on non-crate feature local only.Source§
-fn on_custom_notification(
+) -> impl Future<Output = ()> + MaybeSendFuture + '_Available on non-crate feature local only.Source§fn on_custom_notification(
     &self,
     notification: CustomNotification,
     context: NotificationContext<RoleServer>,
-) -> impl Future<Output = ()> + MaybeSendFuture + '_
-Available on non-crate feature local only.Source§
-fn get_info(&self) -> ServerConfig
-Available on non-crate feature local only.Source§
-fn get_task(
+) -> impl Future<Output = ()> + MaybeSendFuture + '_Available on non-crate feature local only.Source§fn get_info(&self) -> ServerConfigAvailable on non-crate feature local only.Source§fn get_task(
     &self,
     request: GetTaskParams,
     context: RequestContext<RoleServer>,
-) -> impl Future<Output = Result<GetTaskResult, McpError>> + MaybeSendFuture + '_
-Available on non-crate feature local only.Source§
-fn update_task(
+) -> impl Future<Output = Result<GetTaskResult, McpError>> + MaybeSendFuture + '_Available on non-crate feature local only.Source§fn update_task(
     &self,
     request: UpdateTaskParams,
     context: RequestContext<RoleServer>,
-) -> impl Future<Output = Result<(), McpError>> + MaybeSendFuture + '_
-Available on non-crate feature local only.Source§
-fn cancel_task(
+) -> impl Future<Output = Result<(), McpError>> + MaybeSendFuture + '_Available on non-crate feature local only.Source§fn cancel_task(
     &self,
     request: CancelTaskParams,
     context: RequestContext<RoleServer>,
-) -> impl Future<Output = Result<(), McpError>> + MaybeSendFuture + '_
-Available on non-crate feature local only.
-Implementors§
+) -> impl Future<Output = Result<(), McpError>> + MaybeSendFuture + '_Available on non-crate feature local only.Implementors§

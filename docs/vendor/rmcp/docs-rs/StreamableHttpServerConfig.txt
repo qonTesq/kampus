@@ -1,21 +1,21 @@
-Source: https://docs.rs/rmcp/3.4.1/rmcp/transport/streamable_http_server/tower/struct.StreamableHttpServerConfig.html
-Fetched: 2026-09-26
+Source: https://docs.rs/rmcp/3.5.0/rmcp/transport/streamable_http_server/tower/struct.StreamableHttpServerConfig.html
+Fetched: 2026-09-28
 
 StreamableHttpServerConfig in rmcp::transport::streamable_http_server::tower - Rust
 
                     Docs.rs
 
-                rmcp-3.4.1
+                rmcp-3.5.0
 
-                        rmcp 3.4.1
+                        rmcp 3.5.0
 
                              Docs.rs crate page
 
                             Apache-2.0
 
-                                 23 September 2026
+                                 28 September 2026
 
-Links
+                            Links
 
                                          Homepage
 
@@ -25,7 +25,7 @@ Links
 
                                      Source
 
-Owners
+                            Owners
 
                                          4t145
 
@@ -33,7 +33,7 @@ Owners
 
                                          alexhancock
 
-Dependencies
+                            Dependencies
 
                 async-trait ^0.1.89
 
@@ -137,7 +137,7 @@ Dependencies
 
                         optional
 
-                rmcp-macros ^3.4.1
+                rmcp-macros ^3.5.0
 
                     normal
 
@@ -249,6 +249,10 @@ Dependencies
 
                     dev
 
+                serde_json ^1.0
+
+                    dev
+
                 tokio ^1
 
                     dev
@@ -273,9 +277,9 @@ Dependencies
 
                     normal
 
-Versions
+                            Versions
 
-                                        49.04%
+                                        49.15%
                                         of the crate is documented
 
                     Platform
@@ -285,38 +289,22 @@ Versions
                     Feature flags
 
                         docs.rs
-
- About docs.rs
- Badges
- Builds
- Metadata
- Shorthand URLs
- Download
- Rustdoc JSON
- Build queue
- Privacy policy
+                         About docs.rs Badges Builds Metadata Shorthand URLs Download Rustdoc JSON Build queue Privacy policy
 
                         Rust
 
-Rust website
+                            Rust website
+                            The Book
 
-The Book
+                            Standard Library API Reference
 
-Standard Library API Reference
+                            Rust by Example
 
-Rust by Example
+                            The Cargo Guide
 
-The Cargo Guide
+                            Clippy Documentation
 
-Clippy Documentation
-
-Skip to main content
-StreamableHttpServerConfig
-
-rmcp::transport::streamable_http_server::tower
-Struct StreamableHttpServerConfig Copy item pathSource 
-
-#[non_exhaustive]pub struct StreamableHttpServerConfig {
+Skip to main contentStreamableHttpServerConfigrmcp3.5.0StreamableHttpServerConfigFieldsallowed_hostsallowed_originscancellation_tokenjson_responselegacy_session_modemax_request_body_bytessession_storesse_keep_alivesse_retrystateless_protocol_metadata_requiredMethodsdisable_allowed_hostsdisable_allowed_originsenforce_origin_validationwith_allowed_hostswith_allowed_originswith_cancellation_tokenwith_json_responsewith_legacy_session_modewith_max_request_body_byteswith_sse_keep_alivewith_sse_retrywith_stateless_protocol_metadata_requiredTrait ImplementationsCloneDebugDefaultAuto Trait Implementations!RefUnwindSafe!UnwindSafeFreezeSendSyncUnpinUnsafeUnpinBlanket ImplementationsAnyBorrow<T>BorrowMut<T>CastableFrom<ST, Initialized, Initialized>CastableFrom<ST, Uninit, Uninit>CloneToUninitDynCloneFrom<T>InstrumentInto<U>PolicyExtRead<Exclusive, BecauseExclusive>SameToOwnedTryFrom<U>TryInto<U>VZip<V>WithSubscriberIn rmcp::transport::streamable_http_server::towerrmcp::transport::streamable_http_server::towerStruct StreamableHttpServerConfig Copy item pathSource #[non_exhaustive]pub struct StreamableHttpServerConfig {
     pub sse_keep_alive: Option<Duration>,
     pub sse_retry: Option<Duration>,
     pub legacy_session_mode: bool,
@@ -328,40 +316,22 @@ Struct StreamableHttpServerConfig Copy item pathSource
     pub max_request_body_bytes: usize,
     pub stateless_protocol_metadata_required: bool,
     /* private fields */
-}
-Available on crate feature transport-streamable-http-server-session and crate feature transport-streamable-http-server and (crate features client or server) and non-crate feature local only.
-Fields (Non-exhaustive)§This struct is marked as non-exhaustive
-Non-exhaustive structs could have additional fields added in future. Therefore, non-exhaustive structs cannot be constructed in external crates using the traditional Struct { .. } syntax; cannot be matched against without a wildcard ..; and struct update syntax will not work.§sse_keep_alive: Option<Duration>
-
-The ping message duration for SSE connections.
-§sse_retry: Option<Duration>
-
-The retry interval for SSE priming events.
-§legacy_session_mode: bool
-
-If true, the server will create a session for each request and keep it alive.
+}Available on crate feature transport-streamable-http-server-session and crate feature transport-streamable-http-server and (crate features client or server) and non-crate feature local only.Fields (Non-exhaustive)§This struct is marked as non-exhaustiveNon-exhaustive structs could have additional fields added in future. Therefore, non-exhaustive structs cannot be constructed in external crates using the traditional Struct { .. } syntax; cannot be matched against without a wildcard ..; and struct update syntax will not work.§sse_keep_alive: Option<Duration>The ping message duration for SSE connections.
+§sse_retry: Option<Duration>The retry interval for SSE priming events.
+§legacy_session_mode: boolIf true, the server will create a session for each request and keep it alive.
 When enabled, SSE priming events are sent to enable client reconnection.
-
 Only applies to legacy protocol versions (< 2026-07-28). Per SEP-2567,
 sessions are removed from the 2026-07-28 version, so requests
 negotiating that version are always served statelessly regardless of
 this setting.
-§json_response: bool
-
-When true and legacy_session_mode is false, the server prefers
+§json_response: boolWhen true and legacy_session_mode is false, the server prefers
 Content-Type: application/json for simple request-response tools.
 If the handler emits a notification or request before the final response,
 the server falls back to text/event-stream so no message is lost.
-§cancellation_token: CancellationToken
-
-Cancellation token for the Streamable HTTP server.
-
+§cancellation_token: CancellationTokenCancellation token for the Streamable HTTP server.
 When this token is cancelled, all active sessions are terminated and
 the server stops accepting new requests.
-§allowed_hosts: Vec<String>
-
-Allowed hostnames or host:port authorities for inbound Host validation.
-
+§allowed_hosts: Vec<String>Allowed hostnames or host:port authorities for inbound Host validation.
 By default, Streamable HTTP servers only accept loopback hosts to
 prevent DNS rebinding attacks against locally running servers. Public
 deployments should override this list with their own hostnames.
@@ -369,35 +339,34 @@ examples:
 allowed_hosts = [“localhost”, “127.0.0.1”, “0.0.0.0”]
 or with ports:
 allowed_hosts = [“example.com”, “example.com:8080”]
-§allowed_origins: Vec<String>
-
-Allowed browser origins for inbound Origin validation.
-
+§allowed_origins: Vec<String>Allowed browser origins for inbound Origin validation.
 Defaults to an empty list, which disables Origin validation for backward
 compatibility. A non-empty list enables validation. Requests carrying
 an Origin header must match per RFC 6454 (scheme, host, port);
 missing-Origin requests still pass. Entries must include a scheme;
 "null" matches the browser’s Origin: null.
+Ports:
+
+:* matches any port.
+An explicit port matches only that port. An Origin without a port
+uses the scheme default (443 for https, 80 for http).
+An entry without a port currently matches any port. This is
+deprecated: a future release will match only the scheme default
+port. Use :* or an explicit port instead.
 
 Call StreamableHttpServerConfig::enforce_origin_validation to enable
 validation with an empty list, rejecting every present Origin value.
 examples:
-allowed_origins = [“https://app.example.com”, “http://localhost:8080”]
-§session_store: Option<Arc<dyn SessionStore>>
-
-Optional external session store for cross-instance recovery.
-
+allowed_origins = [“https://app.example.com:443”, “http://localhost:*”]
+§session_store: Option<Arc<dyn SessionStore>>Optional external session store for cross-instance recovery.
 When set, SessionState (the client’s initialize parameters) is
 persisted after a successful handshake and deleted when the session
 closes. On any subsequent request that arrives at an instance with no
 in-memory session, the store is consulted: if an entry is found the
 session is transparently restored so the client does not need to
 re-initialize.
-
 §Example
-
-ⓘ
-use std::sync::Arc;
+ⓘuse std::sync::Arc;
 use rmcp::transport::streamable_http_server::{
     StreamableHttpServerConfig, session::SessionStore,
 };
@@ -405,18 +374,12 @@ use rmcp::transport::streamable_http_server::{
 let config = StreamableHttpServerConfig {
     session_store: Some(Arc::new(MyRedisStore::new())),
     ..Default::default()
-};§max_request_body_bytes: usize
-
-Maximum POST request body size in bytes.
-
+};§max_request_body_bytes: usizeMaximum POST request body size in bytes.
 Enforced while streaming the body, independent of Content-Length,
 chunked transfer encoding, or HTTP version. Oversized payloads receive
 a 413 Payload Too Large response.
-§stateless_protocol_metadata_required: bool
-
-Require stateless JSON-RPC request POSTs to carry per-request protocol
+§stateless_protocol_metadata_required: boolRequire stateless JSON-RPC request POSTs to carry per-request protocol
 signals before handler dispatch.
-
 Non-initialize requests must carry MCP-Protocol-Version; ordinary
 non-discovery requests must also carry
 _meta.io.modelcontextprotocol/protocolVersion. server/discover
@@ -424,11 +387,9 @@ retains its existing request-metadata validation. For 2026-07-28
 requests, the server handler continues to require the remaining
 per-request metadata, including clientCapabilities. Initialize,
 notifications, and other message kinds retain their existing rules.
-
 This option applies to requests routed statelessly. Set
 legacy_session_mode to false to ensure every request uses that path.
 Legacy session routing and its error precedence remain unchanged.
-
 The validator checks metadata presence rather than applying a version
 allowlist. However, rmcp clients negotiated below 2026-07-28 do not
 attach per-request protocol metadata, so enabling this option rejects
@@ -436,204 +397,53 @@ their ordinary requests. Servers using this option should normally
 override
 ServerHandler::supported_protocol_versions
 to advertise only 2026-07-28 and later.
-
 Default is false, preserving today’s legacy behavior where an absent
 header is treated as protocol version 2025-03-26.
-
-Implementations§
-Source§
-impl StreamableHttpServerConfig
-Source
-pub fn with_allowed_hosts(
+Implementations§Source§impl StreamableHttpServerConfigSourcepub fn with_allowed_hosts(
     self,
     allowed_hosts: impl IntoIterator<Item = impl Into<String>>,
-) -> SelfSource
-pub fn disable_allowed_hosts(self) -> Self
-
-Disable allowed hosts. This will allow requests with any Host header, which is NOT recommended for public deployments.
-Source
-pub fn with_allowed_origins(
+) -> SelfSourcepub fn disable_allowed_hosts(self) -> SelfDisable allowed hosts. This will allow requests with any Host header, which is NOT recommended for public deployments.
+Sourcepub fn with_allowed_origins(
     self,
     allowed_origins: impl IntoIterator<Item = impl Into<String>>,
-) -> SelfSource
-pub fn enforce_origin_validation(self) -> Self
-
-Enable Origin validation, including when the allowed Origins list is empty.
-Source
-pub fn disable_allowed_origins(self) -> Self
-
-Disable Origin validation, allowing requests with any Origin header.
-Source
-pub fn with_sse_keep_alive(self, duration: Option<Duration>) -> SelfSource
-pub fn with_sse_retry(self, duration: Option<Duration>) -> SelfSource
-pub fn with_legacy_session_mode(self, legacy_session_mode: bool) -> SelfSource
-pub fn with_json_response(self, json_response: bool) -> SelfSource
-pub fn with_cancellation_token(self, token: CancellationToken) -> SelfSource
-pub fn with_max_request_body_bytes(self, bytes: usize) -> Self
-
-Set the maximum POST request body size in bytes.
-Source
-pub fn with_stateless_protocol_metadata_required(
+) -> SelfSourcepub fn enforce_origin_validation(self) -> SelfEnable Origin validation, including when the allowed Origins list is empty.
+Sourcepub fn disable_allowed_origins(self) -> SelfDisable Origin validation, allowing requests with any Origin header.
+Sourcepub fn with_sse_keep_alive(self, duration: Option<Duration>) -> SelfSourcepub fn with_sse_retry(self, duration: Option<Duration>) -> SelfSourcepub fn with_legacy_session_mode(self, legacy_session_mode: bool) -> SelfSourcepub fn with_json_response(self, json_response: bool) -> SelfSourcepub fn with_cancellation_token(self, token: CancellationToken) -> SelfSourcepub fn with_max_request_body_bytes(self, bytes: usize) -> SelfSet the maximum POST request body size in bytes.
+Sourcepub fn with_stateless_protocol_metadata_required(
     self,
     stateless_protocol_metadata_required: bool,
-) -> Self
-
-Require per-request protocol signals on stateless JSON-RPC request
+) -> SelfRequire per-request protocol signals on stateless JSON-RPC request
 POSTs.
-
 See StreamableHttpServerConfig::stateless_protocol_metadata_required.
-
-Trait Implementations§
-Source§
-impl Clone for StreamableHttpServerConfig
-Source§
-fn clone(&self) -> Self
-Returns a duplicate of the value. Read more1.0.0 (const: unstable) · Source§
-fn clone_from(&mut self, source: &Self)
-Performs copy-assignment from source. Read moreSource§
-impl Debug for StreamableHttpServerConfig
-Source§
-fn fmt(&self, f: &mut Formatter<'_>) -> Result
-Formats the value using the given formatter. Read moreSource§
-impl Default for StreamableHttpServerConfig
-Source§
-fn default() -> Self
-Returns the “default value” for a type. Read more
-Auto Trait Implementations§
-§
-impl !RefUnwindSafe for StreamableHttpServerConfig§
-impl !UnwindSafe for StreamableHttpServerConfig§
-impl Freeze for StreamableHttpServerConfig§
-impl Send for StreamableHttpServerConfig§
-impl Sync for StreamableHttpServerConfig§
-impl Unpin for StreamableHttpServerConfig§
-impl UnsafeUnpin for StreamableHttpServerConfig
-Blanket Implementations§
-Source§
-impl<T> Any for T
-where
-    T: 'static + ?Sized,
-Source§
-fn type_id(&self) -> TypeId
-Gets the TypeId of self. Read moreSource§
-impl<T> Borrow<T> for T
-where
-    T: ?Sized,
-Source§
-fn borrow(&self) -> &T
-Immutably borrows from an owned value. Read moreSource§
-impl<T> BorrowMut<T> for T
-where
-    T: ?Sized,
-Source§
-fn borrow_mut(&mut self) -> &mut T
-Mutably borrows from an owned value. Read moreSource§
-impl<ST, DT> CastableFrom<ST, Initialized, Initialized> for DT
-where
+Trait Implementations§Source§impl Clone for StreamableHttpServerConfigSource§fn clone(&self) -> SelfReturns a duplicate of the value. Read more1.0.0 (const: unstable) · Source§fn clone_from(&mut self, source: &Self)Performs copy-assignment from source. Read moreSource§impl Debug for StreamableHttpServerConfigSource§fn fmt(&self, f: &mut Formatter<'_>) -> ResultFormats the value using the given formatter. Read moreSource§impl Default for StreamableHttpServerConfigSource§fn default() -> SelfReturns the “default value” for a type. Read moreAuto Trait Implementations§§impl !RefUnwindSafe for StreamableHttpServerConfig§impl !UnwindSafe for StreamableHttpServerConfig§impl Freeze for StreamableHttpServerConfig§impl Send for StreamableHttpServerConfig§impl Sync for StreamableHttpServerConfig§impl Unpin for StreamableHttpServerConfig§impl UnsafeUnpin for StreamableHttpServerConfigBlanket Implementations§Source§impl<T> Any for Twhere
+    T: 'static + ?Sized,Source§fn type_id(&self) -> TypeIdGets the TypeId of self. Read moreSource§impl<T> Borrow<T> for Twhere
+    T: ?Sized,Source§fn borrow(&self) -> &TImmutably borrows from an owned value. Read moreSource§impl<T> BorrowMut<T> for Twhere
+    T: ?Sized,Source§fn borrow_mut(&mut self) -> &mut TMutably borrows from an owned value. Read moreSource§impl<ST, DT> CastableFrom<ST, Initialized, Initialized> for DTwhere
     ST: ?Sized,
-    DT: ?Sized,Source§
-impl<ST, DT> CastableFrom<ST, Uninit, Uninit> for DT
-where
+    DT: ?Sized,Source§impl<ST, DT> CastableFrom<ST, Uninit, Uninit> for DTwhere
     ST: ?Sized,
-    DT: ?Sized,Source§
-impl<T> CloneToUninit for T
-where
-    T: Clone,
-Source§
-unsafe fn clone_to_uninit(&self, dest: *mut u8)
-🔬This is a nightly-only experimental API. (clone_to_uninit)
-Performs copy-assignment from self to dest. Read moreSource§
-impl<T> DynClone for T
-where
-    T: Clone,
-Source§
-fn __clone_box(&self, _: Private) -> *mut ()Source§
-impl<T> From<T> for T
-Source§
-fn from(t: T) -> T
-
-Returns the argument unchanged.
-Source§
-impl<T> Instrument for T
-Source§
-fn instrument(self, span: Span) -> Instrumented<Self> ⓘ
-Instruments this type with the provided Span, returning an
-Instrumented wrapper. Read moreSource§
-fn in_current_span(self) -> Instrumented<Self> ⓘ
-Instruments this type with the current Span, returning an
-Instrumented wrapper. Read moreSource§
-impl<T, U> Into<U> for T
-where
-    U: From<T>,
-Source§
-fn into(self) -> U
-
-Calls U::from(self).
-
+    DT: ?Sized,Source§impl<T> CloneToUninit for Twhere
+    T: Clone,Source§unsafe fn clone_to_uninit(&self, dest: *mut u8)🔬This is a nightly-only experimental API. (clone_to_uninit)Performs copy-assignment from self to dest. Read moreSource§impl<T> DynClone for Twhere
+    T: Clone,Source§fn __clone_box(&self, _: Private) -> *mut ()Source§impl<T> From<T> for TSource§fn from(t: T) -> TReturns the argument unchanged.
+Source§impl<T> Instrument for TSource§fn instrument(self, span: Span) -> Instrumented<Self> ⓘInstruments this type with the provided Span, returning an
+Instrumented wrapper. Read moreSource§fn in_current_span(self) -> Instrumented<Self> ⓘInstruments this type with the current Span, returning an
+Instrumented wrapper. Read moreSource§impl<T, U> Into<U> for Twhere
+    U: From<T>,Source§fn into(self) -> UCalls U::from(self).
 That is, this conversion is whatever the implementation of
 From<T> for U chooses to do.
-Source§
-impl<T> PolicyExt for T
-where
-    T: ?Sized,
-Source§
-fn and<P, B, E>(self, other: P) -> And<T, P>
-where
+Source§impl<T> PolicyExt for Twhere
+    T: ?Sized,Source§fn and<P, B, E>(self, other: P) -> And<T, P>where
     T: Sized + Policy<B, E>,
-    P: Policy<B, E>,
-Create a new Policy that returns Action::Follow only if self and other return
-Action::Follow. Read moreSource§
-fn or<P, B, E>(self, other: P) -> Or<T, P>
-where
+    P: Policy<B, E>,Create a new Policy that returns Action::Follow only if self and other return
+Action::Follow. Read moreSource§fn or<P, B, E>(self, other: P) -> Or<T, P>where
     T: Sized + Policy<B, E>,
-    P: Policy<B, E>,
-Create a new Policy that returns Action::Follow if either self or other returns
-Action::Follow. Read moreSource§
-impl<T> Read<Exclusive, BecauseExclusive> for T
-where
-    T: ?Sized,Source§
-impl<T> Same for T
-Source§
-type Output = T
-Should always be SelfSource§
-impl<T> ToOwned for T
-where
-    T: Clone,
-Source§
-type Owned = T
-The resulting type after obtaining ownership.Source§
-fn to_owned(&self) -> T
-Creates owned data from borrowed data, usually by cloning. Read moreSource§
-fn clone_into(&self, target: &mut T)
-Uses borrowed data to replace owned data, usually by cloning. Read moreSource§
-impl<T, U> TryFrom<U> for T
-where
-    U: Into<T>,
-Source§
-type Error = !
-The type returned in the event of a conversion error.Source§
-fn try_from(value: U) -> Result<T, !>
-Performs the conversion.Source§
-impl<T, U> TryInto<U> for T
-where
-    U: TryFrom<T>,
-Source§
-type Error = <U as TryFrom<T>>::Error
-The type returned in the event of a conversion error.Source§
-fn try_into(self) -> Result<U, <U as TryFrom<T>>::Error>
-Performs the conversion.Source§
-impl<V, T> VZip<V> for T
-where
-    V: MultiLane<T>,
-Source§
-fn vzip(self) -> VSource§
-impl<T> WithSubscriber for T
-Source§
-fn with_subscriber<S>(self, subscriber: S) -> WithDispatch<Self> ⓘ
-where
-    S: Into<Dispatch>,
-Attaches the provided Subscriber to this type, returning a
-WithDispatch wrapper. Read moreSource§
-fn with_current_subscriber(self) -> WithDispatch<Self> ⓘ
-Attaches the current default Subscriber to this type, returning a
+    P: Policy<B, E>,Create a new Policy that returns Action::Follow if either self or other returns
+Action::Follow. Read moreSource§impl<T> Read<Exclusive, BecauseExclusive> for Twhere
+    T: ?Sized,Source§impl<T> Same for TSource§type Output = TShould always be SelfSource§impl<T> ToOwned for Twhere
+    T: Clone,Source§type Owned = TThe resulting type after obtaining ownership.Source§fn to_owned(&self) -> TCreates owned data from borrowed data, usually by cloning. Read moreSource§fn clone_into(&self, target: &mut T)Uses borrowed data to replace owned data, usually by cloning. Read moreSource§impl<T, U> TryFrom<U> for Twhere
+    U: Into<T>,Source§type Error = !The type returned in the event of a conversion error.Source§fn try_from(value: U) -> Result<T, !>Performs the conversion.Source§impl<T, U> TryInto<U> for Twhere
+    U: TryFrom<T>,Source§type Error = <U as TryFrom<T>>::ErrorThe type returned in the event of a conversion error.Source§fn try_into(self) -> Result<U, <U as TryFrom<T>>::Error>Performs the conversion.Source§impl<V, T> VZip<V> for Twhere
+    V: MultiLane<T>,Source§fn vzip(self) -> VSource§impl<T> WithSubscriber for TSource§fn with_subscriber<S>(self, subscriber: S) -> WithDispatch<Self> ⓘwhere
+    S: Into<Dispatch>,Attaches the provided Subscriber to this type, returning a
+WithDispatch wrapper. Read moreSource§fn with_current_subscriber(self) -> WithDispatch<Self> ⓘAttaches the current default Subscriber to this type, returning a
 WithDispatch wrapper. Read more

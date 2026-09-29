@@ -39,8 +39,8 @@ use crate::{
         OneshotTransport, TransportAdapterIdentity,
         common::{
             http_header::{
-                EVENT_STREAM_MIME_TYPE, HEADER_LAST_EVENT_ID, HEADER_MCP_PROTOCOL_VERSION,
-                HEADER_SESSION_ID, JSON_MIME_TYPE,
+                EVENT_STREAM_MIME_TYPE, HEADER_LAST_EVENT_ID, HEADER_MCP_METHOD,
+                HEADER_MCP_PROTOCOL_VERSION, HEADER_SESSION_ID, JSON_MIME_TYPE,
             },
             mcp_headers,
             server_side_http::{
@@ -116,10 +116,18 @@ pub struct StreamableHttpServerConfig {
     /// missing-`Origin` requests still pass. Entries must include a scheme;
     /// `"null"` matches the browser's `Origin: null`.
     ///
+    /// Ports:
+    /// - `:*` matches any port.
+    /// - An explicit port matches only that port. An `Origin` without a port
+    ///   uses the scheme default (443 for `https`, 80 for `http`).
+    /// - An entry without a port currently matches any port. This is
+    ///   deprecated: a future release will match only the scheme default
+    ///   port. Use `:*` or an explicit port instead.
+    ///
     /// Call [`StreamableHttpServerConfig::enforce_origin_validation`] to enable
     /// validation with an empty list, rejecting every present Origin value.
     /// examples:
-    ///     allowed_origins = ["https://app.example.com", "http://localhost:8080"]
+    ///     allowed_origins = ["https://app.example.com:443", "http://localhost:*"]
     pub allowed_origins: Vec<String>,
     validate_empty_origin_allowlist: bool,
     /// Optional external session store for cross-instance recovery.
@@ -690,6 +698,99 @@ mod jsonrpc_http_status_tests {
     }
 }
 
+#[cfg(test)]
+mod standard_header_init_tests {
+    use super::*;
+
+    fn initialize_message() -> ClientJsonRpcMessage {
+        ClientJsonRpcMessage::request(
+            ClientRequest::InitializeRequest(InitializeRequest {
+                params: InitializeRequestParams {
+                    protocol_version: ProtocolVersion::STANDARD_HEADERS,
+                    ..Default::default()
+                },
+                ..Default::default()
+            }),
+            RequestId::Number(1),
+        )
+    }
+
+    fn headers_with(mcp_method: Option<&str>) -> HeaderMap {
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            HEADER_MCP_PROTOCOL_VERSION,
+            http::HeaderValue::from_static(ProtocolVersion::STANDARD_HEADERS.as_str()),
+        );
+        if let Some(method) = mcp_method {
+            headers.insert(
+                HEADER_MCP_METHOD,
+                method.parse::<http::HeaderValue>().unwrap(),
+            );
+        }
+        headers
+    }
+
+    fn no_tool_schema(_: &str) -> Option<Arc<JsonObject>> {
+        None
+    }
+
+    /// A supplied Mcp-Method header contradicting an initialize body must be
+    /// rejected at >= STANDARD_HEADERS. Regression test for
+    /// https://github.com/modelcontextprotocol/rust-sdk/issues/1271
+    #[test]
+    fn initialize_rejects_contradicting_mcp_method_header() {
+        let headers = headers_with(Some("tools/list"));
+        assert!(
+            validate_standard_headers(&headers, &initialize_message(), no_tool_schema).is_err()
+        );
+    }
+
+    /// Absence of the Mcp-Method header on initialize stays accepted: clients
+    /// emit SEP-2243 headers only after the version has been negotiated.
+    #[test]
+    fn initialize_accepts_missing_mcp_method_header() {
+        let headers = headers_with(None);
+        assert!(validate_standard_headers(&headers, &initialize_message(), no_tool_schema).is_ok());
+    }
+
+    /// A supplied Mcp-Method header matching the initialize body is accepted.
+    #[test]
+    fn initialize_accepts_matching_mcp_method_header() {
+        let headers = headers_with(Some("initialize"));
+        assert!(validate_standard_headers(&headers, &initialize_message(), no_tool_schema).is_ok());
+    }
+
+    /// Conflicting duplicate Mcp-Method values are rejected in both orders:
+    /// only the first value used to be checked, so an appended contradictory
+    /// value passed silently. Duplicate values are rejected explicitly.
+    #[test]
+    fn initialize_rejects_conflicting_duplicates_in_both_orders() {
+        for (first, second) in [("initialize", "tools/list"), ("tools/list", "initialize")] {
+            let mut headers = headers_with(Some(first));
+            headers.append(
+                HEADER_MCP_METHOD,
+                http::HeaderValue::from_str(second).unwrap(),
+            );
+            assert!(
+                validate_standard_headers(&headers, &initialize_message(), no_tool_schema).is_err()
+            );
+        }
+    }
+
+    /// A present but non-UTF8 Mcp-Method value is rejected: it must not be
+    /// silently treated as an absent header.
+    #[test]
+    fn initialize_rejects_present_non_text_method() {
+        let mut headers = headers_with(None);
+        let value = http::HeaderValue::from_bytes(&[0xff]).unwrap();
+        assert!(value.to_str().is_err());
+        headers.insert(HEADER_MCP_METHOD, value);
+        assert!(
+            validate_standard_headers(&headers, &initialize_message(), no_tool_schema).is_err()
+        );
+    }
+}
+
 fn jsonrpc_message_response(
     message: ServerJsonRpcMessage,
     map_protocol_status: bool,
@@ -724,8 +825,11 @@ fn header_mismatch_jsonrpc_response(
 /// Validates SEP-2243 `Mcp-Method` / `Mcp-Name` / `Mcp-Param-*` headers against the body.
 ///
 /// Only enforced when the request declares a protocol version `>= STANDARD_HEADERS`.
-/// The `initialize` handshake is exempt: clients emit these headers only after the
-/// version has been negotiated. `tool_schema` supplies the called tool's input schema
+/// The `initialize` handshake is exempt from *requiring* them: clients emit these
+/// headers only after the version has been negotiated. But like
+/// `validate_header_matches_init_body`, a *supplied* `Mcp-Method` header that
+/// contradicts the body is rejected — middleboxes route on the header without
+/// parsing the body. `tool_schema` supplies the called tool's input schema
 /// so annotated `Mcp-Param-*` headers can be checked (no schema => those are skipped).
 fn validate_standard_headers(
     headers: &HeaderMap,
@@ -743,6 +847,35 @@ fn validate_standard_headers(
     let request_id = match message {
         ClientJsonRpcMessage::Request(req) => {
             if matches!(&req.request, ClientRequest::InitializeRequest(_)) {
+                // The handshake may omit SEP-2243 headers, but a supplied
+                // Mcp-Method header must still agree with the body: middleboxes
+                // route on the header without parsing the body. `get_all` is
+                // used so every supplied value is inspected: a contradictory
+                // duplicate must not hide behind a matching first value, and a
+                // present-but-non-UTF8 value is rejected rather than silently
+                // treated as absent. Duplicates (even identical ones) are
+                // rejected explicitly instead of passing by accident.
+                let mut method_values = headers.get_all(HEADER_MCP_METHOD).iter();
+                let Some(first) = method_values.next() else {
+                    return Ok(());
+                };
+                if method_values.next().is_some() {
+                    return Err(header_mismatch_jsonrpc_response(
+                        Some(req.id.clone()),
+                        "multiple Mcp-Method header values supplied; initialize requires exactly one",
+                    )
+                    .into());
+                }
+                if first != http::HeaderValue::from_static("initialize") {
+                    return Err(header_mismatch_jsonrpc_response(
+                        Some(req.id.clone()),
+                        format!(
+                            "Mcp-Method header `{}` does not match body method `initialize`",
+                            String::from_utf8_lossy(first.as_bytes())
+                        ),
+                    )
+                    .into());
+                }
                 return Ok(());
             }
             Some(req.id.clone())
@@ -853,14 +986,79 @@ fn parse_origin_value(value: &str) -> Option<NormalizedOrigin> {
     })
 }
 
+/// The port a scheme implies when an origin serialization omits it (RFC 6454 §4).
+fn default_port(scheme: &str) -> Option<u16> {
+    match scheme {
+        "http" => Some(80),
+        "https" => Some(443),
+        _ => None,
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum AllowedPort {
+    /// `:*`
+    Any,
+    /// No port in the entry. Matches any port until the deprecation ends.
+    Unspecified,
+    Exact(u16),
+}
+
+impl AllowedPort {
+    fn matches(self, scheme: &str, port: Option<u16>) -> bool {
+        match self {
+            AllowedPort::Any | AllowedPort::Unspecified => true,
+            // RFC 6454 §6.2 omits the default port when serializing an origin.
+            AllowedPort::Exact(allowed) => port.or_else(|| default_port(scheme)) == Some(allowed),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum AllowedOrigin {
+    Null,
+    Tuple {
+        scheme: String,
+        host: String,
+        port: AllowedPort,
+    },
+}
+
+fn parse_allowed_origin(value: &str) -> Option<AllowedOrigin> {
+    let value = value.trim();
+    if let Some(base) = value.strip_suffix(":*") {
+        let NormalizedOrigin::Tuple {
+            scheme,
+            host,
+            port: None,
+        } = parse_origin_value(base)?
+        else {
+            return None;
+        };
+        return Some(AllowedOrigin::Tuple {
+            scheme,
+            host,
+            port: AllowedPort::Any,
+        });
+    }
+    Some(match parse_origin_value(value)? {
+        NormalizedOrigin::Null => AllowedOrigin::Null,
+        NormalizedOrigin::Tuple { scheme, host, port } => AllowedOrigin::Tuple {
+            scheme,
+            host,
+            port: port.map_or(AllowedPort::Unspecified, AllowedPort::Exact),
+        },
+    })
+}
+
 fn origin_is_allowed(origin: &NormalizedOrigin, allowed_origins: &[String]) -> bool {
     allowed_origins
         .iter()
-        .filter_map(|raw| parse_origin_value(raw))
+        .filter_map(|raw| parse_allowed_origin(raw))
         .any(|allowed| match (&allowed, origin) {
-            (NormalizedOrigin::Null, NormalizedOrigin::Null) => true,
+            (AllowedOrigin::Null, NormalizedOrigin::Null) => true,
             (
-                NormalizedOrigin::Tuple {
+                AllowedOrigin::Tuple {
                     scheme: a_scheme,
                     host: a_host,
                     port: a_port,
@@ -870,9 +1068,80 @@ fn origin_is_allowed(origin: &NormalizedOrigin, allowed_origins: &[String]) -> b
                     host: o_host,
                     port: o_port,
                 },
-            ) => a_scheme == o_scheme && a_host == o_host && (a_port.is_none() || a_port == o_port),
+            ) => a_scheme == o_scheme && a_host == o_host && a_port.matches(o_scheme, *o_port),
             _ => false,
         })
+}
+
+fn warn_on_portless_allowed_origins(allowed_origins: &[String]) {
+    for raw in allowed_origins {
+        if let Some(AllowedOrigin::Tuple {
+            port: AllowedPort::Unspecified,
+            ..
+        }) = parse_allowed_origin(raw)
+        {
+            tracing::warn!(
+                allowed_origin = raw.as_str(),
+                "allowed origin without a port matches any port; a future release will match \
+                 only the scheme default port. Use `:*` or an explicit port instead",
+            );
+        }
+    }
+}
+
+#[cfg(test)]
+mod parse_allowed_origin_tests {
+    use super::*;
+
+    fn tuple(scheme: &str, host: &str, port: AllowedPort) -> Option<AllowedOrigin> {
+        Some(AllowedOrigin::Tuple {
+            scheme: scheme.to_string(),
+            host: host.to_string(),
+            port,
+        })
+    }
+
+    #[test]
+    fn wildcard_port_parses_as_any() {
+        assert_eq!(
+            parse_allowed_origin("https://client.example:*"),
+            tuple("https", "client.example", AllowedPort::Any)
+        );
+    }
+
+    #[test]
+    fn wildcard_port_on_ipv6_host_parses_as_any() {
+        assert_eq!(
+            parse_allowed_origin("http://[::1]:*"),
+            tuple("http", "::1", AllowedPort::Any)
+        );
+    }
+
+    #[test]
+    fn portless_entry_parses_as_unspecified() {
+        assert_eq!(
+            parse_allowed_origin("https://client.example"),
+            tuple("https", "client.example", AllowedPort::Unspecified)
+        );
+    }
+
+    #[test]
+    fn explicit_port_parses_as_exact() {
+        assert_eq!(
+            parse_allowed_origin("https://client.example:8443"),
+            tuple("https", "client.example", AllowedPort::Exact(8443))
+        );
+    }
+
+    #[test]
+    fn wildcard_after_explicit_port_is_rejected() {
+        assert_eq!(parse_allowed_origin("https://client.example:443:*"), None);
+    }
+
+    #[test]
+    fn wildcard_on_null_is_rejected() {
+        assert_eq!(parse_allowed_origin("null:*"), None);
+    }
 }
 
 fn bad_request_response(message: &str) -> BoxResponse {
@@ -1136,6 +1405,7 @@ where
         session_manager: Arc<M>,
         config: StreamableHttpServerConfig,
     ) -> Self {
+        warn_on_portless_allowed_origins(&config.allowed_origins);
         let pending_restores = config
             .session_store
             .is_some()
@@ -1860,6 +2130,11 @@ where
                         .serve_negotiated_request_directly(service, request, part)
                         .await;
                 }
+                // SEP-2243: run the standard-header validator on the initialize
+                // handshake before a session is created for it — a supplied
+                // Mcp-Method header contradicting the body must be rejected
+                // here, not answered with HTTP 200 and a fresh session.
+                validate_standard_headers(&part.headers, &message, |name| self.tool_schema(name))?;
                 // Capture init params for external store persistence before
                 // extensions are injected (which would require Clone).
                 let stored_init_params = match &mut message {

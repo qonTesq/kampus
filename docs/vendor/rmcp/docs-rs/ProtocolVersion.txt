@@ -1,21 +1,21 @@
-Source: https://docs.rs/rmcp/3.4.1/rmcp/model/struct.ProtocolVersion.html
-Fetched: 2026-09-26
+Source: https://docs.rs/rmcp/3.5.0/rmcp/model/struct.ProtocolVersion.html
+Fetched: 2026-09-28
 
 ProtocolVersion in rmcp::model - Rust
 
                     Docs.rs
 
-                rmcp-3.4.1
+                rmcp-3.5.0
 
-                        rmcp 3.4.1
+                        rmcp 3.5.0
 
                              Docs.rs crate page
 
                             Apache-2.0
 
-                                 23 September 2026
+                                 28 September 2026
 
-Links
+                            Links
 
                                          Homepage
 
@@ -25,7 +25,7 @@ Links
 
                                      Source
 
-Owners
+                            Owners
 
                                          4t145
 
@@ -33,7 +33,7 @@ Owners
 
                                          alexhancock
 
-Dependencies
+                            Dependencies
 
                 async-trait ^0.1.89
 
@@ -137,7 +137,7 @@ Dependencies
 
                         optional
 
-                rmcp-macros ^3.4.1
+                rmcp-macros ^3.5.0
 
                     normal
 
@@ -249,6 +249,10 @@ Dependencies
 
                     dev
 
+                serde_json ^1.0
+
+                    dev
+
                 tokio ^1
 
                     dev
@@ -273,9 +277,9 @@ Dependencies
 
                     normal
 
-Versions
+                            Versions
 
-                                        49.04%
+                                        49.15%
                                         of the crate is documented
 
                     Platform
@@ -285,84 +289,61 @@ Versions
                     Feature flags
 
                         docs.rs
-
- About docs.rs
- Badges
- Builds
- Metadata
- Shorthand URLs
- Download
- Rustdoc JSON
- Build queue
- Privacy policy
+                         About docs.rs Badges Builds Metadata Shorthand URLs Download Rustdoc JSON Build queue Privacy policy
 
                         Rust
 
-Rust website
+                            Rust website
+                            The Book
 
-The Book
+                            Standard Library API Reference
 
-Standard Library API Reference
+                            Rust by Example
 
-Rust by Example
+                            The Cargo Guide
 
-The Cargo Guide
+                            Clippy Documentation
 
-Clippy Documentation
-
-Skip to main content
-ProtocolVersion
-
-rmcp::model
-Struct ProtocolVersion Copy item pathSource 
-pub struct ProtocolVersion(/* private fields */);Expand description
-
-Represents the MCP protocol version used for communication.
-
+Skip to main contentProtocolVersionrmcp3.5.0ProtocolVersionAssociated ConstantsKNOWN_VERSIONSLATESTLATEST_WITH_INITIALIZENO_INITIALIZESTANDARD_HEADERSV_2024_11_05V_2025_03_26V_2025_06_18V_2025_11_25V_2026_07_28Associated Functionsknown_up_toMethodsas_strhas_initializeTrait ImplementationsCloneDebugDefaultDeserialize<'de>DisplayEqHashJsonSchemaPartialEqPartialOrdSerializeStructuralPartialEqAuto Trait ImplementationsFreezeRefUnwindSafeSendSyncUnpinUnsafeUnpinUnwindSafeBlanket ImplementationsAnyBorrow<T>BorrowMut<T>CastableFrom<ST, Initialized, Initialized>CastableFrom<ST, Uninit, Uninit>CloneToUninitDeserializeOwnedDynCloneEquivalent<K>Equivalent<K>From<T>InstrumentInto<U>PolicyExtRead<Exclusive, BecauseExclusive>SameToOwnedToStringTryFrom<U>TryInto<U>VZip<V>WithSubscriberIn rmcp::modelrmcp::modelStruct ProtocolVersion Copy item pathSource pub struct ProtocolVersion(/* private fields */);Expand descriptionRepresents the MCP protocol version used for communication.
 This ensures compatibility between clients and servers by specifying
 which version of the Model Context Protocol is being used.
+Implementations§Source§impl ProtocolVersionSourcepub const V_2026_07_28: SelfSourcepub const V_2025_11_25: SelfSourcepub const V_2025_06_18: SelfSourcepub const V_2025_03_26: SelfSourcepub const V_2024_11_05: SelfSourcepub const LATEST: Self = Self::V_2026_07_28The newest protocol version known to this SDK.
+Sourcepub const STANDARD_HEADERS: Self = Self::V_2026_07_28First protocol version that requires SEP-2243 standard HTTP headers.
+Sourcepub const NO_INITIALIZE: Self = Self::V_2026_07_28First protocol version that replaced the initialize handshake with
+per-request _meta (SEP-2567).
+Sourcepub const LATEST_WITH_INITIALIZE: Self = Self::V_2025_11_25The newest protocol version that still has an initialize handshake.
+From Self::NO_INITIALIZE onward the lifecycle moved into per-request
+_meta, so there is no handshake left to answer. A server replying to
+initialize can therefore never name Self::LATEST once LATEST
+reaches that revision — it has to name this one instead.
+Use this, not LATEST, whenever the subject is the handshake itself:
+the version a server can echo from initialize, or the version a test
+needs in order to exercise session-based behavior.
 
-Implementations§
-Source§
-impl ProtocolVersion
-Source
-pub const V_2026_07_28: SelfSource
-pub const V_2025_11_25: SelfSource
-pub const V_2025_06_18: SelfSource
-pub const V_2025_03_26: SelfSource
-pub const V_2024_11_05: SelfSource
-pub const LATEST: Self = Self::V_2025_11_25Source
-pub const STANDARD_HEADERS: Self = Self::V_2026_07_28
+assert!(ProtocolVersion::LATEST_WITH_INITIALIZE.has_initialize());
+assert!(!ProtocolVersion::LATEST.has_initialize());Sourcepub const KNOWN_VERSIONS: &[Self]All protocol versions known to this SDK, oldest first.
+Sourcepub fn as_str(&self) -> &strReturns the string representation of this protocol version.
+Sourcepub fn has_initialize(&self) -> boolWhether this revision negotiates its lifecycle over the initialize
+handshake.
+false from Self::NO_INITIALIZE onward, where SEP-2567 moved the
+lifecycle into per-request _meta. Unknown versions are compared
+lexically, which orders correctly because every revision is dated
+YYYY-MM-DD.
 
-First protocol version that requires SEP-2243 standard HTTP headers.
-Source
-pub const KNOWN_VERSIONS: &[Self]
-
-All protocol versions known to this SDK, oldest first.
-Source
-pub fn as_str(&self) -> &str
-
-Returns the string representation of this protocol version.
-Source
-pub fn known_up_to(max: &Self) -> &'static [Self]
-
-The known versions up to and including max, oldest first.
-
+assert!(ProtocolVersion::V_2025_11_25.has_initialize());
+assert!(!ProtocolVersion::V_2026_07_28.has_initialize());Sourcepub fn known_up_to(max: &Self) -> &'static [Self]The known versions up to and including max, oldest first.
 Servers that implement every revision up to some ceiling can return
 this from supported_protocol_versions instead of filtering
 Self::KNOWN_VERSIONS by hand. max itself need not be a known
 version; the result is empty when it predates all of them.
-
 The result borrows from Self::KNOWN_VERSIONS, so call it directly
 in the method body — it needs no static and no LazyLock:
 
-ⓘ
-const MAX_SUPPORTED: ProtocolVersion = ProtocolVersion::V_2025_11_25;
+ⓘconst MAX_SUPPORTED: ProtocolVersion = ProtocolVersion::V_2025_11_25;
 
 fn supported_protocol_versions(&self) -> Cow<'static, [ProtocolVersion]> {
     Cow::Borrowed(ProtocolVersion::known_up_to(&MAX_SUPPORTED))
 }
-
 assert_eq!(
     ProtocolVersion::known_up_to(&ProtocolVersion::V_2025_06_18),
     &[
@@ -370,241 +351,49 @@ assert_eq!(
         ProtocolVersion::V_2025_03_26,
         ProtocolVersion::V_2025_06_18,
     ],
-);
-Trait Implementations§
-Source§
-impl Clone for ProtocolVersion
-Source§
-fn clone(&self) -> Self
-Returns a duplicate of the value. Read more1.0.0 (const: unstable) · Source§
-fn clone_from(&mut self, source: &Self)
-Performs copy-assignment from source. Read moreSource§
-impl Debug for ProtocolVersion
-Source§
-fn fmt(&self, f: &mut Formatter<'_>) -> Result
-Formats the value using the given formatter. Read moreSource§
-impl Default for ProtocolVersion
-Source§
-fn default() -> Self
-Returns the “default value” for a type. Read moreSource§
-impl<'de> Deserialize<'de> for ProtocolVersion
-Source§
-fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-where
-    D: Deserializer<'de>,
-Deserialize this value from the given Serde deserializer. Read moreSource§
-impl Display for ProtocolVersion
-Source§
-fn fmt(&self, f: &mut Formatter<'_>) -> Result
-Formats the value using the given formatter. Read moreSource§
-impl Eq for ProtocolVersionSource§
-impl Hash for ProtocolVersion
-Source§
-fn hash<__H: Hasher>(&self, state: &mut __H)
-Feeds this value into the given Hasher. Read more1.3.0 · Source§
-fn hash_slice<H>(data: &[Self], state: &mut H)
-where
+);Trait Implementations§Source§impl Clone for ProtocolVersionSource§fn clone(&self) -> SelfReturns a duplicate of the value. Read more1.0.0 (const: unstable) · Source§fn clone_from(&mut self, source: &Self)Performs copy-assignment from source. Read moreSource§impl Debug for ProtocolVersionSource§fn fmt(&self, f: &mut Formatter<'_>) -> ResultFormats the value using the given formatter. Read moreSource§impl Default for ProtocolVersionSource§fn default() -> SelfReturns the “default value” for a type. Read moreSource§impl<'de> Deserialize<'de> for ProtocolVersionSource§fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>where
+    D: Deserializer<'de>,Deserialize this value from the given Serde deserializer. Read moreSource§impl Display for ProtocolVersionSource§fn fmt(&self, f: &mut Formatter<'_>) -> ResultFormats the value using the given formatter. Read moreSource§impl Eq for ProtocolVersionSource§impl Hash for ProtocolVersionSource§fn hash<__H: Hasher>(&self, state: &mut __H)Feeds this value into the given Hasher. Read more1.3.0 · Source§fn hash_slice<H>(data: &[Self], state: &mut H)where
     H: Hasher,
-    Self: Sized,
-Feeds a slice of this type into the given Hasher. Read moreSource§
-impl JsonSchema for ProtocolVersion
-Available on crate feature schemars only.
-Source§
-fn schema_name() -> Cow<'static, str>
-The name of the generated JSON Schema. Read moreSource§
-fn schema_id() -> Cow<'static, str>
-Returns a string that uniquely identifies the schema produced by this type. Read moreSource§
-fn json_schema(generator: &mut SchemaGenerator) -> Schema
-Generates a JSON Schema for this type. Read moreSource§
-fn inline_schema() -> bool
-Whether JSON Schemas generated for this type should be included directly in parent schemas,
-rather than being re-used where possible using the $ref keyword. Read moreSource§
-impl PartialEq for ProtocolVersion
-Source§
-fn eq(&self, other: &Self) -> bool
-Equality operator ==. Read more1.0.0 (const: unstable) · Source§
-fn ne(&self, other: &Rhs) -> bool
-Inequality operator !=. Read moreSource§
-impl PartialOrd for ProtocolVersion
-Source§
-fn partial_cmp(&self, other: &Self) -> Option<Ordering>
-This method returns an ordering between self and other values if one exists. Read more1.0.0 (const: unstable) · Source§
-fn lt(&self, other: &Rhs) -> bool
-Tests less than (for self and other) and is used by the < operator. Read more1.0.0 (const: unstable) · Source§
-fn le(&self, other: &Rhs) -> bool
-Tests less than or equal to (for self and other) and is used by the
-<= operator. Read more1.0.0 (const: unstable) · Source§
-fn gt(&self, other: &Rhs) -> bool
-Tests greater than (for self and other) and is used by the >
-operator. Read more1.0.0 (const: unstable) · Source§
-fn ge(&self, other: &Rhs) -> bool
-Tests greater than or equal to (for self and other) and is used by
-the >= operator. Read moreSource§
-impl Serialize for ProtocolVersion
-Source§
-fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-where
-    S: Serializer,
-Serialize this value into the given Serde serializer. Read moreSource§
-impl StructuralPartialEq for ProtocolVersion
-Auto Trait Implementations§
-§
-impl Freeze for ProtocolVersion§
-impl RefUnwindSafe for ProtocolVersion§
-impl Send for ProtocolVersion§
-impl Sync for ProtocolVersion§
-impl Unpin for ProtocolVersion§
-impl UnsafeUnpin for ProtocolVersion§
-impl UnwindSafe for ProtocolVersion
-Blanket Implementations§
-Source§
-impl<T> Any for T
-where
-    T: 'static + ?Sized,
-Source§
-fn type_id(&self) -> TypeId
-Gets the TypeId of self. Read moreSource§
-impl<T> Borrow<T> for T
-where
-    T: ?Sized,
-Source§
-fn borrow(&self) -> &T
-Immutably borrows from an owned value. Read moreSource§
-impl<T> BorrowMut<T> for T
-where
-    T: ?Sized,
-Source§
-fn borrow_mut(&mut self) -> &mut T
-Mutably borrows from an owned value. Read moreSource§
-impl<ST, DT> CastableFrom<ST, Initialized, Initialized> for DT
-where
+    Self: Sized,Feeds a slice of this type into the given Hasher. Read moreSource§impl JsonSchema for ProtocolVersionAvailable on crate feature schemars only.Source§fn schema_name() -> Cow<'static, str>The name of the generated JSON Schema. Read moreSource§fn schema_id() -> Cow<'static, str>Returns a string that uniquely identifies the schema produced by this type. Read moreSource§fn json_schema(generator: &mut SchemaGenerator) -> SchemaGenerates a JSON Schema for this type. Read moreSource§fn inline_schema() -> boolWhether JSON Schemas generated for this type should be included directly in parent schemas,
+rather than being re-used where possible using the $ref keyword. Read moreSource§impl PartialEq for ProtocolVersionSource§fn eq(&self, other: &Self) -> boolEquality operator ==. Read more1.0.0 (const: unstable) · Source§fn ne(&self, other: &Rhs) -> boolInequality operator !=. Read moreSource§impl PartialOrd for ProtocolVersionSource§fn partial_cmp(&self, other: &Self) -> Option<Ordering>This method returns an ordering between self and other values if one exists. Read more1.0.0 (const: unstable) · Source§fn lt(&self, other: &Rhs) -> boolTests less than (for self and other) and is used by the < operator. Read more1.0.0 (const: unstable) · Source§fn le(&self, other: &Rhs) -> boolTests less than or equal to (for self and other) and is used by the
+<= operator. Read more1.0.0 (const: unstable) · Source§fn gt(&self, other: &Rhs) -> boolTests greater than (for self and other) and is used by the >
+operator. Read more1.0.0 (const: unstable) · Source§fn ge(&self, other: &Rhs) -> boolTests greater than or equal to (for self and other) and is used by
+the >= operator. Read moreSource§impl Serialize for ProtocolVersionSource§fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>where
+    S: Serializer,Serialize this value into the given Serde serializer. Read moreSource§impl StructuralPartialEq for ProtocolVersionAuto Trait Implementations§§impl Freeze for ProtocolVersion§impl RefUnwindSafe for ProtocolVersion§impl Send for ProtocolVersion§impl Sync for ProtocolVersion§impl Unpin for ProtocolVersion§impl UnsafeUnpin for ProtocolVersion§impl UnwindSafe for ProtocolVersionBlanket Implementations§Source§impl<T> Any for Twhere
+    T: 'static + ?Sized,Source§fn type_id(&self) -> TypeIdGets the TypeId of self. Read moreSource§impl<T> Borrow<T> for Twhere
+    T: ?Sized,Source§fn borrow(&self) -> &TImmutably borrows from an owned value. Read moreSource§impl<T> BorrowMut<T> for Twhere
+    T: ?Sized,Source§fn borrow_mut(&mut self) -> &mut TMutably borrows from an owned value. Read moreSource§impl<ST, DT> CastableFrom<ST, Initialized, Initialized> for DTwhere
     ST: ?Sized,
-    DT: ?Sized,Source§
-impl<ST, DT> CastableFrom<ST, Uninit, Uninit> for DT
-where
+    DT: ?Sized,Source§impl<ST, DT> CastableFrom<ST, Uninit, Uninit> for DTwhere
     ST: ?Sized,
-    DT: ?Sized,Source§
-impl<T> CloneToUninit for T
-where
-    T: Clone,
-Source§
-unsafe fn clone_to_uninit(&self, dest: *mut u8)
-🔬This is a nightly-only experimental API. (clone_to_uninit)
-Performs copy-assignment from self to dest. Read moreSource§
-impl<T> DeserializeOwned for T
-where
-    T: for<'de> Deserialize<'de>,Source§
-impl<T> DynClone for T
-where
-    T: Clone,
-Source§
-fn __clone_box(&self, _: Private) -> *mut ()Source§
-impl<Q, K> Equivalent<K> for Q
-where
+    DT: ?Sized,Source§impl<T> CloneToUninit for Twhere
+    T: Clone,Source§unsafe fn clone_to_uninit(&self, dest: *mut u8)🔬This is a nightly-only experimental API. (clone_to_uninit)Performs copy-assignment from self to dest. Read moreSource§impl<T> DeserializeOwned for Twhere
+    T: for<'de> Deserialize<'de>,Source§impl<T> DynClone for Twhere
+    T: Clone,Source§fn __clone_box(&self, _: Private) -> *mut ()Source§impl<Q, K> Equivalent<K> for Qwhere
     Q: Eq + ?Sized,
-    K: Borrow<Q> + ?Sized,
-Source§
-fn equivalent(&self, key: &K) -> bool
-Checks if this value is equivalent to the given key. Read moreSource§
-impl<Q, K> Equivalent<K> for Q
-where
+    K: Borrow<Q> + ?Sized,Source§fn equivalent(&self, key: &K) -> boolChecks if this value is equivalent to the given key. Read moreSource§impl<Q, K> Equivalent<K> for Qwhere
     Q: Eq + ?Sized,
-    K: Borrow<Q> + ?Sized,
-Source§
-fn equivalent(&self, key: &K) -> bool
-Compare self to key and return true if they are equal.Source§
-impl<T> From<T> for T
-Source§
-fn from(t: T) -> T
-
-Returns the argument unchanged.
-Source§
-impl<T> Instrument for T
-Source§
-fn instrument(self, span: Span) -> Instrumented<Self> ⓘ
-Instruments this type with the provided Span, returning an
-Instrumented wrapper. Read moreSource§
-fn in_current_span(self) -> Instrumented<Self> ⓘ
-Instruments this type with the current Span, returning an
-Instrumented wrapper. Read moreSource§
-impl<T, U> Into<U> for T
-where
-    U: From<T>,
-Source§
-fn into(self) -> U
-
-Calls U::from(self).
-
+    K: Borrow<Q> + ?Sized,Source§fn equivalent(&self, key: &K) -> boolCompare self to key and return true if they are equal.Source§impl<T> From<T> for TSource§fn from(t: T) -> TReturns the argument unchanged.
+Source§impl<T> Instrument for TSource§fn instrument(self, span: Span) -> Instrumented<Self> ⓘInstruments this type with the provided Span, returning an
+Instrumented wrapper. Read moreSource§fn in_current_span(self) -> Instrumented<Self> ⓘInstruments this type with the current Span, returning an
+Instrumented wrapper. Read moreSource§impl<T, U> Into<U> for Twhere
+    U: From<T>,Source§fn into(self) -> UCalls U::from(self).
 That is, this conversion is whatever the implementation of
 From<T> for U chooses to do.
-Source§
-impl<T> PolicyExt for T
-where
-    T: ?Sized,
-Source§
-fn and<P, B, E>(self, other: P) -> And<T, P>
-where
+Source§impl<T> PolicyExt for Twhere
+    T: ?Sized,Source§fn and<P, B, E>(self, other: P) -> And<T, P>where
     T: Sized + Policy<B, E>,
-    P: Policy<B, E>,
-Create a new Policy that returns Action::Follow only if self and other return
-Action::Follow. Read moreSource§
-fn or<P, B, E>(self, other: P) -> Or<T, P>
-where
+    P: Policy<B, E>,Create a new Policy that returns Action::Follow only if self and other return
+Action::Follow. Read moreSource§fn or<P, B, E>(self, other: P) -> Or<T, P>where
     T: Sized + Policy<B, E>,
-    P: Policy<B, E>,
-Create a new Policy that returns Action::Follow if either self or other returns
-Action::Follow. Read moreSource§
-impl<T> Read<Exclusive, BecauseExclusive> for T
-where
-    T: ?Sized,Source§
-impl<T> Same for T
-Source§
-type Output = T
-Should always be SelfSource§
-impl<T> ToOwned for T
-where
-    T: Clone,
-Source§
-type Owned = T
-The resulting type after obtaining ownership.Source§
-fn to_owned(&self) -> T
-Creates owned data from borrowed data, usually by cloning. Read moreSource§
-fn clone_into(&self, target: &mut T)
-Uses borrowed data to replace owned data, usually by cloning. Read moreSource§
-impl<T> ToString for T
-where
-    T: Display + ?Sized,
-Source§
-fn to_string(&self) -> String
-Converts the given value to a String. Read moreSource§
-impl<T, U> TryFrom<U> for T
-where
-    U: Into<T>,
-Source§
-type Error = !
-The type returned in the event of a conversion error.Source§
-fn try_from(value: U) -> Result<T, !>
-Performs the conversion.Source§
-impl<T, U> TryInto<U> for T
-where
-    U: TryFrom<T>,
-Source§
-type Error = <U as TryFrom<T>>::Error
-The type returned in the event of a conversion error.Source§
-fn try_into(self) -> Result<U, <U as TryFrom<T>>::Error>
-Performs the conversion.Source§
-impl<V, T> VZip<V> for T
-where
-    V: MultiLane<T>,
-Source§
-fn vzip(self) -> VSource§
-impl<T> WithSubscriber for T
-Source§
-fn with_subscriber<S>(self, subscriber: S) -> WithDispatch<Self> ⓘ
-where
-    S: Into<Dispatch>,
-Attaches the provided Subscriber to this type, returning a
-WithDispatch wrapper. Read moreSource§
-fn with_current_subscriber(self) -> WithDispatch<Self> ⓘ
-Attaches the current default Subscriber to this type, returning a
+    P: Policy<B, E>,Create a new Policy that returns Action::Follow if either self or other returns
+Action::Follow. Read moreSource§impl<T> Read<Exclusive, BecauseExclusive> for Twhere
+    T: ?Sized,Source§impl<T> Same for TSource§type Output = TShould always be SelfSource§impl<T> ToOwned for Twhere
+    T: Clone,Source§type Owned = TThe resulting type after obtaining ownership.Source§fn to_owned(&self) -> TCreates owned data from borrowed data, usually by cloning. Read moreSource§fn clone_into(&self, target: &mut T)Uses borrowed data to replace owned data, usually by cloning. Read moreSource§impl<T> ToString for Twhere
+    T: Display + ?Sized,Source§fn to_string(&self) -> StringConverts the given value to a String. Read moreSource§impl<T, U> TryFrom<U> for Twhere
+    U: Into<T>,Source§type Error = !The type returned in the event of a conversion error.Source§fn try_from(value: U) -> Result<T, !>Performs the conversion.Source§impl<T, U> TryInto<U> for Twhere
+    U: TryFrom<T>,Source§type Error = <U as TryFrom<T>>::ErrorThe type returned in the event of a conversion error.Source§fn try_into(self) -> Result<U, <U as TryFrom<T>>::Error>Performs the conversion.Source§impl<V, T> VZip<V> for Twhere
+    V: MultiLane<T>,Source§fn vzip(self) -> VSource§impl<T> WithSubscriber for TSource§fn with_subscriber<S>(self, subscriber: S) -> WithDispatch<Self> ⓘwhere
+    S: Into<Dispatch>,Attaches the provided Subscriber to this type, returning a
+WithDispatch wrapper. Read moreSource§fn with_current_subscriber(self) -> WithDispatch<Self> ⓘAttaches the current default Subscriber to this type, returning a
 WithDispatch wrapper. Read more

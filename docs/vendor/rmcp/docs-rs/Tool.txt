@@ -1,21 +1,21 @@
-Source: https://docs.rs/rmcp/3.4.1/rmcp/model/struct.Tool.html
-Fetched: 2026-09-26
+Source: https://docs.rs/rmcp/3.5.0/rmcp/model/struct.Tool.html
+Fetched: 2026-09-28
 
 Tool in rmcp::model - Rust
 
                     Docs.rs
 
-                rmcp-3.4.1
+                rmcp-3.5.0
 
-                        rmcp 3.4.1
+                        rmcp 3.5.0
 
                              Docs.rs crate page
 
                             Apache-2.0
 
-                                 23 September 2026
+                                 28 September 2026
 
-Links
+                            Links
 
                                          Homepage
 
@@ -25,7 +25,7 @@ Links
 
                                      Source
 
-Owners
+                            Owners
 
                                          4t145
 
@@ -33,7 +33,7 @@ Owners
 
                                          alexhancock
 
-Dependencies
+                            Dependencies
 
                 async-trait ^0.1.89
 
@@ -137,7 +137,7 @@ Dependencies
 
                         optional
 
-                rmcp-macros ^3.4.1
+                rmcp-macros ^3.5.0
 
                     normal
 
@@ -249,6 +249,10 @@ Dependencies
 
                     dev
 
+                serde_json ^1.0
+
+                    dev
+
                 tokio ^1
 
                     dev
@@ -273,9 +277,9 @@ Dependencies
 
                     normal
 
-Versions
+                            Versions
 
-                                        49.04%
+                                        49.15%
                                         of the crate is documented
 
                     Platform
@@ -285,38 +289,22 @@ Versions
                     Feature flags
 
                         docs.rs
-
- About docs.rs
- Badges
- Builds
- Metadata
- Shorthand URLs
- Download
- Rustdoc JSON
- Build queue
- Privacy policy
+                         About docs.rs Badges Builds Metadata Shorthand URLs Download Rustdoc JSON Build queue Privacy policy
 
                         Rust
 
-Rust website
+                            Rust website
+                            The Book
 
-The Book
+                            Standard Library API Reference
 
-Standard Library API Reference
+                            Rust by Example
 
-Rust by Example
+                            The Cargo Guide
 
-The Cargo Guide
+                            Clippy Documentation
 
-Clippy Documentation
-
-Skip to main content
-Tool
-
-rmcp::model
-Struct Tool Copy item pathSource 
-
-#[non_exhaustive]pub struct Tool {
+Skip to main contentToolrmcp3.5.0ToolFieldsannotationsdescriptioniconsinput_schemametanameoutput_schematitleAssociated Functionsnewnew_with_rawMethodsannotateschema_as_json_valuewith_annotationswith_iconswith_input_schemawith_metawith_output_schemawith_raw_output_schemawith_titleTrait ImplementationsCloneDebugDefaultDeserialize<'de>JsonSchemaPartialEqSerializeStructuralPartialEqAuto Trait ImplementationsFreezeRefUnwindSafeSendSyncUnpinUnsafeUnpinUnwindSafeBlanket ImplementationsAnyBorrow<T>BorrowMut<T>CastableFrom<ST, Initialized, Initialized>CastableFrom<ST, Uninit, Uninit>CloneToUninitDeserializeOwnedDynCloneFrom<T>InstrumentInto<U>PolicyExtRead<Exclusive, BecauseExclusive>SameToOwnedTryFrom<U>TryInto<U>VZip<V>WithSubscriberIn rmcp::modelrmcp::modelStruct Tool Copy item pathSource #[non_exhaustive]pub struct Tool {
     pub name: Cow<'static, str>,
     pub title: Option<String>,
     pub description: Option<Cow<'static, str>>,
@@ -325,279 +313,67 @@ Struct Tool Copy item pathSource
     pub annotations: Option<ToolAnnotations>,
     pub icons: Option<Vec<Icon>>,
     pub meta: Option<MetaObject>,
-}Expand description
-
-A tool that can be used by a model.
-
-Fields (Non-exhaustive)§This struct is marked as non-exhaustive
-Non-exhaustive structs could have additional fields added in future. Therefore, non-exhaustive structs cannot be constructed in external crates using the traditional Struct { .. } syntax; cannot be matched against without a wildcard ..; and struct update syntax will not work.§name: Cow<'static, str>
-
-The name of the tool
-§title: Option<String>
-
-A human-readable title for the tool
-§description: Option<Cow<'static, str>>
-
-A description of what the tool does
-§input_schema: Arc<JsonObject>
-
-A JSON Schema object defining the expected parameters for the tool
-§output_schema: Option<Arc<JsonObject>>
-
-An optional JSON Schema object defining the structure of the tool’s output
-§annotations: Option<ToolAnnotations>
-
-Optional additional tool information.
-§icons: Option<Vec<Icon>>
-
-Optional list of icons for the tool
-§meta: Option<MetaObject>
-
-Optional additional metadata for this tool
-
-Implementations§
-Source§
-impl Tool
-Source
-pub fn new<N, D, S>(name: N, description: D, input_schema: S) -> Self
-where
+}Expand descriptionA tool that can be used by a model.
+Fields (Non-exhaustive)§This struct is marked as non-exhaustiveNon-exhaustive structs could have additional fields added in future. Therefore, non-exhaustive structs cannot be constructed in external crates using the traditional Struct { .. } syntax; cannot be matched against without a wildcard ..; and struct update syntax will not work.§name: Cow<'static, str>The name of the tool
+§title: Option<String>A human-readable title for the tool
+§description: Option<Cow<'static, str>>A description of what the tool does
+§input_schema: Arc<JsonObject>A JSON Schema object defining the expected parameters for the tool
+§output_schema: Option<Arc<JsonObject>>An optional JSON Schema object defining the structure of the tool’s output
+§annotations: Option<ToolAnnotations>Optional additional tool information.
+§icons: Option<Vec<Icon>>Optional list of icons for the tool
+§meta: Option<MetaObject>Optional additional metadata for this tool
+Implementations§Source§impl ToolSourcepub fn new<N, D, S>(name: N, description: D, input_schema: S) -> Selfwhere
     N: Into<Cow<'static, str>>,
     D: Into<Cow<'static, str>>,
-    S: Into<Arc<JsonObject>>,
-
-Create a new tool with the given name and description
-Source
-pub fn new_with_raw<N, S>(
+    S: Into<Arc<JsonObject>>,Create a new tool with the given name and description
+Sourcepub fn new_with_raw<N, S>(
     name: N,
     description: Option<Cow<'static, str>>,
     input_schema: S,
-) -> Self
-where
+) -> Selfwhere
     N: Into<Cow<'static, str>>,
-    S: Into<Arc<JsonObject>>,
-
-Create a new tool with just a name and input schema (no description)
-Source
-pub fn with_title(self, title: impl Into<String>) -> Self
-
-Set the human-readable title
-Source
-pub fn with_raw_output_schema(self, output_schema: Arc<JsonObject>) -> Self
-
-Set the output schema from a raw value
-Source
-pub fn with_annotations(self, annotations: ToolAnnotations) -> Self
-
-Set the annotations
-Source
-pub fn with_icons(self, icons: Vec<Icon>) -> Self
-
-Set the icons
-Source
-pub fn with_meta(self, meta: MetaObject) -> Self
-
-Set the metadata
-Source
-pub fn annotate(self, annotations: ToolAnnotations) -> SelfSource
-pub fn with_output_schema<T: JsonSchema + 'static>(self) -> Self
-Available on crate feature server only.
-
-Set the output schema using a type that implements JsonSchema
-Source
-pub fn with_input_schema<T: JsonSchema + 'static>(self) -> Self
-Available on crate feature server only.
-
-Set the input schema using a type that implements JsonSchema
-Source
-pub fn schema_as_json_value(&self) -> Value
-
-Get the schema as json value
-
-Trait Implementations§
-Source§
-impl Clone for Tool
-Source§
-fn clone(&self) -> Self
-Returns a duplicate of the value. Read more1.0.0 (const: unstable) · Source§
-fn clone_from(&mut self, source: &Self)
-Performs copy-assignment from source. Read moreSource§
-impl Debug for Tool
-Source§
-fn fmt(&self, f: &mut Formatter<'_>) -> Result
-Formats the value using the given formatter. Read moreSource§
-impl Default for Tool
-Source§
-fn default() -> Self
-Returns the “default value” for a type. Read moreSource§
-impl<'de> Deserialize<'de> for Tool
-Source§
-fn deserialize<__D>(__deserializer: __D) -> Result<Self, __D::Error>
-where
-    __D: Deserializer<'de>,
-Deserialize this value from the given Serde deserializer. Read moreSource§
-impl JsonSchema for Tool
-Available on crate feature schemars only.
-Source§
-fn schema_name() -> Cow<'static, str>
-The name of the generated JSON Schema. Read moreSource§
-fn schema_id() -> Cow<'static, str>
-Returns a string that uniquely identifies the schema produced by this type. Read moreSource§
-fn json_schema(generator: &mut SchemaGenerator) -> Schema
-Generates a JSON Schema for this type. Read moreSource§
-fn inline_schema() -> bool
-Whether JSON Schemas generated for this type should be included directly in parent schemas,
-rather than being re-used where possible using the $ref keyword. Read moreSource§
-impl PartialEq for Tool
-Source§
-fn eq(&self, other: &Self) -> bool
-Equality operator ==. Read more1.0.0 (const: unstable) · Source§
-fn ne(&self, other: &Rhs) -> bool
-Inequality operator !=. Read moreSource§
-impl Serialize for Tool
-Source§
-fn serialize<__S>(&self, __serializer: __S) -> Result<__S::Ok, __S::Error>
-where
-    __S: Serializer,
-Serialize this value into the given Serde serializer. Read moreSource§
-impl StructuralPartialEq for Tool
-Auto Trait Implementations§
-§
-impl Freeze for Tool§
-impl RefUnwindSafe for Tool§
-impl Send for Tool§
-impl Sync for Tool§
-impl Unpin for Tool§
-impl UnsafeUnpin for Tool§
-impl UnwindSafe for Tool
-Blanket Implementations§
-Source§
-impl<T> Any for T
-where
-    T: 'static + ?Sized,
-Source§
-fn type_id(&self) -> TypeId
-Gets the TypeId of self. Read moreSource§
-impl<T> Borrow<T> for T
-where
-    T: ?Sized,
-Source§
-fn borrow(&self) -> &T
-Immutably borrows from an owned value. Read moreSource§
-impl<T> BorrowMut<T> for T
-where
-    T: ?Sized,
-Source§
-fn borrow_mut(&mut self) -> &mut T
-Mutably borrows from an owned value. Read moreSource§
-impl<ST, DT> CastableFrom<ST, Initialized, Initialized> for DT
-where
+    S: Into<Arc<JsonObject>>,Create a new tool with just a name and input schema (no description)
+Sourcepub fn with_title(self, title: impl Into<String>) -> SelfSet the human-readable title
+Sourcepub fn with_raw_output_schema(self, output_schema: Arc<JsonObject>) -> SelfSet the output schema from a raw value
+Sourcepub fn with_annotations(self, annotations: ToolAnnotations) -> SelfSet the annotations
+Sourcepub fn with_icons(self, icons: Vec<Icon>) -> SelfSet the icons
+Sourcepub fn with_meta(self, meta: MetaObject) -> SelfSet the metadata
+Sourcepub fn annotate(self, annotations: ToolAnnotations) -> SelfSourcepub fn with_output_schema<T: JsonSchema + 'static>(self) -> SelfAvailable on crate feature server only.Set the output schema using a type that implements JsonSchema
+Sourcepub fn with_input_schema<T: JsonSchema + 'static>(self) -> SelfAvailable on crate feature server only.Set the input schema using a type that implements JsonSchema
+Sourcepub fn schema_as_json_value(&self) -> ValueGet the schema as json value
+Trait Implementations§Source§impl Clone for ToolSource§fn clone(&self) -> SelfReturns a duplicate of the value. Read more1.0.0 (const: unstable) · Source§fn clone_from(&mut self, source: &Self)Performs copy-assignment from source. Read moreSource§impl Debug for ToolSource§fn fmt(&self, f: &mut Formatter<'_>) -> ResultFormats the value using the given formatter. Read moreSource§impl Default for ToolSource§fn default() -> SelfReturns the “default value” for a type. Read moreSource§impl<'de> Deserialize<'de> for ToolSource§fn deserialize<__D>(__deserializer: __D) -> Result<Self, __D::Error>where
+    __D: Deserializer<'de>,Deserialize this value from the given Serde deserializer. Read moreSource§impl JsonSchema for ToolAvailable on crate feature schemars only.Source§fn schema_name() -> Cow<'static, str>The name of the generated JSON Schema. Read moreSource§fn schema_id() -> Cow<'static, str>Returns a string that uniquely identifies the schema produced by this type. Read moreSource§fn json_schema(generator: &mut SchemaGenerator) -> SchemaGenerates a JSON Schema for this type. Read moreSource§fn inline_schema() -> boolWhether JSON Schemas generated for this type should be included directly in parent schemas,
+rather than being re-used where possible using the $ref keyword. Read moreSource§impl PartialEq for ToolSource§fn eq(&self, other: &Self) -> boolEquality operator ==. Read more1.0.0 (const: unstable) · Source§fn ne(&self, other: &Rhs) -> boolInequality operator !=. Read moreSource§impl Serialize for ToolSource§fn serialize<__S>(&self, __serializer: __S) -> Result<__S::Ok, __S::Error>where
+    __S: Serializer,Serialize this value into the given Serde serializer. Read moreSource§impl StructuralPartialEq for ToolAuto Trait Implementations§§impl Freeze for Tool§impl RefUnwindSafe for Tool§impl Send for Tool§impl Sync for Tool§impl Unpin for Tool§impl UnsafeUnpin for Tool§impl UnwindSafe for ToolBlanket Implementations§Source§impl<T> Any for Twhere
+    T: 'static + ?Sized,Source§fn type_id(&self) -> TypeIdGets the TypeId of self. Read moreSource§impl<T> Borrow<T> for Twhere
+    T: ?Sized,Source§fn borrow(&self) -> &TImmutably borrows from an owned value. Read moreSource§impl<T> BorrowMut<T> for Twhere
+    T: ?Sized,Source§fn borrow_mut(&mut self) -> &mut TMutably borrows from an owned value. Read moreSource§impl<ST, DT> CastableFrom<ST, Initialized, Initialized> for DTwhere
     ST: ?Sized,
-    DT: ?Sized,Source§
-impl<ST, DT> CastableFrom<ST, Uninit, Uninit> for DT
-where
+    DT: ?Sized,Source§impl<ST, DT> CastableFrom<ST, Uninit, Uninit> for DTwhere
     ST: ?Sized,
-    DT: ?Sized,Source§
-impl<T> CloneToUninit for T
-where
-    T: Clone,
-Source§
-unsafe fn clone_to_uninit(&self, dest: *mut u8)
-🔬This is a nightly-only experimental API. (clone_to_uninit)
-Performs copy-assignment from self to dest. Read moreSource§
-impl<T> DeserializeOwned for T
-where
-    T: for<'de> Deserialize<'de>,Source§
-impl<T> DynClone for T
-where
-    T: Clone,
-Source§
-fn __clone_box(&self, _: Private) -> *mut ()Source§
-impl<T> From<T> for T
-Source§
-fn from(t: T) -> T
-
-Returns the argument unchanged.
-Source§
-impl<T> Instrument for T
-Source§
-fn instrument(self, span: Span) -> Instrumented<Self> ⓘ
-Instruments this type with the provided Span, returning an
-Instrumented wrapper. Read moreSource§
-fn in_current_span(self) -> Instrumented<Self> ⓘ
-Instruments this type with the current Span, returning an
-Instrumented wrapper. Read moreSource§
-impl<T, U> Into<U> for T
-where
-    U: From<T>,
-Source§
-fn into(self) -> U
-
-Calls U::from(self).
-
+    DT: ?Sized,Source§impl<T> CloneToUninit for Twhere
+    T: Clone,Source§unsafe fn clone_to_uninit(&self, dest: *mut u8)🔬This is a nightly-only experimental API. (clone_to_uninit)Performs copy-assignment from self to dest. Read moreSource§impl<T> DeserializeOwned for Twhere
+    T: for<'de> Deserialize<'de>,Source§impl<T> DynClone for Twhere
+    T: Clone,Source§fn __clone_box(&self, _: Private) -> *mut ()Source§impl<T> From<T> for TSource§fn from(t: T) -> TReturns the argument unchanged.
+Source§impl<T> Instrument for TSource§fn instrument(self, span: Span) -> Instrumented<Self> ⓘInstruments this type with the provided Span, returning an
+Instrumented wrapper. Read moreSource§fn in_current_span(self) -> Instrumented<Self> ⓘInstruments this type with the current Span, returning an
+Instrumented wrapper. Read moreSource§impl<T, U> Into<U> for Twhere
+    U: From<T>,Source§fn into(self) -> UCalls U::from(self).
 That is, this conversion is whatever the implementation of
 From<T> for U chooses to do.
-Source§
-impl<T> PolicyExt for T
-where
-    T: ?Sized,
-Source§
-fn and<P, B, E>(self, other: P) -> And<T, P>
-where
+Source§impl<T> PolicyExt for Twhere
+    T: ?Sized,Source§fn and<P, B, E>(self, other: P) -> And<T, P>where
     T: Sized + Policy<B, E>,
-    P: Policy<B, E>,
-Create a new Policy that returns Action::Follow only if self and other return
-Action::Follow. Read moreSource§
-fn or<P, B, E>(self, other: P) -> Or<T, P>
-where
+    P: Policy<B, E>,Create a new Policy that returns Action::Follow only if self and other return
+Action::Follow. Read moreSource§fn or<P, B, E>(self, other: P) -> Or<T, P>where
     T: Sized + Policy<B, E>,
-    P: Policy<B, E>,
-Create a new Policy that returns Action::Follow if either self or other returns
-Action::Follow. Read moreSource§
-impl<T> Read<Exclusive, BecauseExclusive> for T
-where
-    T: ?Sized,Source§
-impl<T> Same for T
-Source§
-type Output = T
-Should always be SelfSource§
-impl<T> ToOwned for T
-where
-    T: Clone,
-Source§
-type Owned = T
-The resulting type after obtaining ownership.Source§
-fn to_owned(&self) -> T
-Creates owned data from borrowed data, usually by cloning. Read moreSource§
-fn clone_into(&self, target: &mut T)
-Uses borrowed data to replace owned data, usually by cloning. Read moreSource§
-impl<T, U> TryFrom<U> for T
-where
-    U: Into<T>,
-Source§
-type Error = !
-The type returned in the event of a conversion error.Source§
-fn try_from(value: U) -> Result<T, !>
-Performs the conversion.Source§
-impl<T, U> TryInto<U> for T
-where
-    U: TryFrom<T>,
-Source§
-type Error = <U as TryFrom<T>>::Error
-The type returned in the event of a conversion error.Source§
-fn try_into(self) -> Result<U, <U as TryFrom<T>>::Error>
-Performs the conversion.Source§
-impl<V, T> VZip<V> for T
-where
-    V: MultiLane<T>,
-Source§
-fn vzip(self) -> VSource§
-impl<T> WithSubscriber for T
-Source§
-fn with_subscriber<S>(self, subscriber: S) -> WithDispatch<Self> ⓘ
-where
-    S: Into<Dispatch>,
-Attaches the provided Subscriber to this type, returning a
-WithDispatch wrapper. Read moreSource§
-fn with_current_subscriber(self) -> WithDispatch<Self> ⓘ
-Attaches the current default Subscriber to this type, returning a
+    P: Policy<B, E>,Create a new Policy that returns Action::Follow if either self or other returns
+Action::Follow. Read moreSource§impl<T> Read<Exclusive, BecauseExclusive> for Twhere
+    T: ?Sized,Source§impl<T> Same for TSource§type Output = TShould always be SelfSource§impl<T> ToOwned for Twhere
+    T: Clone,Source§type Owned = TThe resulting type after obtaining ownership.Source§fn to_owned(&self) -> TCreates owned data from borrowed data, usually by cloning. Read moreSource§fn clone_into(&self, target: &mut T)Uses borrowed data to replace owned data, usually by cloning. Read moreSource§impl<T, U> TryFrom<U> for Twhere
+    U: Into<T>,Source§type Error = !The type returned in the event of a conversion error.Source§fn try_from(value: U) -> Result<T, !>Performs the conversion.Source§impl<T, U> TryInto<U> for Twhere
+    U: TryFrom<T>,Source§type Error = <U as TryFrom<T>>::ErrorThe type returned in the event of a conversion error.Source§fn try_into(self) -> Result<U, <U as TryFrom<T>>::Error>Performs the conversion.Source§impl<V, T> VZip<V> for Twhere
+    V: MultiLane<T>,Source§fn vzip(self) -> VSource§impl<T> WithSubscriber for TSource§fn with_subscriber<S>(self, subscriber: S) -> WithDispatch<Self> ⓘwhere
+    S: Into<Dispatch>,Attaches the provided Subscriber to this type, returning a
+WithDispatch wrapper. Read moreSource§fn with_current_subscriber(self) -> WithDispatch<Self> ⓘAttaches the current default Subscriber to this type, returning a
 WithDispatch wrapper. Read more

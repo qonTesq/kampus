@@ -1,6 +1,6 @@
 # kampus (binary)
 
-Owner: the foundation integrator. It's the only crate that uses rmcp (`=3.4.1`; read `docs/vendor/rmcp/`).
+Owner: the foundation integrator. It's the only crate that uses rmcp (`=3.5.0`; read `docs/vendor/rmcp/`).
 
 - `src/server.rs`: `ServerHandler` implementation. It maps `RegisteredTool` to rmcp `Tool` (title, input and output schema, annotations) and `tools/call` to `Dispatcher::call`. It serves `2025-11-25` and `2026-07-28` only.
 - `src/app.rs`: startup validation (school → registry → policy), the axum router, the Host allowlist from `server.resource_url`, and the `MCP-Protocol-Version` guard. The auth middleware (auth-policy-audit) inserts a verified `Principal` into request extensions; `server.rs` reads it per request and never per session.

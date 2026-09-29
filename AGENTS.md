@@ -21,13 +21,13 @@ schools/<id>/school.yaml, policy.yaml     everything school-specific
 - Call pipeline (dispatch): verify credential → resolve identity → validate tool/arguments → **policy** → caller limits → cache/provider → sanitize + project to the envelope → one metadata-only audit row → emit. Policy runs before any cache or provider access.
 - The seven tools: `find_study_room`, `book_study_room` (read-only proposal), `confirm_booking` (destructive, `rooms:book`), `search_courses`, `next_departures`, `my_deadlines` (Sensitive, synthetic), `library_hours`. Every tool is listed for every caller; policy refuses calls, it never hides tools.
 - Every result is the shared envelope (`status: ok` + `data` + `meta`, or `status: error` + `error`), published as `outputSchema` and returned as `structuredContent`.
-- Field-level contracts: `docs/contracts/`. rmcp 3.4.1 docs and examples: `docs/vendor/rmcp/`. Read those, not memory: rmcp broke its API several times in 2026.
+- Field-level contracts: `docs/contracts/`. rmcp 3.5.0 docs and examples: `docs/vendor/rmcp/`. Read those, not memory: rmcp broke its API several times in 2026.
 
 ## Hard rules
 
 1. **No `unsafe` Rust, anywhere.** `unsafe_code = "forbid"` is a workspace lint, and every crate has `[lints] workspace = true`. Don't add `allow` for it.
 2. Idiomatic Rust: `thiserror` for library errors; no `unwrap`/`expect`/`panic!` in library code (clippy warns; tests are exempt); small, focused modules; no needless abstraction.
-3. `rmcp` stays pinned at `=3.4.1`. The root manifest, `Cargo.lock`, `crates/kampus/src/registry.rs` and `docs/contracts/` belong to the integrator. Ask for changes; don't make them.
+3. `rmcp` stays pinned at `=3.5.0`. The root manifest, `Cargo.lock`, `crates/kampus/src/registry.rs` and `docs/contracts/` belong to the integrator. Ask for changes; don't make them.
 4. Nothing school-specific in code: hosts, IDs, terms, aliases and timezones live in `school.yaml`; access rules live in `policy.yaml`.
 5. Sandbox code (Canvas fake, booking simulation, Flight replay) sits behind the `sandbox` cargo feature **and** `sandbox.enabled: true`. A production build must not contain it.
 6. Real public vendor responses are required fixtures (`fixtures/<vendor>/`); student data is always synthetic.

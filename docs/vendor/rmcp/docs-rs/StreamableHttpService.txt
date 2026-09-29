@@ -1,21 +1,21 @@
-Source: https://docs.rs/rmcp/3.4.1/rmcp/transport/streamable_http_server/tower/struct.StreamableHttpService.html
-Fetched: 2026-09-26
+Source: https://docs.rs/rmcp/3.5.0/rmcp/transport/streamable_http_server/tower/struct.StreamableHttpService.html
+Fetched: 2026-09-28
 
 StreamableHttpService in rmcp::transport::streamable_http_server::tower - Rust
 
                     Docs.rs
 
-                rmcp-3.4.1
+                rmcp-3.5.0
 
-                        rmcp 3.4.1
+                        rmcp 3.5.0
 
                              Docs.rs crate page
 
                             Apache-2.0
 
-                                 23 September 2026
+                                 28 September 2026
 
-Links
+                            Links
 
                                          Homepage
 
@@ -25,7 +25,7 @@ Links
 
                                      Source
 
-Owners
+                            Owners
 
                                          4t145
 
@@ -33,7 +33,7 @@ Owners
 
                                          alexhancock
 
-Dependencies
+                            Dependencies
 
                 async-trait ^0.1.89
 
@@ -137,7 +137,7 @@ Dependencies
 
                         optional
 
-                rmcp-macros ^3.4.1
+                rmcp-macros ^3.5.0
 
                     normal
 
@@ -249,6 +249,10 @@ Dependencies
 
                     dev
 
+                serde_json ^1.0
+
+                    dev
+
                 tokio ^1
 
                     dev
@@ -273,9 +277,9 @@ Dependencies
 
                     normal
 
-Versions
+                            Versions
 
-                                        49.04%
+                                        49.15%
                                         of the crate is documented
 
                     Platform
@@ -285,84 +289,54 @@ Versions
                     Feature flags
 
                         docs.rs
-
- About docs.rs
- Badges
- Builds
- Metadata
- Shorthand URLs
- Download
- Rustdoc JSON
- Build queue
- Privacy policy
+                         About docs.rs Badges Builds Metadata Shorthand URLs Download Rustdoc JSON Build queue Privacy policy
 
                         Rust
 
-Rust website
+                            Rust website
+                            The Book
 
-The Book
+                            Standard Library API Reference
 
-Standard Library API Reference
+                            Rust by Example
 
-Rust by Example
+                            The Cargo Guide
 
-The Cargo Guide
+                            Clippy Documentation
 
-Clippy Documentation
-
-Skip to main content
-StreamableHttpService
-
-rmcp::transport::streamable_http_server::tower
-Struct StreamableHttpService Copy item pathSource 
-pub struct StreamableHttpService<S, M> {
+Skip to main contentStreamableHttpServicermcp3.5.0StreamableHttpServiceSectionsStreamable HTTP serverSession managementAccessing HTTP request data from tool handlersFieldsconfigAssociated FunctionsnewMethodshandleTrait ImplementationsCloneService<Request<RequestBody>>Auto Trait Implementations!RefUnwindSafe!UnwindSafeFreezeSendSyncUnpinUnsafeUnpinBlanket ImplementationsAnyBorrow<T>BorrowMut<T>CastableFrom<ST, Initialized, Initialized>CastableFrom<ST, Uninit, Uninit>CloneToUninitDynCloneFrom<T>InstrumentInto<U>PolicyExtRead<Exclusive, BecauseExclusive>SameServiceExt<Request>ToOwnedTryFrom<U>TryInto<U>VZip<V>WithSubscriberIn rmcp::transport::streamable_http_server::towerrmcp::transport::streamable_http_server::towerStruct StreamableHttpService Copy item pathSource pub struct StreamableHttpService<S, M> {
     pub config: StreamableHttpServerConfig,
     /* private fields */
-}
-Available on crate feature transport-streamable-http-server-session and crate feature transport-streamable-http-server and (crate features client or server) and non-crate feature local only.Expand description
-
-§Streamable HTTP server
-
+}Available on crate feature transport-streamable-http-server-session and crate feature transport-streamable-http-server and (crate features client or server) and non-crate feature local only.Expand description§Streamable HTTP server
 An HTTP service that implements the
 Streamable HTTP transport
 for MCP servers.
-
 §Session management
-
 When StreamableHttpServerConfig::legacy_session_mode is true (the default),
 the server creates a session for each client that sends an initialize
 request. The session ID is returned in the Mcp-Session-Id response header
 and the client must include it on all subsequent requests.
-
 Two tool calls carrying the same Mcp-Session-Id come from the same logical
 session (typically one conversation in an LLM client). Different session IDs
 mean different sessions.
-
 The SessionManager trait controls how sessions are stored and routed:
 
 LocalSessionManager —
 in-memory session store (default).
-
 NeverSessionManager —
 disables sessions entirely (stateless mode).
 
 §Accessing HTTP request data from tool handlers
-
 The service consumes the request body but injects the remaining
 http::request::Parts into crate::model::Extensions, which is
 accessible through crate::service::RequestContext.
-
 §Reading the raw HTTP parts
-
 use rmcp::handler::server::tool::Extension;
 use http::request::Parts;
 async fn my_tool(Extension(parts): Extension<Parts>) {
     tracing::info!("http parts:{parts:?}")
-}
-§Reading the session ID inside a tool handler
-
-ⓘ
-use rmcp::handler::server::tool::Extension;
+}§Reading the session ID inside a tool handler
+ⓘuse rmcp::handler::server::tool::Extension;
 use rmcp::service::RequestContext;
 use rmcp::model::RoleServer;
 
@@ -375,14 +349,11 @@ async fn my_tool(
         tracing::info!(?session_id, "called from session");
     }
     // ...
-}
-§Accessing custom axum/tower extension state
-
+}§Accessing custom axum/tower extension state
 State added via axum’s Extension layer is available inside
 Parts.extensions:
 
-ⓘ
-use rmcp::service::RequestContext;
+ⓘuse rmcp::service::RequestContext;
 use rmcp::model::RoleServer;
 
 #[derive(Clone)]
@@ -396,279 +367,95 @@ async fn my_tool(
     let parts = ctx.extensions.get::<http::request::Parts>().unwrap();
     let state = parts.extensions.get::<AppState>().unwrap();
     // use state...
-}
-Fields§§config: StreamableHttpServerConfig
-Implementations§
-Source§
-impl<S, M> StreamableHttpService<S, M>
-where
+}Fields§§config: StreamableHttpServerConfigImplementations§Source§impl<S, M> StreamableHttpService<S, M>where
     S: ServerHandler + Send + 'static,
-    M: SessionManager,
-Source
-pub fn new(
+    M: SessionManager,Sourcepub fn new(
     service_factory: impl Fn() -> Result<S, Error> + Send + Sync + 'static,
     session_manager: Arc<M>,
     config: StreamableHttpServerConfig,
-) -> SelfSource
-pub async fn handle<B>(
+) -> SelfSourcepub async fn handle<B>(
     &self,
     request: Request<B>,
-) -> Response<BoxBody<Bytes, Infallible>>
-where
+) -> Response<BoxBody<Bytes, Infallible>>where
     B: Body + Send + 'static,
-    B::Error: Display,
-Trait Implementations§
-Source§
-impl<S, M> Clone for StreamableHttpService<S, M>
-Source§
-fn clone(&self) -> Self
-Returns a duplicate of the value. Read more1.0.0 (const: unstable) · Source§
-fn clone_from(&mut self, source: &Self)
-Performs copy-assignment from source. Read moreSource§
-impl<RequestBody, S, M> Service<Request<RequestBody>> for StreamableHttpService<S, M>
-where
+    B::Error: Display,Trait Implementations§Source§impl<S, M> Clone for StreamableHttpService<S, M>Source§fn clone(&self) -> SelfReturns a duplicate of the value. Read more1.0.0 (const: unstable) · Source§fn clone_from(&mut self, source: &Self)Performs copy-assignment from source. Read moreSource§impl<RequestBody, S, M> Service<Request<RequestBody>> for StreamableHttpService<S, M>where
     RequestBody: Body + Send + 'static,
     S: ServerHandler + Send + 'static,
     M: SessionManager,
     RequestBody::Error: Display,
-    RequestBody::Data: Send + 'static,
-Source§
-type Response = Response<BoxBody<Bytes, !>>
-Responses given by the service.Source§
-type Error = !
-Errors produced by the service.Source§
-type Future = Pin<Box<dyn Future<Output = Result<<StreamableHttpService<S, M> as Service<Request<RequestBody>>>::Response, <StreamableHttpService<S, M> as Service<Request<RequestBody>>>::Error>> + Send>>
-The future response value.Source§
-fn call(&mut self, req: Request<RequestBody>) -> Self::Future
-Process the request and return the response asynchronously. Read moreSource§
-fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>>
-Returns Poll::Ready(Ok(())) when the service is able to process requests. Read more
-Auto Trait Implementations§
-§
-impl<S, M> !RefUnwindSafe for StreamableHttpService<S, M>§
-impl<S, M> !UnwindSafe for StreamableHttpService<S, M>§
-impl<S, M> Freeze for StreamableHttpService<S, M>
-where
+    RequestBody::Data: Send + 'static,Source§type Response = Response<BoxBody<Bytes, !>>Responses given by the service.Source§type Error = !Errors produced by the service.Source§type Future = Pin<Box<dyn Future<Output = Result<<StreamableHttpService<S, M> as Service<Request<RequestBody>>>::Response, <StreamableHttpService<S, M> as Service<Request<RequestBody>>>::Error>> + Send>>The future response value.Source§fn call(&mut self, req: Request<RequestBody>) -> Self::FutureProcess the request and return the response asynchronously. Read moreSource§fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>>Returns Poll::Ready(Ok(())) when the service is able to process requests. Read moreAuto Trait Implementations§§impl<S, M> !RefUnwindSafe for StreamableHttpService<S, M>§impl<S, M> !UnwindSafe for StreamableHttpService<S, M>§impl<S, M> Freeze for StreamableHttpService<S, M>where
     Arc<M>: Freeze,
-    Arc<dyn Fn() -> Result<S, Error> + Send + Sync>: Freeze,§
-impl<S, M> Send for StreamableHttpService<S, M>
-where
+    Arc<dyn Fn() -> Result<S, Error> + Send + Sync>: Freeze,§impl<S, M> Send for StreamableHttpService<S, M>where
     Arc<M>: Send,
-    Arc<dyn Fn() -> Result<S, Error> + Send + Sync>: Send,§
-impl<S, M> Sync for StreamableHttpService<S, M>
-where
+    Arc<dyn Fn() -> Result<S, Error> + Send + Sync>: Send,§impl<S, M> Sync for StreamableHttpService<S, M>where
     Arc<M>: Sync,
-    Arc<dyn Fn() -> Result<S, Error> + Send + Sync>: Sync,§
-impl<S, M> Unpin for StreamableHttpService<S, M>
-where
+    Arc<dyn Fn() -> Result<S, Error> + Send + Sync>: Sync,§impl<S, M> Unpin for StreamableHttpService<S, M>where
     Arc<M>: Unpin,
-    Arc<dyn Fn() -> Result<S, Error> + Send + Sync>: Unpin,§
-impl<S, M> UnsafeUnpin for StreamableHttpService<S, M>
-where
+    Arc<dyn Fn() -> Result<S, Error> + Send + Sync>: Unpin,§impl<S, M> UnsafeUnpin for StreamableHttpService<S, M>where
     Arc<M>: UnsafeUnpin,
-    Arc<dyn Fn() -> Result<S, Error> + Send + Sync>: UnsafeUnpin,
-Blanket Implementations§
-Source§
-impl<T> Any for T
-where
-    T: 'static + ?Sized,
-Source§
-fn type_id(&self) -> TypeId
-Gets the TypeId of self. Read moreSource§
-impl<T> Borrow<T> for T
-where
-    T: ?Sized,
-Source§
-fn borrow(&self) -> &T
-Immutably borrows from an owned value. Read moreSource§
-impl<T> BorrowMut<T> for T
-where
-    T: ?Sized,
-Source§
-fn borrow_mut(&mut self) -> &mut T
-Mutably borrows from an owned value. Read moreSource§
-impl<ST, DT> CastableFrom<ST, Initialized, Initialized> for DT
-where
+    Arc<dyn Fn() -> Result<S, Error> + Send + Sync>: UnsafeUnpin,Blanket Implementations§Source§impl<T> Any for Twhere
+    T: 'static + ?Sized,Source§fn type_id(&self) -> TypeIdGets the TypeId of self. Read moreSource§impl<T> Borrow<T> for Twhere
+    T: ?Sized,Source§fn borrow(&self) -> &TImmutably borrows from an owned value. Read moreSource§impl<T> BorrowMut<T> for Twhere
+    T: ?Sized,Source§fn borrow_mut(&mut self) -> &mut TMutably borrows from an owned value. Read moreSource§impl<ST, DT> CastableFrom<ST, Initialized, Initialized> for DTwhere
     ST: ?Sized,
-    DT: ?Sized,Source§
-impl<ST, DT> CastableFrom<ST, Uninit, Uninit> for DT
-where
+    DT: ?Sized,Source§impl<ST, DT> CastableFrom<ST, Uninit, Uninit> for DTwhere
     ST: ?Sized,
-    DT: ?Sized,Source§
-impl<T> CloneToUninit for T
-where
-    T: Clone,
-Source§
-unsafe fn clone_to_uninit(&self, dest: *mut u8)
-🔬This is a nightly-only experimental API. (clone_to_uninit)
-Performs copy-assignment from self to dest. Read moreSource§
-impl<T> DynClone for T
-where
-    T: Clone,
-Source§
-fn __clone_box(&self, _: Private) -> *mut ()Source§
-impl<T> From<T> for T
-Source§
-fn from(t: T) -> T
-
-Returns the argument unchanged.
-Source§
-impl<T> Instrument for T
-Source§
-fn instrument(self, span: Span) -> Instrumented<Self> ⓘ
-Instruments this type with the provided Span, returning an
-Instrumented wrapper. Read moreSource§
-fn in_current_span(self) -> Instrumented<Self> ⓘ
-Instruments this type with the current Span, returning an
-Instrumented wrapper. Read moreSource§
-impl<T, U> Into<U> for T
-where
-    U: From<T>,
-Source§
-fn into(self) -> U
-
-Calls U::from(self).
-
+    DT: ?Sized,Source§impl<T> CloneToUninit for Twhere
+    T: Clone,Source§unsafe fn clone_to_uninit(&self, dest: *mut u8)🔬This is a nightly-only experimental API. (clone_to_uninit)Performs copy-assignment from self to dest. Read moreSource§impl<T> DynClone for Twhere
+    T: Clone,Source§fn __clone_box(&self, _: Private) -> *mut ()Source§impl<T> From<T> for TSource§fn from(t: T) -> TReturns the argument unchanged.
+Source§impl<T> Instrument for TSource§fn instrument(self, span: Span) -> Instrumented<Self> ⓘInstruments this type with the provided Span, returning an
+Instrumented wrapper. Read moreSource§fn in_current_span(self) -> Instrumented<Self> ⓘInstruments this type with the current Span, returning an
+Instrumented wrapper. Read moreSource§impl<T, U> Into<U> for Twhere
+    U: From<T>,Source§fn into(self) -> UCalls U::from(self).
 That is, this conversion is whatever the implementation of
 From<T> for U chooses to do.
-Source§
-impl<T> PolicyExt for T
-where
-    T: ?Sized,
-Source§
-fn and<P, B, E>(self, other: P) -> And<T, P>
-where
+Source§impl<T> PolicyExt for Twhere
+    T: ?Sized,Source§fn and<P, B, E>(self, other: P) -> And<T, P>where
     T: Sized + Policy<B, E>,
-    P: Policy<B, E>,
-Create a new Policy that returns Action::Follow only if self and other return
-Action::Follow. Read moreSource§
-fn or<P, B, E>(self, other: P) -> Or<T, P>
-where
+    P: Policy<B, E>,Create a new Policy that returns Action::Follow only if self and other return
+Action::Follow. Read moreSource§fn or<P, B, E>(self, other: P) -> Or<T, P>where
     T: Sized + Policy<B, E>,
-    P: Policy<B, E>,
-Create a new Policy that returns Action::Follow if either self or other returns
-Action::Follow. Read moreSource§
-impl<T> Read<Exclusive, BecauseExclusive> for T
-where
-    T: ?Sized,Source§
-impl<T> Same for T
-Source§
-type Output = T
-Should always be SelfSource§
-impl<T, Request> ServiceExt<Request> for T
-where
-    T: Service<Request> + ?Sized,
-Source§
-fn ready(&mut self) -> Ready<'_, Self, Request> ⓘ
-where
+    P: Policy<B, E>,Create a new Policy that returns Action::Follow if either self or other returns
+Action::Follow. Read moreSource§impl<T> Read<Exclusive, BecauseExclusive> for Twhere
+    T: ?Sized,Source§impl<T> Same for TSource§type Output = TShould always be SelfSource§impl<T, Request> ServiceExt<Request> for Twhere
+    T: Service<Request> + ?Sized,Source§fn ready(&mut self) -> Ready<'_, Self, Request> ⓘwhere
+    Self: Sized,Yields a mutable reference to the service when it is ready to accept a request.Source§fn ready_oneshot(self) -> ReadyOneshot<Self, Request> ⓘwhere
+    Self: Sized,Yields the service when it is ready to accept a request.Source§fn oneshot(self, req: Request) -> Oneshot<Self, Request> ⓘwhere
+    Self: Sized,Consume this Service, calling it with the provided request once it is ready.Source§fn call_all<S>(self, reqs: S) -> CallAll<Self, S>where
     Self: Sized,
-Yields a mutable reference to the service when it is ready to accept a request.Source§
-fn ready_oneshot(self) -> ReadyOneshot<Self, Request> ⓘ
-where
+    S: Stream<Item = Request>,Process all requests from the given Stream, and produce a Stream of their responses. Read moreSource§fn and_then<F>(self, f: F) -> AndThen<Self, F>where
     Self: Sized,
-Yields the service when it is ready to accept a request.Source§
-fn oneshot(self, req: Request) -> Oneshot<Self, Request> ⓘ
-where
+    F: Clone,Executes a new future after this service’s future resolves. This does
+not alter the behaviour of the poll_ready method. Read moreSource§fn map_response<F, Response>(self, f: F) -> MapResponse<Self, F>where
     Self: Sized,
-Consume this Service, calling it with the provided request once it is ready.Source§
-fn call_all<S>(self, reqs: S) -> CallAll<Self, S>
-where
+    F: FnOnce(Self::Response) -> Response + Clone,Maps this service’s response value to a different value. This does not
+alter the behaviour of the poll_ready method. Read moreSource§fn map_err<F, Error>(self, f: F) -> MapErr<Self, F>where
     Self: Sized,
-    S: Stream<Item = Request>,
-Process all requests from the given Stream, and produce a Stream of their responses. Read moreSource§
-fn and_then<F>(self, f: F) -> AndThen<Self, F>
-where
-    Self: Sized,
-    F: Clone,
-Executes a new future after this service’s future resolves. This does
-not alter the behaviour of the poll_ready method. Read moreSource§
-fn map_response<F, Response>(self, f: F) -> MapResponse<Self, F>
-where
-    Self: Sized,
-    F: FnOnce(Self::Response) -> Response + Clone,
-Maps this service’s response value to a different value. This does not
-alter the behaviour of the poll_ready method. Read moreSource§
-fn map_err<F, Error>(self, f: F) -> MapErr<Self, F>
-where
-    Self: Sized,
-    F: FnOnce(Self::Error) -> Error + Clone,
-Maps this service’s error value to a different value. This does not
-alter the behaviour of the poll_ready method. Read moreSource§
-fn map_result<F, Response, Error>(self, f: F) -> MapResult<Self, F>
-where
+    F: FnOnce(Self::Error) -> Error + Clone,Maps this service’s error value to a different value. This does not
+alter the behaviour of the poll_ready method. Read moreSource§fn map_result<F, Response, Error>(self, f: F) -> MapResult<Self, F>where
     Self: Sized,
     Error: From<Self::Error>,
-    F: FnOnce(Result<Self::Response, Self::Error>) -> Result<Response, Error> + Clone,
-Maps this service’s result type (Result<Self::Response, Self::Error>)
+    F: FnOnce(Result<Self::Response, Self::Error>) -> Result<Response, Error> + Clone,Maps this service’s result type (Result<Self::Response, Self::Error>)
 to a different value, regardless of whether the future succeeds or
-fails. Read moreSource§
-fn map_request<F, NewRequest>(self, f: F) -> MapRequest<Self, F>
-where
+fails. Read moreSource§fn map_request<F, NewRequest>(self, f: F) -> MapRequest<Self, F>where
     Self: Sized,
-    F: FnMut(NewRequest) -> Request,
-Composes a function in front of the service. Read moreSource§
-fn then<F, Response, Error, Fut>(self, f: F) -> Then<Self, F>
-where
+    F: FnMut(NewRequest) -> Request,Composes a function in front of the service. Read moreSource§fn then<F, Response, Error, Fut>(self, f: F) -> Then<Self, F>where
     Self: Sized,
     Error: From<Self::Error>,
     F: FnOnce(Result<Self::Response, Self::Error>) -> Fut + Clone,
-    Fut: Future<Output = Result<Response, Error>>,
-Composes an asynchronous function after this service. Read moreSource§
-fn map_future<F, Fut, Response, Error>(self, f: F) -> MapFuture<Self, F>
-where
+    Fut: Future<Output = Result<Response, Error>>,Composes an asynchronous function after this service. Read moreSource§fn map_future<F, Fut, Response, Error>(self, f: F) -> MapFuture<Self, F>where
     Self: Sized,
     F: FnMut(Self::Future) -> Fut,
     Error: From<Self::Error>,
-    Fut: Future<Output = Result<Response, Error>>,
-Composes a function that transforms futures produced by the service. Read moreSource§
-fn boxed(self) -> BoxService<Request, Self::Response, Self::Error>
-where
+    Fut: Future<Output = Result<Response, Error>>,Composes a function that transforms futures produced by the service. Read moreSource§fn boxed(self) -> BoxService<Request, Self::Response, Self::Error>where
     Self: Sized + Send + 'static,
-    Self::Future: Send + 'static,
-Convert the service into a Service + Send trait object. Read moreSource§
-fn boxed_clone(self) -> BoxCloneService<Request, Self::Response, Self::Error>
-where
+    Self::Future: Send + 'static,Convert the service into a Service + Send trait object. Read moreSource§fn boxed_clone(self) -> BoxCloneService<Request, Self::Response, Self::Error>where
     Self: Sized + Clone + Send + 'static,
-    Self::Future: Send + 'static,
-Convert the service into a Service + Clone + Send trait object. Read moreSource§
-impl<T> ToOwned for T
-where
-    T: Clone,
-Source§
-type Owned = T
-The resulting type after obtaining ownership.Source§
-fn to_owned(&self) -> T
-Creates owned data from borrowed data, usually by cloning. Read moreSource§
-fn clone_into(&self, target: &mut T)
-Uses borrowed data to replace owned data, usually by cloning. Read moreSource§
-impl<T, U> TryFrom<U> for T
-where
-    U: Into<T>,
-Source§
-type Error = !
-The type returned in the event of a conversion error.Source§
-fn try_from(value: U) -> Result<T, !>
-Performs the conversion.Source§
-impl<T, U> TryInto<U> for T
-where
-    U: TryFrom<T>,
-Source§
-type Error = <U as TryFrom<T>>::Error
-The type returned in the event of a conversion error.Source§
-fn try_into(self) -> Result<U, <U as TryFrom<T>>::Error>
-Performs the conversion.Source§
-impl<V, T> VZip<V> for T
-where
-    V: MultiLane<T>,
-Source§
-fn vzip(self) -> VSource§
-impl<T> WithSubscriber for T
-Source§
-fn with_subscriber<S>(self, subscriber: S) -> WithDispatch<Self> ⓘ
-where
-    S: Into<Dispatch>,
-Attaches the provided Subscriber to this type, returning a
-WithDispatch wrapper. Read moreSource§
-fn with_current_subscriber(self) -> WithDispatch<Self> ⓘ
-Attaches the current default Subscriber to this type, returning a
+    Self::Future: Send + 'static,Convert the service into a Service + Clone + Send trait object. Read moreSource§impl<T> ToOwned for Twhere
+    T: Clone,Source§type Owned = TThe resulting type after obtaining ownership.Source§fn to_owned(&self) -> TCreates owned data from borrowed data, usually by cloning. Read moreSource§fn clone_into(&self, target: &mut T)Uses borrowed data to replace owned data, usually by cloning. Read moreSource§impl<T, U> TryFrom<U> for Twhere
+    U: Into<T>,Source§type Error = !The type returned in the event of a conversion error.Source§fn try_from(value: U) -> Result<T, !>Performs the conversion.Source§impl<T, U> TryInto<U> for Twhere
+    U: TryFrom<T>,Source§type Error = <U as TryFrom<T>>::ErrorThe type returned in the event of a conversion error.Source§fn try_into(self) -> Result<U, <U as TryFrom<T>>::Error>Performs the conversion.Source§impl<V, T> VZip<V> for Twhere
+    V: MultiLane<T>,Source§fn vzip(self) -> VSource§impl<T> WithSubscriber for TSource§fn with_subscriber<S>(self, subscriber: S) -> WithDispatch<Self> ⓘwhere
+    S: Into<Dispatch>,Attaches the provided Subscriber to this type, returning a
+WithDispatch wrapper. Read moreSource§fn with_current_subscriber(self) -> WithDispatch<Self> ⓘAttaches the current default Subscriber to this type, returning a
 WithDispatch wrapper. Read more
