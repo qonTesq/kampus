@@ -54,6 +54,6 @@ Each fix starts with a test that reproduces the finding and fails on the unfixed
 
 ## 10. Docs and review
 
-- [ ] 10.1 Fix stale "placeholder dispatcher" docs (`crates/kampus-core/AGENTS.md`, dispatch module docs)
+- [x] 10.1 Fix stale "placeholder dispatcher" docs (`crates/kampus-core/AGENTS.md`, dispatch module docs)
 - [ ] 10.2 Forbidden-pattern review: no client IPs, arguments or content in audit or logs; no weakened checks; session and log-cap code untouched
 - [ ] 10.3 Full gate: fmt, clippy (default and `kampus/sandbox`), tests (default and `kampus/sandbox`)

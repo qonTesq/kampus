@@ -2,7 +2,7 @@
 
 ## Ownership
 - `src/contracts/`, `src/config/`, `src/output/`, `src/runtime/`: foundation. **Frozen**; changes need a human. Field reference: `docs/contracts/`.
-- `src/auth/`, `src/policy/`, `src/audit/`, `src/admin/`, `src/dispatch/`: the `auth-policy-audit` change. `dispatch::Dispatcher` is currently a fail-closed placeholder: it denies every business tool with `permission_denied`.
+- `src/auth/`, `src/policy/`, `src/audit/`, `src/admin/`, `src/dispatch/`: the `auth-policy-audit` change. `dispatch::Dispatcher::with_security` is the real pipeline (admission, validation, policy, caller limits, one call deadline, one audit row per call); `App` installs it. `Dispatcher::new` without `Security` stays fail-closed (every business tool is denied) and is only for tests.
 
 ## Contract summary
 - `Module`, `ModuleDescriptor`/`ToolDescriptor` (`module.yaml`), `ToolRegistry`/`RegisteredTool` (compiled input/output validators).

@@ -668,7 +668,7 @@ async fn same_legacy_session_uses_live_switches_without_changing_tools() {
         .await,
     )
     .await;
-    // Foundation module is still a placeholder; the audit proves authorization.
+    // A production build has no deadlines source; the audit proves authorization.
     assert_eq!(
         allowed["result"]["structuredContent"]["error"]["code"],
         "unsupported_source"

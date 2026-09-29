@@ -660,10 +660,9 @@ mod sandbox {
 
 // ------------------------------------------------------------ real dispatch
 
-/// The foundation dispatcher is a fail-closed placeholder; auth-policy-audit
-/// replaces it. Booking must be denied before any provider access either way.
-/// PENDING INTEGRATION: once the policy dispatcher lands, extend this with a
-/// student-without-`rooms:book` confirm denial and audit-row assertions.
+/// A dispatcher without `Security` fails closed: booking is denied before any
+/// provider access. Policy denials with audit rows (including a student
+/// without `rooms:book`) are covered by the `kampus-core` dispatch tests.
 #[tokio::test]
 async fn dispatch_denies_guest_booking_before_provider_access() {
     let h = harness(true, true).await;

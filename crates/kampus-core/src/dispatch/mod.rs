@@ -1,12 +1,15 @@
 //! Tool-call pipeline. OWNED BY auth-policy-audit.
 //!
-//! verify credential (HTTP middleware) -> resolve device identity -> validate
+//! verify credential (HTTP middleware) -> resolve device identity ->
+//! admission (caller rate, guest cap, execution slot) -> validate
 //! tool/arguments -> evaluate policy -> caller limits -> module (cache or
-//! provider) -> project -> exactly one metadata-only audit row -> emit.
+//! provider) under the call deadline -> project -> exactly one
+//! metadata-only audit row -> emit.
 //!
 //! Denials happen before any module code runs. No data leaves without a
-//! successful audit append. Without [`Security`] (the foundation
-//! placeholder), every business tool is denied.
+//! successful audit append. [`Dispatcher::with_security`] is the real
+//! pipeline and what `App` installs; [`Dispatcher::new`] without
+//! [`Security`] is a fail-closed test harness that denies every business tool.
 
 #[cfg(test)]
 mod tests;
@@ -162,7 +165,7 @@ pub struct Dispatcher {
 }
 
 impl Dispatcher {
-    /// Fail-closed placeholder: every business tool is denied.
+    /// Without security (tests only): every business tool is denied.
     pub fn new(school_id: impl Into<String>, registry: Arc<ToolRegistry>) -> Self {
         Self {
             school_id: school_id.into(),
