@@ -102,6 +102,31 @@ pub struct PolicyLimits {
     pub booking_confirms_per_minute: u32,
     pub device_binds_per_minute: u32,
     pub device_binds_per_source_per_minute: u32,
+    /// Admission: every call (valid or not) per signed-in caller.
+    #[serde(default = "d_calls")]
+    pub calls_per_minute: u32,
+    /// Admission: every call per guest client address.
+    #[serde(default = "d_guest_calls")]
+    pub guest_calls_per_minute: u32,
+    /// Admission: every guest call, all guests together.
+    #[serde(default = "d_guest_total")]
+    pub guest_calls_per_minute_total: u32,
+    /// Tool calls executing at once; further calls queue briefly.
+    #[serde(default = "d_concurrent")]
+    pub max_concurrent_calls: u32,
+}
+
+const fn d_calls() -> u32 {
+    120
+}
+const fn d_guest_calls() -> u32 {
+    60
+}
+const fn d_guest_total() -> u32 {
+    600
+}
+const fn d_concurrent() -> u32 {
+    64
 }
 
 impl Default for PolicyLimits {
@@ -113,6 +138,10 @@ impl Default for PolicyLimits {
             booking_confirms_per_minute: 2,
             device_binds_per_minute: 6,
             device_binds_per_source_per_minute: 30,
+            calls_per_minute: d_calls(),
+            guest_calls_per_minute: d_guest_calls(),
+            guest_calls_per_minute_total: d_guest_total(),
+            max_concurrent_calls: d_concurrent(),
         }
     }
 }
@@ -205,6 +234,10 @@ pub(super) fn validate(
         l.booking_confirms_per_minute,
         l.device_binds_per_minute,
         l.device_binds_per_source_per_minute,
+        l.calls_per_minute,
+        l.guest_calls_per_minute,
+        l.guest_calls_per_minute_total,
+        l.max_concurrent_calls,
     ]
     .contains(&0)
     {

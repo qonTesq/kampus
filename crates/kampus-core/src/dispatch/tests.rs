@@ -25,6 +25,8 @@ const SENTINEL: &str = "SENTINEL-7f3a-do-not-log";
 struct Counting {
     descriptor: ModuleDescriptor,
     calls: Arc<AtomicUsize>,
+    /// Cache behind `probe_slow`.
+    slow: crate::runtime::PublicCache,
 }
 
 impl Module for Counting {
@@ -51,7 +53,7 @@ impl Module for Counting {
                     config_version: "1".into(),
                     request: "x".into(),
                 };
-                SLOW_CACHE
+                self.slow
                     .get_or_fetch(key, Duration::from_mins(1), async {
                         tokio::time::sleep(Duration::from_mins(1)).await;
                         Ok(json!({}))
@@ -69,9 +71,6 @@ impl Module for Counting {
         })
     }
 }
-
-static SLOW_CACHE: std::sync::LazyLock<crate::runtime::PublicCache> =
-    std::sync::LazyLock::new(|| crate::runtime::PublicCache::new(16));
 
 const PROBE_YAML: &str = r"
 version: 1
@@ -160,6 +159,19 @@ impl Harness {
             .await
             .unwrap()
     }
+
+    async fn call_from(&self, tool: &str, args: Value, who: &Principal, ip: &str) -> Value {
+        self.dispatcher
+            .call_from(
+                tool,
+                args,
+                who.clone(),
+                "r1".into(),
+                Some(ip.parse().unwrap()),
+            )
+            .await
+            .unwrap()
+    }
 }
 
 fn demo_policy() -> PolicyConfig {
@@ -209,6 +221,7 @@ fn harness_with(
         modules.push(Arc::new(Counting {
             descriptor,
             calls: counter,
+            slow: crate::runtime::PublicCache::new(16),
         }));
     }
     let registry = Arc::new(ToolRegistry::new(modules).unwrap());
@@ -411,6 +424,118 @@ async fn one_deadline_covers_cache_waits_and_is_audited() {
     }
 }
 
+#[tokio::test(start_paused = true)]
+async fn flood_of_guest_confirms_is_limited_before_policy_and_audited() {
+    let h = harness();
+    let guest = Principal::guest();
+    let mut limited = 0;
+    for _ in 0..45 {
+        let r = h
+            .call_from(
+                "confirm_booking",
+                json!({ "confirmation_id": "c1" }),
+                &guest,
+                "203.0.113.7",
+            )
+            .await;
+        match code(&r) {
+            "rate_limited" => limited += 1,
+            other => assert_eq!(other, "permission_denied"),
+        }
+    }
+    assert!(limited > 0, "denied calls must count against admission");
+    assert_eq!(h.total_calls(), 0);
+    let rows = h.rows();
+    assert_eq!(rows.len(), 45, "one row per call, refused ones included");
+    assert_eq!(rows[0].rule, crate::policy::rules::TOOL_ROLES);
+    let limited_rows = rows
+        .iter()
+        .filter(|r| r.rule == rules::RATE_LIMITED)
+        .count();
+    assert_eq!(limited_rows, limited);
+    // The client address never reaches the audit log.
+    assert!(
+        !serde_json::to_string(&rows)
+            .unwrap()
+            .contains("203.0.113.7")
+    );
+    assert!(rows.iter().all(|r| r.user_hash == "guest"));
+}
+
+#[tokio::test(start_paused = true)]
+async fn guests_are_limited_per_client_address() {
+    let h = harness();
+    let guest = Principal::guest();
+    let departures = || json!({ "stop": "Temple" });
+    let mut exhausted = false;
+    for _ in 0..200 {
+        let r = h
+            .call_from("next_departures", departures(), &guest, "198.51.100.1")
+            .await;
+        if code(&r) == "rate_limited" {
+            exhausted = true;
+            break;
+        }
+    }
+    assert!(exhausted);
+    let other = h
+        .call_from("next_departures", departures(), &guest, "198.51.100.2")
+        .await;
+    assert_ne!(
+        code(&other),
+        "rate_limited",
+        "another guest has its own bucket"
+    );
+}
+
+#[tokio::test(start_paused = true)]
+async fn all_guests_share_a_global_cap_that_spares_users() {
+    let mut policy = demo_policy();
+    policy.limits.guest_calls_per_minute_total = 8;
+    let h = harness_with(policy, &["rooms", "transit", "deadlines", "probe"], None);
+    let guest = Principal::guest();
+    let mut limited = 0;
+    for i in 1..=10 {
+        let r = h
+            .call_from("probe_public", json!({}), &guest, &format!("192.0.2.{i}"))
+            .await;
+        if code(&r) == "rate_limited" {
+            limited += 1;
+        }
+    }
+    assert!(limited > 0, "distinct guests together hit the global cap");
+    let user = h
+        .call_from(
+            "probe_public",
+            json!({}),
+            &user("kampus-claude", &[]),
+            "192.0.2.1",
+        )
+        .await;
+    assert_eq!(user["status"], "ok");
+}
+
+#[tokio::test(start_paused = true)]
+async fn calls_beyond_the_concurrency_limit_are_refused_as_overloaded() {
+    let mut policy = demo_policy();
+    policy.limits.max_concurrent_calls = 1;
+    let h = harness_with(policy, &["rooms", "transit", "deadlines", "probe"], None);
+    let student = user("kampus-claude", &[]);
+    let (slow, second) = tokio::join!(h.call("probe_slow", json!({}), &student), async {
+        tokio::time::sleep(Duration::from_millis(1)).await;
+        let started = tokio::time::Instant::now();
+        let r = h.call("probe_public", json!({}), &student).await;
+        (r, started.elapsed())
+    });
+    assert_eq!(code(&slow), "upstream_unavailable");
+    let (second, waited) = second;
+    assert_eq!(code(&second), "rate_limited");
+    assert!(waited <= Duration::from_secs(3), "queued {waited:?}");
+    let rows = h.rows();
+    assert!(rows.iter().any(|r| r.rule == rules::OVERLOADED));
+    assert_eq!(rows.len(), 2);
+}
+
 #[tokio::test]
 async fn audit_failure_withholds_data_and_denials() {
     let h = harness();
@@ -569,6 +694,7 @@ async fn placeholder_without_security_denies_business_tools() {
     let probe: Arc<dyn Module> = Arc::new(Counting {
         descriptor: ModuleDescriptor::from_yaml("probe", PROBE_YAML).unwrap(),
         calls: Arc::clone(&calls),
+        slow: crate::runtime::PublicCache::new(16),
     });
     let placeholder = Dispatcher::new("temple", Arc::new(ToolRegistry::new(vec![probe]).unwrap()));
     let who = user("kampus-claude", &[]);

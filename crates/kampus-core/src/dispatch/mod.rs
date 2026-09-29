@@ -12,11 +12,13 @@
 mod tests;
 
 use std::collections::BTreeSet;
+use std::net::IpAddr;
 use std::sync::Arc;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use chrono::Utc;
 use serde_json::Value;
+use tokio::sync::{Semaphore, SemaphorePermit};
 
 use crate::audit::SubjectHasher;
 use crate::config::PolicyLimits;
@@ -38,6 +40,8 @@ pub mod rules {
     pub const RATE_LIMITED: &str = "builtin:rate_limited";
     /// An allowed call that did not finish within the call deadline.
     pub const DEADLINE_EXCEEDED: &str = "builtin:deadline_exceeded";
+    /// Refused at admission: no execution slot came free in time.
+    pub const OVERLOADED: &str = "builtin:overloaded";
     /// The development acceptance tool (never in the demo build).
     pub const ACCEPTANCE: &str = "builtin:acceptance";
 }
@@ -47,23 +51,69 @@ pub mod rules {
 #[error("unknown tool")]
 pub struct UnknownTool;
 
-/// Per-caller limits keyed on the salted subject hash (never raw IDs).
+/// How long an admitted call may queue for an execution slot.
+const QUEUE_WAIT: Duration = Duration::from_secs(2);
+
+/// Admission and per-caller limits. Signed-in callers are keyed on the
+/// salted subject hash; guests on an in-memory admission key derived from
+/// their client address (never audited or logged).
 #[derive(Debug)]
 pub struct CallerLimits {
     user_reads: RateLimiter,
     guest_reads: RateLimiter,
     proposals: RateLimiter,
     confirms: RateLimiter,
+    /// Admission: every call per signed-in caller.
+    callers: RateLimiter,
+    /// Admission: every call per guest client.
+    guests: RateLimiter,
+    /// Admission: every guest call together.
+    guests_total: RateLimiter,
+    /// Calls executing at once.
+    slots: Semaphore,
 }
 
 impl CallerLimits {
     pub fn new(limits: &PolicyLimits) -> Self {
         let per_minute = |n: u32| RateLimiter::per_minute(n, n);
+        // Admission allows a quarter of a minute's calls at once.
+        let admission = |n: u32| RateLimiter::per_minute(n, (n / 4).max(1));
+        let slots = usize::try_from(limits.max_concurrent_calls)
+            .unwrap_or(usize::MAX)
+            .clamp(1, Semaphore::MAX_PERMITS);
         Self {
             user_reads: per_minute(limits.user_reads_per_minute),
             guest_reads: per_minute(limits.guest_reads_per_minute),
             proposals: per_minute(limits.booking_proposals_per_minute),
             confirms: per_minute(limits.booking_confirms_per_minute),
+            callers: admission(limits.calls_per_minute),
+            guests: admission(limits.guest_calls_per_minute),
+            guests_total: admission(limits.guest_calls_per_minute_total),
+            slots: Semaphore::new(slots),
+        }
+    }
+
+    /// Admission for every call, before validation and policy: the caller's
+    /// rate (plus the global guest cap), then an execution slot, waiting at
+    /// most [`QUEUE_WAIT`] and never past `deadline`. Refusals carry the
+    /// audit rule.
+    async fn admit(
+        &self,
+        principal: &Principal,
+        key: &str,
+        deadline: tokio::time::Instant,
+    ) -> Result<SemaphorePermit<'_>, (&'static str, ToolError)> {
+        let limited = |error| (rules::RATE_LIMITED, error);
+        if principal.auth_kind == AuthKind::Guest {
+            self.guests.check(key).map_err(limited)?;
+            self.guests_total.check("all-guests").map_err(limited)?;
+        } else {
+            self.callers.check(key).map_err(limited)?;
+        }
+        let queue_until = deadline.min(tokio::time::Instant::now() + QUEUE_WAIT);
+        match tokio::time::timeout_at(queue_until, self.slots.acquire()).await {
+            Ok(Ok(permit)) => Ok(permit),
+            _ => Err((rules::OVERLOADED, ToolError::rate_limited(1))),
         }
     }
 
@@ -142,13 +192,28 @@ impl Dispatcher {
         self.security.as_ref()
     }
 
-    /// Run one tool call and return the projected `structuredContent`.
+    /// [`Self::call_from`] without a known client address.
     pub async fn call(
         &self,
         tool: &str,
         args: Value,
         principal: Principal,
         request_id: String,
+    ) -> Result<Value, UnknownTool> {
+        self.call_from(tool, args, principal, request_id, None)
+            .await
+    }
+
+    /// Run one tool call and return the projected `structuredContent`.
+    /// `client` is the caller's network address (in memory only; guests'
+    /// admission limits are keyed on it).
+    pub async fn call_from(
+        &self,
+        tool: &str,
+        args: Value,
+        principal: Principal,
+        request_id: String,
+        client: Option<IpAddr>,
     ) -> Result<Value, UnknownTool> {
         let registered = self.registry.get(tool).ok_or(UnknownTool)?;
         // The one deadline of this call: queueing, cache waits, retries and
@@ -191,6 +256,17 @@ impl Dispatcher {
             }
         };
 
+        // Admission covers every call, including ones later found invalid
+        // or denied; the slot is held until the call is audited.
+        let admission = admission_key(&principal, &user_hash, client);
+        let _slot = match security
+            .limits
+            .admit(&principal, &admission, deadline)
+            .await
+        {
+            Ok(slot) => slot,
+            Err((rule, error)) => return Ok(refuse(rule, error).await),
+        };
         if let Err(error) = registered.validate_input(&args) {
             return Ok(refuse(rules::INVALID_ARGUMENTS, error).await);
         }
@@ -214,7 +290,7 @@ impl Dispatcher {
         };
         if let Err(limited) = security
             .limits
-            .check(&principal, registered.operation, &user_hash)
+            .check(&principal, registered.operation, &admission)
         {
             return Ok(refuse(rules::RATE_LIMITED, limited).await);
         }
@@ -299,6 +375,22 @@ impl Dispatcher {
             .await
             .unwrap_or_else(timed_out);
         project(registered, &envelope)
+    }
+}
+
+/// Limit key for a caller: the salted subject hash, or for guests their
+/// client address (an IPv6 client by its /64). In memory only.
+fn admission_key(principal: &Principal, user_hash: &str, client: Option<IpAddr>) -> String {
+    if principal.auth_kind != AuthKind::Guest {
+        return user_hash.to_owned();
+    }
+    match client.map(|ip| ip.to_canonical()) {
+        Some(IpAddr::V4(v4)) => format!("guest:{v4}"),
+        Some(IpAddr::V6(v6)) => {
+            let s = v6.segments();
+            format!("guest:{:x}:{:x}:{:x}:{:x}::/64", s[0], s[1], s[2], s[3])
+        }
+        None => "guest:unknown".to_owned(),
     }
 }
 
