@@ -21,9 +21,9 @@ Each fix starts with a test that reproduces the finding and fails on the unfixed
 
 ## 4. Host budgets from config (finding 8)
 
-- [ ] 4.1 Failing tests: `SharedRuntime::for_school` gives a host its configured burst (5 immediate acquires); two adapters on one host share the strictest budget; unconfigured hosts keep the defaults
-- [ ] 4.2 Implement `HostLimiter` and `for_school`; `App` uses it
-- [ ] 4.3 Quick win: failing test that idle rate-limit buckets are evicted once refilled; implement the amortized sweep
+- [x] 4.1 Failing tests: `SharedRuntime::for_school` gives a host its configured burst (5 immediate acquires); two adapters on one host share the strictest budget; unconfigured hosts keep the defaults
+- [x] 4.2 Implement `HostLimiter` and `for_school`; `App` uses it
+- [x] 4.3 Quick win: failing test that idle rate-limit buckets are evicted once refilled; implement the amortized sweep
 
 ## 5. One call deadline (finding 6)
 

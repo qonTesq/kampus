@@ -103,8 +103,8 @@ impl App {
     ) -> Result<Self, AppError> {
         school.validate(env)?;
         let init = ModuleInit {
+            runtime: Arc::new(SharedRuntime::for_school(&school)),
             school: Arc::new(school),
-            runtime: Arc::new(SharedRuntime::new()),
         };
         let registry = ToolRegistry::new(registry::modules(&init)?)?;
         if let Some(unknown) = init
