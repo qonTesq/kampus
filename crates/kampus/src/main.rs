@@ -8,7 +8,11 @@ use std::process::ExitCode;
 use kampus::{App, AppOptions};
 use kampus_core::config::{Env, PolicyConfig, SchoolConfig};
 use tokio_util::sync::CancellationToken;
-use tracing_subscriber::EnvFilter;
+use tracing::Level;
+use tracing_subscriber::filter::Targets;
+use tracing_subscriber::layer::SubscriberExt as _;
+use tracing_subscriber::util::SubscriberInitExt as _;
+use tracing_subscriber::{EnvFilter, fmt};
 
 const USAGE: &str = "usage: kampus <serve|check> --school <school.yaml> --policy <policy.yaml> [--audit <file.jsonl>]";
 
@@ -41,14 +45,26 @@ fn parse_args() -> Option<Args> {
     })
 }
 
+/// `RUST_LOG` (default `info`) under a fixed cap it cannot lift: an event
+/// must pass both filters. Only kampus targets may go below `info`; rmcp logs
+/// whole requests and results at debug/trace and client-supplied text at
+/// info, so it is capped at `warn`. Unlisted dependencies are capped at `info`.
+fn init_logging() {
+    let cap = Targets::new()
+        .with_default(Level::INFO)
+        .with_target("rmcp", Level::WARN)
+        .with_target("kampus", Level::TRACE);
+    let configured = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
+    tracing_subscriber::registry()
+        .with(cap)
+        .with(configured)
+        .with(fmt::layer().with_writer(std::io::stderr))
+        .init();
+}
+
 #[tokio::main]
 async fn main() -> ExitCode {
-    tracing_subscriber::fmt()
-        .with_env_filter(
-            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")),
-        )
-        .with_writer(std::io::stderr)
-        .init();
+    init_logging();
 
     let Some(args) = parse_args().filter(|a| matches!(a.command.as_str(), "serve" | "check"))
     else {
