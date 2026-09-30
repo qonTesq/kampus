@@ -26,19 +26,20 @@ It stays generic OIDC discovery (`{issuer}/.well-known/openid-configuration` →
 
 `CallerLimits` (already built from `PolicyLimits` at every construction site) gains the admission pieces, so no `Security` literal changes:
 
-- `admission: RateLimiter::per_minute(calls_per_minute)`, keyed by the admission key.
-- `guest_total: RateLimiter::per_minute(guest_calls_per_minute)`, one bucket for every guest call.
+- `callers: per_minute(calls_per_minute)` for signed-in callers and `guests: per_minute(guest_calls_per_minute)` per guest client, both keyed by the admission key.
+- `guests_total: per_minute(guest_calls_per_minute_total)`, one bucket for every guest call.
+- Admission buckets allow a quarter of a minute's calls at once (burst = n/4, at least 1).
 - `slots: tokio::sync::Semaphore(max_concurrent_calls)`: a call waits for a slot until `min(deadline, now + QUEUE_WAIT (2 s))`.
 
-**Admission key:** the salted `user_hash` for users and devices; for guests, `guest:{client ip}`, or `guest:unknown` when the transport supplied no address. The key lives only in limiter memory.
+**Admission key:** the salted `user_hash` for users and devices; for guests, `guest:{client ip}` (an IPv6 client by its /64), or `guest:unknown` when the transport supplied no address. The key lives only in limiter memory. The existing guest read limit uses the same key instead of the shared guest marker.
 
 **Order:** `Dispatcher::call_from(tool, args, principal, request_id, client: Option<IpAddr>)` (`call` delegates with `None`). The unknown-tool check comes first (a protocol error with no row, as today). Then admission (rate → guest cap → slot) → validate → policy → caller limits (guest reads keyed by the admission key, not the marker) → module under the deadline → project → audit. A refusal at admission is audited as `Deny` with rule `builtin:rate_limited` (rate or guest cap) or `builtin:overloaded` (no slot in time), so each call still gets exactly one row.
 
-**New `policy.yaml` `limits` fields** (optional; the defaults apply when absent): `calls_per_minute: 120`, `guest_calls_per_minute: 300`, `max_concurrent_calls: 64`. All must be positive.
+**New `policy.yaml` `limits` fields** (optional; the defaults apply when absent): `calls_per_minute: 120`, `guest_calls_per_minute: 60`, `guest_calls_per_minute_total: 600`, `max_concurrent_calls: 64`. All must be positive.
 
 ### 3. Guest client identity (`crates/kampus/src/auth.rs`, `server.rs`; `school.yaml`)
 
-The auth middleware already sees every MCP request. It computes a `ClientAddr(IpAddr)` from `ConnectInfo<SocketAddr>` and inserts it into request extensions next to the principal. `server.rs` reads it and calls `call_from`.
+A small router middleware (`crates/kampus/src/client.rs`) computes a `ClientAddr(IpAddr)` from `ConnectInfo<SocketAddr>` and inserts it into request extensions. `server.rs` reads it and calls `call_from`.
 
 **Trusted proxies** (`server.trusted_proxy`, optional):
 
@@ -55,7 +56,7 @@ server:
 - An unparsable header value falls back to the peer address.
 - Validation: peers must parse as an IP or CIDR (`a.b.c.d/n`, `v6/n`) and the list must not be empty. CIDR parsing is about 20 lines, so there's no new crate.
 
-This extends `crates/kampus/src/auth.rs` only by inserting an extension. Session handling is untouched.
+The auth middleware and session handling are untouched.
 
 ### 4. Batched durable audit (`kampus-core/src/audit/`)
 
@@ -113,7 +114,7 @@ Hours, transit and LibCal all use it. LibCal classifies non-2xx itself. Vendor p
 - `App::check(school, policy, env) -> Result<CheckReport{school_id, tools}, AppError>` runs the validation half: school validation, registry, unknown modules, policy validation, and salt presence via `Env`.
 - `build_with` calls the same validation, then activates: it opens and prunes the audit log and builds the hasher.
 - `main.rs` `check` calls `App::check`. The `init_logging` call and its order are unchanged.
-- The deadlines module keeps the Canvas configuration but starts `SandboxCanvas` lazily on the first `my_deadlines` call (`tokio::sync::OnceCell::get_or_try_init`). A failed start is `upstream_unavailable` and is retried on the next call. Building the registry, as `check` does, therefore binds nothing.
+- The deadlines module keeps the Canvas configuration but starts `SandboxCanvas` lazily on the first `my_deadlines` call (a mutex-guarded `Option`, since `start` is synchronous). The profile lookup became fallible, so a failed start is `upstream_unavailable` (not a misleading "no profile") and is retried on the next call. Building the registry, as `check` does, therefore binds nothing.
 
 ### 10. Docs
 
@@ -126,7 +127,7 @@ Hours, transit and LibCal all use it. LibCal classifies non-2xx itself. Vendor p
 - `runtime/` (foundation-owned) changes additively. `Cached` gains `fetched_at`; `host_limiter` changes type but keeps its method names.
 - Additive optional config fields: `policy.yaml` `limits.{calls_per_minute, guest_calls_per_minute, max_concurrent_calls}` and `school.yaml` `server.trusted_proxy`. The integrator should add these to `docs/contracts/README.md`:
   - school.yaml optional list: "`server.trusted_proxy.{header: cf_connecting_ip|x_forwarded_for, peers[IP or CIDR]}` (off by default)".
-  - policy.yaml limits: "admission: 120 calls/caller/min, 300 guest calls/min in total, 64 concurrent calls".
+  - policy.yaml limits: "admission: 120 calls/caller/min, 60 calls/guest client/min, 600 guest calls/min in total, 64 concurrent calls".
   - Frozen numeric defaults row: "Call deadline covers admission queueing, cache waits, retries and provider work".
 
 ## Risks / trade-offs

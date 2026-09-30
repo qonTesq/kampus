@@ -19,7 +19,7 @@ An independent code review after the hackathon reproduced a set of Medium and Lo
 - **`kampus check`:** only validates. It no longer opens or prunes the audit log, and the sandbox Canvas listener starts on first use rather than at registration.
 - **Bookkeeping bounds:** idle rate-limit buckets are evicted; reading recent audit rows keeps only a bounded window in memory; pruning streams.
 - **Docs:** stale "placeholder dispatcher" notes are corrected.
-- **Config (additive, needs human sign-off):** `policy.yaml` `limits` gains optional `calls_per_minute`, `guest_calls_per_minute` and `max_concurrent_calls`. `school.yaml` `server` gains an optional `trusted_proxy { header, peers }`. Existing files stay valid and keep their behavior, apart from the new default admission limits.
+- **Config (additive, needs human sign-off):** `policy.yaml` `limits` gains optional `calls_per_minute`, `guest_calls_per_minute`, `guest_calls_per_minute_total` and `max_concurrent_calls`. `school.yaml` `server` gains an optional `trusted_proxy { header, peers }`. Existing files stay valid and keep their behavior, apart from the new default admission limits.
 
 ## Capabilities
 

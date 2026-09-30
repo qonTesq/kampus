@@ -153,6 +153,10 @@ fn module_error(message: &str) -> RegistryError {
 }
 
 #[cfg(feature = "sandbox")]
+#[allow(
+    clippy::unnecessary_wraps,
+    reason = "same signature as the production build"
+)]
 fn configured_source(init: &ModuleInit) -> Result<Option<Source>, RegistryError> {
     let school = &init.school;
     let Some(canvas) = school.canvas.as_ref().filter(|c| c.enabled) else {
