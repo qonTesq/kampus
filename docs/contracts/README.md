@@ -58,13 +58,13 @@
 
 ## school.yaml (version 1)
 
-Required: `version`, `school.{id, display_name, timezone}`, `server.{resource_url, listen, admin_listen}`, `auth.{issuer, audience}` (`mode: oauth|no_login`, default `oauth`; `roles_claim`, default `realm_access.roles`), `modules`. Optional: `sandbox.enabled` (false), `mascot.{name, persona}`, `libcal.{enabled, base_url, locations[{id,name,aliases}], default_location, booking_simulation, limits}`, `banner.{enabled, base_url, default_term, allowed_terms, limits}`, `hours.{enabled, libraries[{id,name,url,parser{profile,selectors},aliases}], default_library, limits}`, `transit.{enabled, providers[{id,kind,base_url,service_window,limits}], stops[{id,name,provider,aliases}], routes[...], gtfs_subset_path, gtfs_validity{start,end}, replay_path}`, `canvas.{enabled, base_url (loopback), service_token_env}`, `devices[{device_id, azp, bind_secret_env, stickers[{uid, subject (synthetic:…), role}]}]`. `limits` is `{requests_per_second: 1, burst: 2, timeout_ms: 5000}`.
+Required: `version`, `school.{id, display_name, timezone}`, `server.{resource_url, listen, admin_listen}`, `auth.{issuer, audience}` (`mode: oauth|no_login`, default `oauth`; `roles_claim`, default `realm_access.roles`), `modules`. Optional: `sandbox.enabled` (false), `mascot.{name, persona}`, `libcal.{enabled, base_url, locations[{id,name,aliases}], default_location, booking_simulation, limits}`, `banner.{enabled, base_url, default_term, allowed_terms, limits}`, `hours.{enabled, libraries[{id,name,url,parser{profile,selectors},aliases}], default_library, limits}`, `transit.{enabled, providers[{id,kind,base_url,service_window,limits}], stops[{id,name,provider,aliases}], routes[...], gtfs_subset_path, gtfs_validity{start,end}, replay_path}`, `canvas.{enabled, base_url (loopback), service_token_env}`, `server.trusted_proxy.{header: cf_connecting_ip|x_forwarded_for, peers[IP or CIDR]}` (off by default; set it when a local tunnel or reverse proxy forwards requests, or every guest shares the proxy's bucket), `devices[{device_id, azp, bind_secret_env, stickers[{uid, subject (synthetic:…), role}]}]`. `limits` is `{requests_per_second: 1, burst: 2, timeout_ms: 5000}`.
 
 Startup errors: unknown fields; a bad timezone; non-https URLs (http only on loopback); credentials in URLs; placeholder hosts (`*.invalid`, `change-me`); a non-loopback `admin_listen`; duplicate IDs; defaults outside their lists; unset `*_env` variables; non-synthetic or admin stickers; `booking_simulation`, `replay_path` or `canvas.enabled` without **both** the `sandbox` build feature and `sandbox.enabled`.
 
 ## policy.yaml (version 1)
 
-Required: `version`, `school_id` (must equal `school.id`), `tier_mapping` (all four canonical classes; never mapped downward), `client_registry[{azp, registration: pre_registered_confidential|dcr|cimd|device, approved, workspace}]` (only `pre_registered_confidential` can be approved; every `devices[].azp` must be registered as `device`), `sensitive_enabled`, `rules[{id, effect: allow|deny, roles, tools (names or ["*"]), effective_classes, client_trust: any|approved|unapproved, required_scopes, enabled}]` (unique IDs, known tools, never allow `confidential`), `audit.{retention_hours (1..=720), salt_env}`, `limits` (per minute: user reads 60, guest reads 30, booking proposals 5, confirms 2, device binds 6 per device and 30 per source). Deny wins; unmatched calls deny.
+Required: `version`, `school_id` (must equal `school.id`), `tier_mapping` (all four canonical classes; never mapped downward), `client_registry[{azp, registration: pre_registered_confidential|dcr|cimd|device, approved, workspace}]` (only `pre_registered_confidential` can be approved; every `devices[].azp` must be registered as `device`), `sensitive_enabled`, `rules[{id, effect: allow|deny, roles, tools (names or ["*"]), effective_classes, client_trust: any|approved|unapproved, required_scopes, enabled}]` (unique IDs, known tools, never allow `confidential`), `audit.{retention_hours (1..=720), salt_env}`, `limits` (per minute: user reads 60, guest reads 30, booking proposals 5, confirms 2, device binds 6 per device and 30 per source; admission, which also counts invalid and denied calls: `calls_per_minute` 120 per caller, `guest_calls_per_minute` 60 per guest client address, `guest_calls_per_minute_total` 600 for all guests, `max_concurrent_calls` 64, bursts a quarter of the per-minute rate). Deny wins; unmatched calls deny.
 
 ## Frozen numeric defaults
 
@@ -75,10 +75,12 @@ Required: `version`, `school_id` (must equal `school.id`), `tier_mapping` (all f
 | serialized response | 32 KiB |
 | cache TTL rooms / courses / rail / hours | 60 s / 15 min / 15 s / 6 h |
 | stale fallback | at most 2 × TTL, labeled `stale: true`, only for retryable errors |
-| upstream | 1 req/s/host, burst 2, 5 s timeout, 1 retry, 10 s call deadline |
+| upstream | 1 req/s/host, burst 2, 5 s timeout, 1 retry, 10 s call deadline (covers admission queueing, cache waits, retries and provider work) |
 | audit retention | 24 h |
 | booking proposal TTL / device binding | 120 s / 120 s |
 
 ## Freeze decision
 
 On 2026-09-26, America/New_York, the human project owner instructed foundation to record the contracts and numeric defaults as frozen at `d9ff8ee`. The humans deferred detailed review until after implementation. This records that decision without claiming the detailed review has occurred. Any subsequent contract change needs a human's sign-off; no contract fields or defaults changed in this record.
+
+**2026-09-30:** the project owner approved the reliability-fixes change, which adds optional `school.yaml` `server.trusted_proxy`, the optional `policy.yaml` admission limits, and a call deadline that covers the whole call. All are additive; existing configurations load unchanged. `contracts/` types are unchanged.

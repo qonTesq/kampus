@@ -50,7 +50,7 @@ book_study_room SHALL declare Public, write=false, readOnlyHint=true and destruc
 
 ### Requirement: Confirmation is bound and reauthorized
 
-Confirmation IDs SHALL be unpredictable, single-use, scoped to school, subject, azp and current device binding where applicable, expire after 120 seconds and be discarded on restart. confirm_booking SHALL recheck policy, effective student role, write scope, identity, current binding generation, expiry and fresh availability.
+Confirmation IDs SHALL be unpredictable, single-use, scoped to school, subject, azp and current device binding where applicable, expire after 120 seconds and be discarded on restart. confirm_booking SHALL recheck policy, effective student role, write scope, identity, current binding generation, expiry and fresh availability. Fresh availability SHALL come from an upstream read that was in progress or started during that confirmation; concurrent confirmations MAY share one such read, but a completed read SHALL NOT be reused by a later confirmation.
 
 #### Scenario: Replay or identity swap
 
@@ -66,6 +66,11 @@ Confirmation IDs SHALL be unpredictable, single-use, scoped to school, subject, 
 
 - **WHEN** availability cannot be freshly revalidated
 - **THEN** no successful receipt is returned and stale availability is not used
+
+#### Scenario: Back-to-back fresh checks
+
+- **WHEN** one fresh check finds a room free, the room is then taken upstream, and a second fresh check follows immediately
+- **THEN** the second check reads upstream again and reports the room as not free
 
 ### Requirement: Polite and private room calls
 
