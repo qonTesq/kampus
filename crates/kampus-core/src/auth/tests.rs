@@ -852,53 +852,78 @@ fn open_and_protected_requests() {
 
 // ---- trusted discovery, caching and key rotation ----------------------------
 
-/// A minimal realm on 127.0.0.1: discovery + JWKS, counting key fetches
-/// (failed ones too). `certs_status` and `certs_delay` script the key endpoint.
+/// Which metadata document the test issuer publishes.
+#[derive(Clone, Copy)]
+enum Metadata {
+    /// RFC 8414 only, at the path-inserted URL (an OAuth-only server).
+    Oauth,
+    /// OIDC Discovery only.
+    Oidc,
+}
+
+/// A minimal issuer on 127.0.0.1 at `{base}/auth`: metadata + JWKS, counting
+/// key fetches (failed ones too) and recording every requested path.
+/// `certs_status` and `certs_delay` script the key endpoint.
 struct Realm {
     issuer: String,
     keys: Arc<Mutex<JwkSet>>,
     jwks_fetches: Arc<Mutex<u32>>,
     certs_status: Arc<Mutex<u16>>,
     certs_delay: Arc<Mutex<std::time::Duration>>,
+    paths: Arc<Mutex<Vec<String>>>,
 }
 
 async fn realm(initial: JwkSet, jwks_origin_override: Option<&'static str>) -> Realm {
+    issuer_server(initial, Metadata::Oauth, jwks_origin_override, None).await
+}
+
+async fn issuer_server(
+    initial: JwkSet,
+    metadata: Metadata,
+    jwks_origin_override: Option<&'static str>,
+    claimed_issuer: Option<&'static str>,
+) -> Realm {
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let base = format!("http://{}", listener.local_addr().unwrap());
-    let issuer = format!("{base}/realms/kampus");
+    let issuer = format!("{base}/auth");
     let keys = Arc::new(Mutex::new(initial));
     let jwks_fetches = Arc::new(Mutex::new(0));
     let certs_status = Arc::new(Mutex::new(200));
     let certs_delay = Arc::new(Mutex::new(std::time::Duration::ZERO));
-    let jwks_uri = format!(
-        "{}/realms/kampus/protocol/openid-connect/certs",
-        jwks_origin_override.unwrap_or(&base)
-    );
+    let paths = Arc::new(Mutex::new(Vec::new()));
+    let jwks_uri = format!("{}/auth/jwks", jwks_origin_override.unwrap_or(&base));
+    let metadata_path = match metadata {
+        Metadata::Oauth => "/.well-known/oauth-authorization-server/auth",
+        Metadata::Oidc => "/auth/.well-known/openid-configuration",
+    };
+    let document = json!({
+        "issuer": claimed_issuer.map_or_else(|| issuer.clone(), str::to_owned),
+        "jwks_uri": jwks_uri,
+    })
+    .to_string();
     let served = (
         Arc::clone(&keys),
         Arc::clone(&jwks_fetches),
         Arc::clone(&certs_status),
         Arc::clone(&certs_delay),
-        issuer.clone(),
-        jwks_uri,
+        Arc::clone(&paths),
+        document,
     );
     tokio::spawn(async move {
         loop {
             let Ok((mut stream, _)) = listener.accept().await else {
                 return;
             };
-            let (keys, fetches, status, delay, issuer, jwks_uri) = served.clone();
+            let (keys, fetches, status, delay, paths, document) = served.clone();
             tokio::spawn(async move {
                 let mut buf = vec![0; 4096];
                 let n = stream.read(&mut buf).await.unwrap_or(0);
                 let request = String::from_utf8_lossy(&buf[..n]);
                 let path = request.split_whitespace().nth(1).unwrap_or("").to_owned();
-                let (code, body) = if path.ends_with("/.well-known/openid-configuration") {
-                    (
-                        200,
-                        json!({ "issuer": issuer, "jwks_uri": jwks_uri }).to_string(),
-                    )
-                } else if path.ends_with("/certs") {
+                paths.lock().unwrap().push(path.clone());
+                let (code, body) = if path == metadata_path {
+                    (200, document)
+                } else if path == "/auth/jwks" {
                     *fetches.lock().unwrap() += 1;
                     let wait = *delay.lock().unwrap();
                     tokio::time::sleep(wait).await;
@@ -921,11 +946,68 @@ async fn realm(initial: JwkSet, jwks_origin_override: Option<&'static str>) -> R
         jwks_fetches,
         certs_status,
         certs_delay,
+        paths,
     }
 }
 
 fn fetches(realm: &Realm) -> u32 {
     *realm.jwks_fetches.lock().unwrap()
+}
+
+#[tokio::test]
+async fn oauth_only_issuer_serves_keys_through_rfc_8414_metadata() {
+    let key = TestKey::ed25519("k");
+    let issuer = issuer_server(keyset(&[&key]), Metadata::Oauth, None, None).await;
+    let auth = discovery_auth(&issuer);
+    let token = key.token(&with(claims(), "iss", json!(issuer.issuer)));
+    assert!(auth.verify(&token).await.is_ok());
+    // Path-inserted RFC 8414 metadata first; no OIDC document needed.
+    assert_eq!(
+        *issuer.paths.lock().unwrap(),
+        ["/.well-known/oauth-authorization-server/auth", "/auth/jwks"]
+    );
+}
+
+#[tokio::test]
+async fn oidc_only_issuer_falls_back_after_a_404() {
+    let key = TestKey::ed25519("k");
+    let issuer = issuer_server(keyset(&[&key]), Metadata::Oidc, None, None).await;
+    let auth = discovery_auth(&issuer);
+    let token = key.token(&with(claims(), "iss", json!(issuer.issuer)));
+    assert!(auth.verify(&token).await.is_ok());
+    assert_eq!(
+        *issuer.paths.lock().unwrap(),
+        [
+            "/.well-known/oauth-authorization-server/auth",
+            "/auth/.well-known/openid-configuration",
+            "/auth/jwks"
+        ]
+    );
+}
+
+#[tokio::test]
+async fn mismatched_metadata_trusts_no_keys() {
+    let key = TestKey::ed25519("k");
+    for metadata in [Metadata::Oauth, Metadata::Oidc] {
+        // A document naming another issuer...
+        let issuer = issuer_server(
+            keyset(&[&key]),
+            metadata,
+            None,
+            Some("https://evil.example/auth"),
+        )
+        .await;
+        let auth = discovery_auth(&issuer);
+        let token = key.token(&with(claims(), "iss", json!(issuer.issuer)));
+        assert_eq!(auth.verify(&token).await, Err(AuthError::KeysUnavailable));
+        assert_eq!(fetches(&issuer), 0);
+        // ...or keys on another origin.
+        let issuer =
+            issuer_server(keyset(&[&key]), metadata, Some("http://127.0.0.2:9"), None).await;
+        let auth = discovery_auth(&issuer);
+        let token = key.token(&with(claims(), "iss", json!(issuer.issuer)));
+        assert_eq!(auth.verify(&token).await, Err(AuthError::KeysUnavailable));
+    }
 }
 
 #[tokio::test]
@@ -1062,7 +1144,7 @@ async fn discovery_pointing_keys_off_origin_is_refused() {
 #[tokio::test]
 async fn unreachable_realm_fails_closed() {
     let mut s = settings(AuthMode::NoLogin);
-    s.issuer = "http://127.0.0.1:9/realms/kampus".parse().unwrap();
+    s.issuer = "http://127.0.0.1:9/auth".parse().unwrap();
     let auth = Authenticator::with_discovery(s, reqwest::Client::new());
     let token = trusted_key().token(&claims());
     assert_eq!(

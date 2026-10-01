@@ -17,7 +17,7 @@ Branch `change/standard-token-profile` from master. Every task is ≤ 2 h, and e
 
 ## 3. Discovery (checkpoint: an OAuth-only AS works) — 1.5 h
 
-- [ ] 3.1 `KeySource::Discovery` tries RFC 8414 path-inserted metadata, then OIDC; both keep the issuer-equality and `jwks_uri` same-origin checks and the existing TTL/cooldown/backoff/single-flight. Evidence: local test servers for OAuth-only, OIDC-only and mismatched-issuer cases; all existing `jwks.rs` resilience tests still pass. (90 min)
+- [x] 3.1 `KeySource::Discovery` tries RFC 8414 path-inserted metadata, then OIDC; both keep the issuer-equality and `jwks_uri` same-origin checks and the existing TTL/cooldown/backoff/single-flight. Evidence: local test servers for OAuth-only, OIDC-only and mismatched-issuer cases; all existing `jwks.rs` resilience tests still pass. (90 min)
 
 ## 4. Lazy authentication and step-up (checkpoint: public tools tokenless, protected calls challenge) — 7 h
 

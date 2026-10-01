@@ -1,6 +1,6 @@
-//! Trusted signing keys: fetched only through the configured issuer's OIDC
-//! discovery document and trusted for [`JWKS_TTL`] from their fetch, whatever
-//! later refreshes do. An unknown `kid` triggers at most one refresh per
+//! Trusted signing keys: fetched only through the configured issuer's
+//! metadata (RFC 8414 first, then OIDC Discovery) and trusted for
+//! [`JWKS_TTL`] from their fetch, whatever later refreshes do. An unknown `kid` triggers at most one refresh per
 //! [`FORCED_REFRESH_INTERVAL`]; a failed refresh backs off on its own
 //! schedule. Refreshes are single-flight and bounded; lookups of cached keys
 //! never wait for them. Expired keys fail closed.
@@ -27,7 +27,9 @@ const MAX_DOCUMENT_BYTES: usize = 64 * 1024;
 /// Where keys come from.
 #[derive(Debug, Clone)]
 pub enum KeySource {
-    /// `{issuer}/.well-known/openid-configuration` -> `jwks_uri` (same origin as the issuer).
+    /// Issuer metadata -> `jwks_uri` (same origin as the issuer): RFC 8414
+    /// `{origin}/.well-known/oauth-authorization-server{issuer path}`, or on
+    /// 404 `{issuer}/.well-known/openid-configuration`.
     Discovery {
         client: reqwest::Client,
         issuer: Url,
@@ -212,48 +214,77 @@ impl KeyCache {
         match &self.source {
             KeySource::Fixed(keys) => Ok((**keys).clone()),
             KeySource::Discovery { client, issuer } => {
-                let discovery_url = Url::parse(&format!(
-                    "{}/.well-known/openid-configuration",
-                    issuer.as_str().trim_end_matches('/')
-                ))
-                .map_err(|_| AuthError::KeysUnavailable)?;
-                let discovery: Discovery = get_json(client, discovery_url).await?;
-                // The realm must describe itself, and keys stay on its origin
+                let mut discovery = None;
+                for url in metadata_urls(issuer)? {
+                    discovery = get_json::<Discovery>(client, url).await?;
+                    if discovery.is_some() {
+                        break;
+                    }
+                }
+                let Some(discovery) = discovery else {
+                    tracing::warn!("the issuer publishes no authorization server metadata");
+                    return Err(AuthError::KeysUnavailable);
+                };
+                // The issuer must describe itself, and keys stay on its origin
                 // (token `jku`/`x5u` headers are never consulted).
                 if discovery.issuer != issuer.as_str()
                     || discovery.jwks_uri.origin() != issuer.origin()
                 {
-                    tracing::warn!("realm discovery does not match the configured issuer");
+                    tracing::warn!("issuer metadata does not match the configured issuer");
                     return Err(AuthError::KeysUnavailable);
                 }
-                get_json(client, discovery.jwks_uri).await
+                get_json(client, discovery.jwks_uri)
+                    .await?
+                    .ok_or(AuthError::KeysUnavailable)
             }
         }
     }
 }
 
+/// Metadata locations in the order tried: RFC 8414 section 3.1 inserts the
+/// well-known segment between the origin and the issuer's path; OIDC
+/// Discovery appends it to the issuer.
+fn metadata_urls(issuer: &Url) -> Result<[Url; 2], AuthError> {
+    let origin = issuer.origin().ascii_serialization();
+    let path = issuer.path().trim_end_matches('/');
+    let oauth = format!("{origin}/.well-known/oauth-authorization-server{path}");
+    let oidc = format!(
+        "{}/.well-known/openid-configuration",
+        issuer.as_str().trim_end_matches('/')
+    );
+    let parse = |url: String| Url::parse(&url).map_err(|_| AuthError::KeysUnavailable);
+    Ok([parse(oauth)?, parse(oidc)?])
+}
+
+/// GET a bounded JSON document; `None` when the server answers 404.
 async fn get_json<T: serde::de::DeserializeOwned>(
     client: &reqwest::Client,
     url: Url,
-) -> Result<T, AuthError> {
+) -> Result<Option<T>, AuthError> {
     let response = client
         .get(url)
         .timeout(UPSTREAM_TIMEOUT)
         .send()
         .await
-        .and_then(reqwest::Response::error_for_status)
         .map_err(|_| {
-            tracing::warn!("cannot fetch realm keys");
+            tracing::warn!("cannot fetch issuer metadata or keys");
             AuthError::KeysUnavailable
         })?;
+    if response.status() == reqwest::StatusCode::NOT_FOUND {
+        return Ok(None);
+    }
+    let response = response.error_for_status().map_err(|_| {
+        tracing::warn!("cannot fetch issuer metadata or keys");
+        AuthError::KeysUnavailable
+    })?;
     let body = read_bounded(response, MAX_DOCUMENT_BYTES)
         .await
         .map_err(|_| {
-            tracing::warn!("realm keys response is too large or unreadable");
+            tracing::warn!("issuer response is too large or unreadable");
             AuthError::KeysUnavailable
         })?;
-    serde_json::from_slice(&body).map_err(|_| {
-        tracing::warn!("realm keys response is not usable");
+    serde_json::from_slice(&body).map(Some).map_err(|_| {
+        tracing::warn!("issuer response is not usable");
         AuthError::KeysUnavailable
     })
 }
