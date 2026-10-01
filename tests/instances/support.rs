@@ -70,12 +70,12 @@ impl TestKey {
         let public = self.pair.public_key();
         json!({"keys":[{"kty":"RSA","use":"sig","alg":"RS256","kid":"instances","n":b64(public.modulus().big_endian_without_leading_zero()),"e":b64(public.exponent().big_endian_without_leading_zero())}]})
     }
-    pub(super) fn token(&self, issuer: &str, audience: &str, azp: &str) -> String {
+    pub(super) fn token(&self, issuer: &str, audience: &str, client_id: &str) -> String {
         let now = chrono::Utc::now().timestamp();
-        let claims = json!({"iss":issuer,"aud":audience,"azp":azp,"sub":"synthetic:student-a","exp":now+300,"iat":now,"typ":"Bearer","scope":"openid rooms:book","realm_access":{"roles":["student"]}});
+        let claims = json!({"iss":issuer,"aud":audience,"client_id":client_id,"sub":"synthetic:student-a","exp":now+300,"iat":now,"scope":"openid rooms:book","roles":["student"]});
         let input = format!(
             "{}.{}",
-            b64(br#"{"alg":"RS256","typ":"JWT","kid":"instances"}"#),
+            b64(br#"{"alg":"RS256","typ":"at+jwt","kid":"instances"}"#),
             b64(claims.to_string().as_bytes())
         );
         let mut signature = vec![0; self.pair.public_modulus_len()];

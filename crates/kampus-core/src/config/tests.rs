@@ -81,6 +81,35 @@ fn unknown_field_is_a_parse_error() {
 }
 
 #[test]
+fn leftover_audience_alias_fails_with_a_field_diagnostic() {
+    let yaml = TEMPLE_SCHOOL.replacen("auth:\n", "auth:\n  audience: kampus-temple\n", 1);
+    match SchoolConfig::from_yaml(&yaml) {
+        Err(ConfigError::Parse { message, .. }) => {
+            assert!(message.contains("audience"), "{message}");
+        }
+        other => panic!("expected a parse error naming audience, got {other:?}"),
+    }
+}
+
+#[test]
+fn roles_claim_defaults_to_roles_and_accepts_a_dotted_path() {
+    assert_eq!(school().auth.roles_claim, "roles");
+    let yaml = TEMPLE_SCHOOL.replacen("auth:\n", "auth:\n  roles_claim: entitlements.roles\n", 1);
+    let s = SchoolConfig::from_yaml(&yaml).unwrap();
+    assert_eq!(s.auth.roles_claim, "entitlements.roles");
+    s.validate(&env(false)).unwrap();
+    for bad in ["", "entitlements.", ".roles", "a..b"] {
+        let mut s = school();
+        s.auth.roles_claim = bad.into();
+        assert_eq!(
+            school_issues(&s, &env(false)),
+            ["auth.roles_claim"],
+            "{bad:?}"
+        );
+    }
+}
+
+#[test]
 fn unknown_role_and_class_are_parse_errors() {
     let yaml = TEMPLE_POLICY.replacen("roles: [student]", "roles: [provost]", 1);
     assert!(matches!(
@@ -236,7 +265,7 @@ fn device_stickers_must_be_synthetic_and_devices_unapproved() {
     let mut s = school();
     s.devices.push(DeviceConfig {
         device_id: "owl-1".into(),
-        azp: "kampus-mascot".into(),
+        client_id: "kampus-mascot".into(),
         bind_secret_env: "KAMPUS_OWL_BIND_SECRET".into(),
         stickers: vec![DeviceSticker {
             uid: "04:A2:19".into(),
@@ -256,12 +285,12 @@ fn device_stickers_must_be_synthetic_and_devices_unapproved() {
     s.devices[0].stickers[0].role = Role::Student;
     s.validate(&env(false)).unwrap();
 
-    // The device azp must be registered as a device client, never approved.
+    // The device client_id must be registered as a device client, never approved.
     let mut p = policy();
-    p.client_registry.retain(|c| c.azp != "kampus-mascot");
+    p.client_registry.retain(|c| c.client_id != "kampus-mascot");
     match p.validate(&s, &tools(), &env(false)) {
-        Err(ConfigError::Invalid(issues)) => assert_eq!(issues[0].field, "devices[0].azp"),
-        other => panic!("expected device azp issue, got {other:?}"),
+        Err(ConfigError::Invalid(issues)) => assert_eq!(issues[0].field, "devices[0].client_id"),
+        other => panic!("expected device client_id issue, got {other:?}"),
     }
 }
 

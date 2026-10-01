@@ -2,8 +2,8 @@ version: 1
 school_id: demo-u
 tier_mapping: { public: public, internal: sensitive, sensitive: sensitive, confidential: confidential }
 client_registry:
-  - { azp: mascot-a, registration: device, approved: false, workspace: Synthetic mascot A }
-  - { azp: mascot-b, registration: device, approved: false, workspace: Synthetic mascot B }
+  - { client_id: mascot-a, registration: device, approved: false, workspace: Synthetic mascot A }
+  - { client_id: mascot-b, registration: device, approved: false, workspace: Synthetic mascot B }
 sensitive_enabled: true
 rules:
   - id: public

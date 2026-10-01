@@ -34,11 +34,11 @@ pub enum ClientRegistration {
     Device,
 }
 
-/// A known OAuth client keyed by validated `azp`.
+/// A known OAuth client keyed by validated `client_id`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct RegisteredClient {
-    pub azp: String,
+    pub client_id: String,
     pub registration: ClientRegistration,
     /// Workspace approval; only `pre_registered_confidential` may be true.
     pub approved: bool,
@@ -178,10 +178,10 @@ pub(super) fn validate(
 
     v.unique(
         "client_registry",
-        p.client_registry.iter().map(|c| c.azp.as_str()),
+        p.client_registry.iter().map(|c| c.client_id.as_str()),
     );
     for (i, c) in p.client_registry.iter().enumerate() {
-        v.id(&format!("client_registry[{i}].azp"), &c.azp);
+        v.id(&format!("client_registry[{i}].client_id"), &c.client_id);
         if c.approved && c.registration != ClientRegistration::PreRegisteredConfidential {
             v.push(
                 format!("client_registry[{i}].approved"),
@@ -190,10 +190,13 @@ pub(super) fn validate(
         }
     }
     for (i, d) in school.devices.iter().enumerate() {
-        let entry = p.client_registry.iter().find(|c| c.azp == d.azp);
+        let entry = p
+            .client_registry
+            .iter()
+            .find(|c| c.client_id == d.client_id);
         if !entry.is_some_and(|c| c.registration == ClientRegistration::Device) {
             v.push(
-                format!("devices[{i}].azp"),
+                format!("devices[{i}].client_id"),
                 "device clients must be registered with registration: device",
             );
         }

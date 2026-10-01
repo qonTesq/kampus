@@ -252,10 +252,10 @@ fn harness() -> Harness {
     )
 }
 
-fn user(azp: &str, scopes: &[&str]) -> Principal {
+fn user(client_id: &str, scopes: &[&str]) -> Principal {
     Principal {
         subject: "synthetic-student-a".into(),
-        azp: Some(azp.into()),
+        client_id: Some(client_id.into()),
         roles: BTreeSet::from([Role::Student]),
         scopes: scopes.iter().map(|s| (*s).to_owned()).collect(),
         auth_kind: AuthKind::User,
@@ -296,7 +296,7 @@ async fn mixed_turn_public_runs_sensitive_is_refused_before_module_code() {
     assert_eq!(rows[1].decision, AuditDecision::Deny);
     assert_eq!(rows[1].rule, crate::policy::rules::SENSITIVE_CLIENT);
     assert_eq!(rows[1].data_class, DataClass::Sensitive);
-    assert_eq!(rows[1].azp.as_deref(), Some("kampus-chatgpt"));
+    assert_eq!(rows[1].client_id.as_deref(), Some("kampus-chatgpt"));
     assert_eq!(rows[1].policy_version, 1);
     assert_eq!(rows[1].user_hash.len(), 32);
     assert!(!rows[1].user_hash.contains("synthetic"));
@@ -565,7 +565,7 @@ async fn live_policy_swap_changes_the_next_call() {
 
     let mut approved = demo_policy();
     for c in &mut approved.client_registry {
-        if c.azp == "kampus-chatgpt" {
+        if c.client_id == "kampus-chatgpt" {
             c.approved = true;
         }
     }
@@ -618,7 +618,7 @@ impl IdentityResolver for Upgrader {
         let mut upgraded = principal.clone();
         upgraded.roles = BTreeSet::from([Role::Student]);
         upgraded.auth_kind = AuthKind::User;
-        upgraded.azp = Some("kampus-claude".into());
+        upgraded.client_id = Some("kampus-claude".into());
         ResolvedIdentity {
             principal: upgraded,
             binding_generation: Some(1),
@@ -644,7 +644,7 @@ impl IdentityResolver for Binder {
 fn mascot() -> Principal {
     Principal {
         subject: "service-account-kampus-mascot".into(),
-        azp: Some("kampus-mascot".into()),
+        client_id: Some("kampus-mascot".into()),
         roles: BTreeSet::from([Role::Guest]),
         scopes: BTreeSet::from(["rooms:book".to_owned()]),
         auth_kind: AuthKind::Device,

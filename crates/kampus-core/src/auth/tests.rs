@@ -1,5 +1,7 @@
 //! Login and bad-token regression suite. Keys are generated locally per run;
 //! tokens are hand-assembled so malformed and hostile shapes can be built.
+//! Claims are broker-shaped (RFC 9068): `typ: at+jwt`, the resource URL as
+//! audience, `client_id` and a top-level `roles` array.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::{Arc, Mutex};
@@ -7,59 +9,146 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use aws_lc_rs::rand::SystemRandom;
 use aws_lc_rs::rsa::KeySize;
-use aws_lc_rs::signature::{KeyPair as _, RSA_PKCS1_SHA256, RsaKeyPair};
+use aws_lc_rs::signature::{
+    ECDSA_P256_SHA256_FIXED_SIGNING, EcdsaKeyPair, Ed25519KeyPair, KeyPair as _, RSA_PKCS1_SHA256,
+    RSA_PSS_SHA256, RsaKeyPair,
+};
 use jsonwebtoken::jwk::JwkSet;
 use serde_json::{Value, json};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 use super::*;
 
-const ISSUER: &str = "https://auth.example.edu/realms/kampus";
-const AUDIENCE: &str = "kampus-temple";
+const ISSUER: &str = "https://auth.example.edu/auth";
+const RESOURCE: &str = "https://kampus.example.edu/mcp";
+
+enum Pair {
+    Rsa(RsaKeyPair),
+    Ed25519(Ed25519KeyPair),
+    P256(EcdsaKeyPair),
+}
 
 struct TestKey {
     kid: String,
-    pair: RsaKeyPair,
+    pair: Pair,
+    /// Published `alg` in the JWK, if any.
+    published_alg: Option<&'static str>,
 }
 
 impl TestKey {
+    /// An RSA key published for RS256.
     fn new(kid: &str) -> Self {
         Self {
             kid: kid.to_owned(),
-            pair: RsaKeyPair::generate(KeySize::Rsa2048).unwrap(),
+            pair: Pair::Rsa(RsaKeyPair::generate(KeySize::Rsa2048).unwrap()),
+            published_alg: Some("RS256"),
+        }
+    }
+
+    fn ed25519(kid: &str) -> Self {
+        let pkcs8 = Ed25519KeyPair::generate_pkcs8(&SystemRandom::new()).unwrap();
+        Self {
+            kid: kid.to_owned(),
+            pair: Pair::Ed25519(Ed25519KeyPair::from_pkcs8(pkcs8.as_ref()).unwrap()),
+            published_alg: Some("EdDSA"),
+        }
+    }
+
+    fn p256(kid: &str) -> Self {
+        let pkcs8 =
+            EcdsaKeyPair::generate_pkcs8(&ECDSA_P256_SHA256_FIXED_SIGNING, &SystemRandom::new())
+                .unwrap();
+        Self {
+            kid: kid.to_owned(),
+            pair: Pair::P256(
+                EcdsaKeyPair::from_pkcs8(&ECDSA_P256_SHA256_FIXED_SIGNING, pkcs8.as_ref()).unwrap(),
+            ),
+            published_alg: Some("ES256"),
+        }
+    }
+
+    fn unpublished(mut self) -> Self {
+        self.published_alg = None;
+        self
+    }
+
+    /// The algorithm this key signs with by default.
+    fn alg(&self) -> &'static str {
+        match self.pair {
+            Pair::Rsa(_) => "RS256",
+            Pair::Ed25519(_) => "EdDSA",
+            Pair::P256(_) => "ES256",
         }
     }
 
     fn jwk(&self) -> Value {
-        let public = self.pair.public_key();
-        json!({
-            "kty": "RSA", "use": "sig", "alg": "RS256", "kid": self.kid,
-            "n": b64(public.modulus().big_endian_without_leading_zero()),
-            "e": b64(public.exponent().big_endian_without_leading_zero()),
-        })
+        let mut jwk = match &self.pair {
+            Pair::Rsa(pair) => {
+                let public = pair.public_key();
+                json!({
+                    "kty": "RSA",
+                    "n": b64(public.modulus().big_endian_without_leading_zero()),
+                    "e": b64(public.exponent().big_endian_without_leading_zero()),
+                })
+            }
+            Pair::Ed25519(pair) => {
+                json!({ "kty": "OKP", "crv": "Ed25519", "x": b64(pair.public_key().as_ref()) })
+            }
+            Pair::P256(pair) => {
+                let point = pair.public_key().as_ref();
+                json!({ "kty": "EC", "crv": "P-256", "x": b64(&point[1..33]), "y": b64(&point[33..65]) })
+            }
+        };
+        jwk["kid"] = json!(self.kid);
+        jwk["use"] = json!("sig");
+        if let Some(alg) = self.published_alg {
+            jwk["alg"] = json!(alg);
+        }
+        jwk
     }
 
+    /// Sign with this key, whatever the header claims (so mismatches can be built).
     fn sign(&self, header: &Value, claims: &Value) -> String {
         let signing_input = format!(
             "{}.{}",
             b64(header.to_string().as_bytes()),
             b64(claims.to_string().as_bytes())
         );
-        let mut signature = vec![0; self.pair.public_modulus_len()];
-        self.pair
-            .sign(
-                &RSA_PKCS1_SHA256,
-                &SystemRandom::new(),
-                signing_input.as_bytes(),
-                &mut signature,
-            )
-            .unwrap();
+        let rng = SystemRandom::new();
+        let signature = match &self.pair {
+            Pair::Rsa(pair) => {
+                let padding: &dyn aws_lc_rs::signature::RsaEncoding = if header["alg"] == "PS256" {
+                    &RSA_PSS_SHA256
+                } else {
+                    &RSA_PKCS1_SHA256
+                };
+                let mut signature = vec![0; pair.public_modulus_len()];
+                pair.sign(padding, &rng, signing_input.as_bytes(), &mut signature)
+                    .unwrap();
+                signature
+            }
+            Pair::Ed25519(pair) => pair.sign(signing_input.as_bytes()).as_ref().to_vec(),
+            Pair::P256(pair) => pair
+                .sign(&rng, signing_input.as_bytes())
+                .unwrap()
+                .as_ref()
+                .to_vec(),
+        };
         format!("{signing_input}.{}", b64(&signature))
     }
 
+    /// A standard access token: header `typ: at+jwt`.
     fn token(&self, claims: &Value) -> String {
         self.sign(
-            &json!({ "alg": "RS256", "typ": "JWT", "kid": self.kid }),
+            &json!({ "alg": self.alg(), "typ": "at+jwt", "kid": self.kid }),
+            claims,
+        )
+    }
+
+    /// A transitional token: header `typ: JWT` (the payload decides).
+    fn generic_token(&self, claims: &Value) -> String {
+        self.sign(
+            &json!({ "alg": self.alg(), "typ": "JWT", "kid": self.kid }),
             claims,
         )
     }
@@ -96,18 +185,28 @@ fn now() -> i64 {
     .unwrap()
 }
 
+/// A broker-shaped access token payload.
 fn claims() -> Value {
     json!({
         "iss": ISSUER,
-        "aud": [AUDIENCE, "account"],
+        "aud": RESOURCE,
         "sub": "8f1c-synthetic-student-a",
-        "azp": "kampus-claude",
-        "typ": "Bearer",
+        "client_id": "https://assistant.example/client.json",
         "exp": now() + 300,
         "iat": now(),
-        "scope": "openid profile rooms:book",
-        "realm_access": { "roles": ["student", "offline_access", "default-roles-kampus"] },
+        "scope": "rooms:book",
+        "roles": ["student", "not-a-kampus-role"],
     })
+}
+
+/// A generic identity-provider payload for the transition rule: payload `typ: Bearer`,
+/// `azp` only, audience array.
+fn generic_claims() -> Value {
+    let mut c = without(claims(), "client_id");
+    c["azp"] = json!("workspace-client");
+    c["typ"] = json!("Bearer");
+    c["aud"] = json!([RESOURCE, "account"]);
+    c
 }
 
 fn with(mut claims: Value, key: &str, value: Value) -> Value {
@@ -123,11 +222,10 @@ fn without(mut claims: Value, key: &str) -> Value {
 fn settings(mode: AuthMode) -> AuthSettings {
     AuthSettings {
         mode,
-        resource_url: "https://kampus.example.edu/mcp".parse().unwrap(),
+        resource_url: RESOURCE.parse().unwrap(),
         issuer: ISSUER.parse().unwrap(),
-        audience: AUDIENCE.to_owned(),
-        roles_claim: "realm_access.roles".to_owned(),
-        device_azps: BTreeMap::from([("kampus-mascot".to_owned(), "owl-1".to_owned())]),
+        roles_claim: "roles".to_owned(),
+        device_clients: BTreeMap::from([("mascot-device".to_owned(), "owl-1".to_owned())]),
         scopes_supported: BTreeSet::from(["rooms:book".to_owned()]),
     }
 }
@@ -136,102 +234,258 @@ fn authenticator(mode: AuthMode, keys: &[&TestKey]) -> Authenticator {
     Authenticator::new(settings(mode), KeySource::Fixed(Arc::new(keyset(keys))))
 }
 
-async fn verify(token: &str) -> Result<Principal, AuthError> {
-    let key = trusted_key();
-    authenticator(AuthMode::Oauth, &[key]).verify(token).await
+/// The trusted RSA, Ed25519 and P-256 keys.
+fn trusted() -> [&'static TestKey; 3] {
+    static KEYS: std::sync::OnceLock<[TestKey; 3]> = std::sync::OnceLock::new();
+    let [rsa, ed, ec] = KEYS.get_or_init(|| {
+        [
+            TestKey::new("issuer-key-1"),
+            TestKey::ed25519("issuer-ed-1"),
+            TestKey::p256("issuer-ec-1"),
+        ]
+    });
+    [rsa, ed, ec]
 }
 
 fn trusted_key() -> &'static TestKey {
-    static KEY: std::sync::OnceLock<TestKey> = std::sync::OnceLock::new();
-    KEY.get_or_init(|| TestKey::new("realm-key-1"))
+    trusted()[0]
+}
+
+fn ed_key() -> &'static TestKey {
+    trusted()[1]
+}
+
+async fn verify(token: &str) -> Result<Principal, AuthError> {
+    authenticator(AuthMode::Oauth, &trusted())
+        .verify(token)
+        .await
 }
 
 // ---- working login ----------------------------------------------------------
 
 #[tokio::test]
-async fn valid_keycloak_token_yields_user_principal() {
-    let principal = verify(&trusted_key().token(&claims())).await.unwrap();
+async fn standard_broker_token_yields_user_principal() {
+    let principal = verify(&ed_key().token(&claims())).await.unwrap();
     assert_eq!(principal.subject, "8f1c-synthetic-student-a");
-    assert_eq!(principal.azp.as_deref(), Some("kampus-claude"));
+    assert_eq!(
+        principal.client_id.as_deref(),
+        Some("https://assistant.example/client.json")
+    );
     assert_eq!(principal.auth_kind, AuthKind::User);
+    // Unknown role names grant nothing.
     assert_eq!(principal.roles, BTreeSet::from([Role::Student]));
     assert!(principal.has_scope("rooms:book"));
     assert_eq!(principal.device_id, None);
 }
 
 #[tokio::test]
-async fn single_string_audience_is_accepted() {
-    let token = trusted_key().token(&with(claims(), "aud", json!(AUDIENCE)));
+async fn transitional_generic_token_uses_azp() {
+    let principal = verify(&trusted_key().generic_token(&generic_claims()))
+        .await
+        .unwrap();
+    assert_eq!(principal.client_id.as_deref(), Some("workspace-client"));
+    // A header without `typ` at all follows the same rule.
+    let no_typ = trusted_key().sign(
+        &json!({ "alg": "RS256", "kid": trusted_key().kid }),
+        &generic_claims(),
+    );
+    assert!(verify(&no_typ).await.is_ok());
+}
+
+#[tokio::test]
+async fn every_allowlisted_algorithm_verifies() {
+    for key in trusted() {
+        assert!(verify(&key.token(&claims())).await.is_ok(), "{}", key.alg());
+    }
+    // PS256 with an RSA key that publishes no `alg`.
+    let pss = TestKey::new("pss").unpublished();
+    let token = pss.sign(
+        &json!({ "alg": "PS256", "typ": "at+jwt", "kid": "pss" }),
+        &claims(),
+    );
+    let auth = authenticator(AuthMode::Oauth, &[&pss]);
+    assert!(auth.verify(&token).await.is_ok());
+}
+
+#[tokio::test]
+async fn access_token_media_type_is_case_insensitive() {
+    for typ in ["application/at+jwt", "AT+JWT"] {
+        let key = ed_key();
+        let token = key.sign(
+            &json!({ "alg": "EdDSA", "typ": typ, "kid": key.kid }),
+            &claims(),
+        );
+        assert!(verify(&token).await.is_ok(), "{typ}");
+    }
+    // `at+jwt` with a consistent payload `typ: Bearer` is fine too.
+    let token = ed_key().token(&with(claims(), "typ", json!("Bearer")));
     assert!(verify(&token).await.is_ok());
 }
 
 #[tokio::test]
+async fn audience_array_containing_the_resource_is_accepted() {
+    let token = ed_key().token(&with(
+        claims(),
+        "aud",
+        json!(["https://other.example/api", RESOURCE]),
+    ));
+    assert!(verify(&token).await.is_ok());
+}
+
+#[tokio::test]
+async fn client_identity_resolution() {
+    let both = with(
+        claims(),
+        "azp",
+        json!("https://assistant.example/client.json"),
+    );
+    let azp_only = with(
+        without(claims(), "client_id"),
+        "azp",
+        json!("workspace-client"),
+    );
+    for (payload, expected) in [
+        (claims(), "https://assistant.example/client.json"),
+        (both, "https://assistant.example/client.json"),
+        (azp_only, "workspace-client"),
+    ] {
+        let principal = verify(&ed_key().token(&payload)).await.unwrap();
+        assert_eq!(principal.client_id.as_deref(), Some(expected));
+    }
+}
+
+#[tokio::test]
+async fn nested_roles_claim_path() {
+    let mut s = settings(AuthMode::Oauth);
+    s.roles_claim = "entitlements.roles".to_owned();
+    let auth = Authenticator::new(s, KeySource::Fixed(Arc::new(keyset(&trusted()))));
+    let payload = with(
+        without(claims(), "roles"),
+        "entitlements",
+        json!({ "roles": ["faculty"] }),
+    );
+    let principal = auth.verify(&ed_key().token(&payload)).await.unwrap();
+    assert_eq!(principal.roles, BTreeSet::from([Role::Faculty]));
+    // The default top-level claim is ignored under a nested path.
+    let principal = auth.verify(&ed_key().token(&claims())).await.unwrap();
+    assert!(principal.roles.is_empty());
+}
+
+#[tokio::test]
+async fn missing_or_mistyped_roles_grant_nothing() {
+    for roles in [json!(null), json!("student"), json!({ "student": true })] {
+        let principal = verify(&ed_key().token(&with(claims(), "roles", roles)))
+            .await
+            .unwrap();
+        assert!(principal.roles.is_empty());
+    }
+    let principal = verify(&ed_key().token(&without(claims(), "roles")))
+        .await
+        .unwrap();
+    assert!(principal.roles.is_empty());
+}
+
+#[tokio::test]
 async fn device_client_yields_device_principal() {
-    let token = trusted_key().token(&with(claims(), "azp", json!("kampus-mascot")));
+    let token = ed_key().token(&with(claims(), "client_id", json!("mascot-device")));
     let principal = verify(&token).await.unwrap();
     assert_eq!(principal.auth_kind, AuthKind::Device);
     assert_eq!(principal.device_id.as_deref(), Some("owl-1"));
 }
 
 #[tokio::test]
-async fn expiry_within_clock_skew_is_tolerated() {
-    let token = trusted_key().token(&with(claims(), "exp", json!(now() - 10)));
+async fn expiry_skew_and_maximum_lifetime_edges_are_tolerated() {
+    let token = ed_key().token(&with(claims(), "exp", json!(now() - 10)));
     assert!(verify(&token).await.is_ok());
+    let longest = with(
+        with(claims(), "iat", json!(now())),
+        "exp",
+        json!(now() + 7200),
+    );
+    assert!(verify(&ed_key().token(&longest)).await.is_ok());
+    let slightly_ahead = with(claims(), "iat", json!(now() + 10));
+    assert!(verify(&ed_key().token(&slightly_ahead)).await.is_ok());
 }
 
 // ---- bad tokens -------------------------------------------------------------
 
 async fn rejected(claims: Value, expected: AuthError) {
-    let token = trusted_key().token(&claims);
-    assert_eq!(verify(&token).await, Err(expected));
+    let token = ed_key().token(&claims);
+    assert_eq!(verify(&token).await, Err(expected), "{claims}");
 }
 
 #[tokio::test]
 async fn wrong_issuer() {
-    rejected(
-        with(claims(), "iss", json!("https://evil.example/realms/kampus")),
-        AuthError::Issuer,
-    )
-    .await;
-    rejected(
-        with(claims(), "iss", json!(format!("{ISSUER}/"))),
-        AuthError::Issuer,
-    )
-    .await;
+    for iss in [
+        json!("https://evil.example/auth"),
+        json!(format!("{ISSUER}/")),
+        json!("https://AUTH.example.edu/auth"),
+    ] {
+        rejected(with(claims(), "iss", iss), AuthError::Issuer).await;
+    }
     rejected(without(claims(), "iss"), AuthError::Issuer).await;
 }
 
 #[tokio::test]
 async fn wrong_audience() {
-    rejected(
-        with(claims(), "aud", json!(["account", "kampus-sju"])),
-        AuthError::Audience,
-    )
-    .await;
-    rejected(with(claims(), "aud", json!([])), AuthError::Audience).await;
+    for aud in [
+        // A short alias, as the previous profile used.
+        json!("kampus-temple"),
+        // Another school's resource on the same host.
+        json!("https://kampus.example.edu/sju/mcp"),
+        // Trailing-slash and case variants of the resource URL.
+        json!("https://kampus.example.edu/mcp/"),
+        json!("https://kampus.example.edu/MCP"),
+        json!("https://KAMPUS.example.edu/mcp"),
+        json!("HTTPS://kampus.example.edu/mcp"),
+        json!(["kampus-temple", "account"]),
+        json!([]),
+        json!(""),
+    ] {
+        rejected(with(claims(), "aud", aud), AuthError::Audience).await;
+    }
     rejected(without(claims(), "aud"), AuthError::Audience).await;
 }
 
 #[tokio::test]
-async fn missing_or_malformed_azp() {
-    rejected(without(claims(), "azp"), AuthError::Azp).await;
-    rejected(with(claims(), "azp", json!("")), AuthError::Azp).await;
-    rejected(with(claims(), "azp", json!("  ")), AuthError::Azp).await;
+async fn missing_malformed_or_conflicting_client_identity() {
+    let no_client = without(claims(), "client_id");
+    rejected(no_client.clone(), AuthError::ClientId).await;
+    for bad in [json!(""), json!("  "), json!(null), json!(["a"]), json!(7)] {
+        rejected(
+            with(claims(), "client_id", bad.clone()),
+            AuthError::ClientId,
+        )
+        .await;
+        rejected(
+            with(no_client.clone(), "azp", bad.clone()),
+            AuthError::ClientId,
+        )
+        .await;
+        // A malformed client_id never falls back to a valid azp.
+        let fallback = with(
+            with(claims(), "client_id", bad.clone()),
+            "azp",
+            json!("workspace-client"),
+        );
+        rejected(fallback, AuthError::ClientId).await;
+        // ...and a malformed azp is not ignored beside a valid client_id.
+        rejected(with(claims(), "azp", bad), AuthError::ClientId).await;
+    }
     rejected(
-        with(claims(), "azp", json!(["kampus-claude"])),
-        AuthError::Azp,
+        with(claims(), "azp", json!("workspace-client")),
+        AuthError::ClientId,
     )
     .await;
-    rejected(with(claims(), "azp", json!(null)), AuthError::Azp).await;
 }
 
 #[tokio::test]
-async fn unapproved_azp_is_valid_authentication_not_approval() {
-    // A well-signed DCR client: authenticated as itself, never as kampus-claude.
-    // Approval is policy's decision (see policy tests), keyed on this exact azp.
-    let token = trusted_key().token(&with(claims(), "azp", json!("dcr-4f2a")));
+async fn unapproved_client_is_valid_authentication_not_approval() {
+    // A well-signed self-registered client: authenticated as itself only.
+    // Approval is policy's decision (see policy tests), keyed on this exact ID.
+    let token = ed_key().token(&with(claims(), "client_id", json!("dcr-4f2a")));
     let principal = verify(&token).await.unwrap();
-    assert_eq!(principal.azp.as_deref(), Some("dcr-4f2a"));
+    assert_eq!(principal.client_id.as_deref(), Some("dcr-4f2a"));
     assert_eq!(principal.auth_kind, AuthKind::User);
 }
 
@@ -255,6 +509,44 @@ async fn not_yet_valid() {
 }
 
 #[tokio::test]
+async fn future_or_missing_iat_and_overlong_lifetime() {
+    rejected(
+        with(claims(), "iat", json!(now() + 120)),
+        AuthError::Lifetime,
+    )
+    .await;
+    rejected(without(claims(), "iat"), AuthError::Lifetime).await;
+    rejected(
+        with(claims(), "iat", json!("yesterday")),
+        AuthError::Lifetime,
+    )
+    .await;
+    rejected(
+        with(claims(), "exp", json!(now() + 7201)),
+        AuthError::Lifetime,
+    )
+    .await;
+    // Still unexpired, but issued with a lifetime over the cap.
+    let stale = with(
+        with(claims(), "iat", json!(now() - 7200)),
+        "exp",
+        json!(now() + 60),
+    );
+    rejected(stale, AuthError::Lifetime).await;
+}
+
+#[tokio::test]
+async fn sender_constrained_tokens_are_refused() {
+    for cnf in [
+        json!({ "jkt": "0ZcOCORZNYy-DWpqq30jZyJGHTN0d2HglBV3uiguA4I" }),
+        json!(null),
+        json!({}),
+    ] {
+        rejected(with(claims(), "cnf", cnf), AuthError::Confirmation).await;
+    }
+}
+
+#[tokio::test]
 async fn missing_or_empty_subject() {
     rejected(without(claims(), "sub"), AuthError::Subject).await;
     rejected(with(claims(), "sub", json!("")), AuthError::Subject).await;
@@ -262,28 +554,45 @@ async fn missing_or_empty_subject() {
 
 #[tokio::test]
 async fn id_and_refresh_tokens_are_not_access_tokens() {
-    rejected(with(claims(), "typ", json!("ID")), AuthError::TokenType).await;
-    rejected(
-        with(claims(), "typ", json!("Refresh")),
-        AuthError::TokenType,
-    )
-    .await;
+    let key = trusted_key();
+    // Conflicting payload markers under an at+jwt header.
+    for typ in ["ID", "Refresh", "Offline"] {
+        rejected(with(claims(), "typ", json!(typ)), AuthError::TokenType).await;
+    }
+    // Generic header: the payload must say Bearer.
+    for payload in [
+        with(generic_claims(), "typ", json!("ID")),
+        with(generic_claims(), "typ", json!("Refresh")),
+        without(generic_claims(), "typ"),
+        // An ID token look-alike carrying a nonce.
+        with(generic_claims(), "nonce", json!("n-0S6_WzA2Mj")),
+    ] {
+        assert_eq!(
+            verify(&key.generic_token(&payload)).await,
+            Err(AuthError::TokenType),
+            "{payload}"
+        );
+    }
+    // Other header types.
+    for typ in ["dpop+jwt", "id_token+jwt", "logout+jwt"] {
+        let token = key.sign(
+            &json!({ "alg": "RS256", "typ": typ, "kid": key.kid }),
+            &generic_claims(),
+        );
+        assert_eq!(verify(&token).await, Err(AuthError::TokenType), "{typ}");
+    }
 }
 
 #[tokio::test]
 async fn bad_signature() {
-    // An attacker's key reusing the realm's kid.
-    let forged = TestKey::new("realm-key-1").token(&claims());
+    // An attacker's key reusing the issuer's kid.
+    let forged = TestKey::ed25519("issuer-ed-1").token(&claims());
     assert_eq!(verify(&forged).await, Err(AuthError::Signature));
 
     // A genuine token with an edited payload.
-    let genuine = trusted_key().token(&claims());
+    let genuine = ed_key().token(&claims());
     let parts: Vec<&str> = genuine.split('.').collect();
-    let elevated = with(
-        claims(),
-        "realm_access",
-        json!({ "roles": ["student", "admin"] }),
-    );
+    let elevated = with(claims(), "roles", json!(["student", "admin"]));
     let tampered = format!(
         "{}.{}.{}",
         parts[0],
@@ -299,7 +608,7 @@ async fn none_and_symmetric_algorithms() {
     let payload = b64(claims().to_string().as_bytes());
     let none = format!(
         "{}.{payload}.",
-        b64(json!({ "alg": "none", "kid": key.kid })
+        b64(json!({ "alg": "none", "typ": "at+jwt", "kid": key.kid })
             .to_string()
             .as_bytes())
     );
@@ -308,36 +617,63 @@ async fn none_and_symmetric_algorithms() {
         Err(AuthError::Malformed | AuthError::Algorithm)
     ));
 
-    for alg in ["HS256", "RS384", "ES384"] {
-        let header = json!({ "alg": alg, "kid": key.kid });
+    for alg in ["HS256", "HS384", "HS512", "RS384", "ES384", "PS512"] {
+        let header = json!({ "alg": alg, "typ": "at+jwt", "kid": key.kid });
         let token = key.sign(&header, &claims());
         assert_eq!(verify(&token).await, Err(AuthError::Algorithm), "{alg}");
     }
 }
 
 #[tokio::test]
-async fn key_algorithm_must_match_the_jwk() {
-    // The realm key is published for RS256; a PS256 header must not reuse it.
-    let key = trusted_key();
-    let token = key.sign(&json!({ "alg": "PS256", "kid": key.kid }), &claims());
-    assert_eq!(verify(&token).await, Err(AuthError::Algorithm));
+async fn key_type_curve_and_algorithm_must_match_the_header() {
+    let [rsa, ed, ec] = trusted();
+    let cases = [
+        // The RSA key is published for RS256; a PS256 header must not reuse it.
+        (rsa, "PS256"),
+        // An Ed25519 key presented for ES256, and the reverse.
+        (ed, "ES256"),
+        (ec, "EdDSA"),
+        // RSA keys never verify EdDSA or ES256, and vice versa.
+        (rsa, "EdDSA"),
+        (ed, "RS256"),
+    ];
+    for (key, alg) in cases {
+        let token = key.sign(
+            &json!({ "alg": alg, "typ": "at+jwt", "kid": key.kid }),
+            &claims(),
+        );
+        assert_eq!(
+            verify(&token).await,
+            Err(AuthError::Algorithm),
+            "{} as {alg}",
+            key.kid
+        );
+    }
+    // Same shape check without a published `alg`.
+    let ed = TestKey::ed25519("bare-ed").unpublished();
+    let token = ed.sign(
+        &json!({ "alg": "ES256", "typ": "at+jwt", "kid": "bare-ed" }),
+        &claims(),
+    );
+    let auth = authenticator(AuthMode::Oauth, &[&ed]);
+    assert_eq!(auth.verify(&token).await, Err(AuthError::Algorithm));
 }
 
 #[tokio::test]
 async fn unknown_or_missing_kid() {
-    let stranger = TestKey::new("other-realm-key");
+    let stranger = TestKey::ed25519("other-issuer-key");
     assert_eq!(
         verify(&stranger.token(&claims())).await,
         Err(AuthError::UnknownKey)
     );
-    let no_kid = trusted_key().sign(&json!({ "alg": "RS256" }), &claims());
+    let no_kid = ed_key().sign(&json!({ "alg": "EdDSA", "typ": "at+jwt" }), &claims());
     assert_eq!(verify(&no_kid).await, Err(AuthError::UnknownKey));
 }
 
 #[tokio::test]
 async fn jku_and_x5u_headers_are_ignored() {
     let attacker = TestKey::new("attacker");
-    let header = json!({ "alg": "RS256", "kid": "attacker", "jku": "https://evil.example/jwks", "x5u": "https://evil.example/cert" });
+    let header = json!({ "alg": "RS256", "typ": "at+jwt", "kid": "attacker", "jku": "https://evil.example/jwks", "x5u": "https://evil.example/cert" });
     assert_eq!(
         verify(&attacker.sign(&header, &claims())).await,
         Err(AuthError::UnknownKey)
@@ -372,8 +708,8 @@ async fn malformed_tokens() {
 
 #[tokio::test]
 async fn authorization_header_shapes() {
-    let auth = authenticator(AuthMode::Oauth, &[trusted_key()]);
-    let token = trusted_key().token(&claims());
+    let auth = authenticator(AuthMode::Oauth, &trusted());
+    let token = ed_key().token(&claims());
     let ok = format!("Bearer {token}");
     assert!(matches!(
         auth.credential(Some(ok.as_bytes())).await,
@@ -405,7 +741,7 @@ async fn authorization_header_shapes() {
 
 #[tokio::test]
 async fn oauth_mode_challenges_missing_credentials_on_protected_calls() {
-    let auth = authenticator(AuthMode::Oauth, &[trusted_key()]);
+    let auth = authenticator(AuthMode::Oauth, &trusted());
     let expected = "Bearer resource_metadata=\"https://kampus.example.edu/.well-known/oauth-protected-resource/mcp\"";
     assert_eq!(
         auth.admit(None, true).await,
@@ -422,11 +758,14 @@ async fn oauth_mode_challenges_missing_credentials_on_protected_calls() {
 async fn invalid_tokens_fail_in_both_modes_even_on_open_requests() {
     let expired = format!(
         "Bearer {}",
-        trusted_key().token(&with(claims(), "exp", json!(now() - 600)))
+        ed_key().token(&with(claims(), "exp", json!(now() - 600)))
     );
-    let forged = format!("Bearer {}", TestKey::new("realm-key-1").token(&claims()));
+    let forged = format!(
+        "Bearer {}",
+        TestKey::ed25519("issuer-ed-1").token(&claims())
+    );
     for mode in [AuthMode::Oauth, AuthMode::NoLogin] {
-        let auth = authenticator(mode, &[trusted_key()]);
+        let auth = authenticator(mode, &trusted());
         for header in [&expired, &forged] {
             for needs in [true, false] {
                 let Admission::Challenge(value) = auth.admit(Some(header.as_bytes()), needs).await
@@ -441,16 +780,19 @@ async fn invalid_tokens_fail_in_both_modes_even_on_open_requests() {
 
 #[tokio::test]
 async fn no_login_mode_admits_missing_credentials_as_guest_and_still_verifies_tokens() {
-    let auth = authenticator(AuthMode::NoLogin, &[trusted_key()]);
+    let auth = authenticator(AuthMode::NoLogin, &trusted());
     assert_eq!(
         auth.admit(None, true).await,
         Admission::Admit(Principal::guest())
     );
-    let header = format!("Bearer {}", trusted_key().token(&claims()));
+    let header = format!("Bearer {}", ed_key().token(&claims()));
     let Admission::Admit(principal) = auth.admit(Some(header.as_bytes()), true).await else {
         panic!("valid token refused");
     };
-    assert_eq!(principal.azp.as_deref(), Some("kampus-claude"));
+    assert_eq!(
+        principal.client_id.as_deref(),
+        Some("https://assistant.example/client.json")
+    );
 }
 
 // ---- metadata ---------------------------------------------------------------
@@ -467,7 +809,7 @@ fn metadata_is_path_inserted_and_bound_to_config() {
         "https://kampus.example.edu/.well-known/oauth-protected-resource/mcp"
     );
     let doc = auth.metadata();
-    assert_eq!(doc["resource"], "https://kampus.example.edu/mcp");
+    assert_eq!(doc["resource"], RESOURCE);
     assert_eq!(doc["authorization_servers"], json!([ISSUER]));
     assert_eq!(doc["bearer_methods_supported"], json!(["header"]));
     assert_eq!(doc["scopes_supported"], json!(["rooms:book"]));

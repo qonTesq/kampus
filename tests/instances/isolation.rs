@@ -29,7 +29,7 @@ async fn device_bindings_secrets_and_caller_budgets_are_instance_local() {
     let mut services = Vec::new();
     let mut servers = Vec::new();
     let mut dispatchers = Vec::new();
-    for (school, azp, secret) in [
+    for (school, client_id, secret) in [
         (
             "temple",
             "kampus-mascot",
@@ -46,7 +46,7 @@ async fn device_bindings_secrets_and_caller_budgets_are_instance_local() {
         // Deliberately reuse device ID and sticker to test instance boundaries.
         config.devices.push(DeviceConfig {
             device_id: "synthetic-device".into(),
-            azp: azp.into(),
+            client_id: client_id.into(),
             bind_secret_env: "TEST_BIND".into(),
             stickers: vec![DeviceSticker {
                 uid: "synthetic:card".into(),
@@ -101,9 +101,9 @@ async fn device_bindings_secrets_and_caller_budgets_are_instance_local() {
             .status(),
         401
     );
-    let device = |azp: &str| Principal {
+    let device = |client_id: &str| Principal {
         subject: "synthetic-service".into(),
-        azp: Some(azp.into()),
+        client_id: Some(client_id.into()),
         roles: [Role::Guest].into_iter().collect(),
         scopes: ["rooms:book".into()].into_iter().collect(),
         auth_kind: AuthKind::Device,
@@ -141,7 +141,7 @@ async fn device_bindings_secrets_and_caller_budgets_are_instance_local() {
     );
     let user = Principal {
         subject: "synthetic:shared-user".into(),
-        azp: Some("test-client".into()),
+        client_id: Some("test-client".into()),
         roles: [Role::Student].into_iter().collect(),
         scopes: std::collections::BTreeSet::default(),
         auth_kind: AuthKind::User,

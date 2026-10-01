@@ -21,8 +21,6 @@ server:
 auth:
   mode: oauth
   issuer: http://127.0.0.1:8180/realms/kampus
-  audience: kampus-temple
-  roles_claim: realm_access.roles
 
 modules: [rooms, courses, transit, library_hours, deadlines]
 

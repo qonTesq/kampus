@@ -30,7 +30,7 @@ fn school_yaml(base_url: &str, sandbox: bool, simulate: bool) -> String {
 version: 1
 school: {{ id: {SCHOOL}, display_name: Demo University, timezone: America/New_York }}
 server: {{ resource_url: "http://127.0.0.1:9/mcp", listen: "127.0.0.1:9", admin_listen: "127.0.0.1:10" }}
-auth: {{ issuer: "http://127.0.0.1:11/realms/kampus", audience: kampus-demo }}
+auth: {{ issuer: "http://127.0.0.1:11/realms/kampus" }}
 modules: [rooms]
 sandbox: {{ enabled: {sandbox} }}
 libcal:
@@ -76,7 +76,7 @@ fn now() -> DateTime<Utc> {
 fn principal(subject: &str, roles: &[Role], scopes: &[&str]) -> Principal {
     Principal {
         subject: subject.into(),
-        azp: Some("kampus-claude".into()),
+        client_id: Some("kampus-claude".into()),
         roles: roles.iter().copied().collect(),
         scopes: scopes
             .iter()
@@ -516,7 +516,7 @@ mod sandbox {
         let id = propose(&h, &student()).await;
         let other_subject = ctx(principal("student-b", &[Role::Student], &["rooms:book"]));
         let mut other_client = student();
-        other_client.principal.azp = Some("kampus-chatgpt".into());
+        other_client.principal.client_id = Some("kampus-chatgpt".into());
         let mut other_school = student();
         other_school.school_id = "other-u".into();
         for c in [other_subject, other_client, other_school] {
@@ -532,7 +532,7 @@ mod sandbox {
     fn bound_device(generation: u64) -> CallContext {
         let mut principal = principal("synthetic:student-1", &[Role::Student], &["rooms:book"]);
         principal.auth_kind = AuthKind::Device;
-        principal.azp = Some("kampus-mascot".into());
+        principal.client_id = Some("kampus-mascot".into());
         principal.device_id = Some("mascot-1".into());
         CallContext {
             binding_generation: Some(generation),

@@ -240,7 +240,7 @@ impl Dispatcher {
             timestamp: now,
             school_id: self.school_id.clone(),
             user_hash: user_hash.clone(),
-            azp: principal.azp.clone(),
+            client_id: principal.client_id.clone(),
             tool: registered.descriptor.name.clone(),
             data_class: effective_class(&revision.config, registered.descriptor.data_class),
             decision,
@@ -407,7 +407,7 @@ fn timed_out() -> Envelope {
 }
 
 /// Device principals go through the resolver; a resolution that changes the
-/// client (`azp`) or auth kind is ignored, so trust is never upgraded.
+/// client (`client_id`) or auth kind is ignored, so trust is never upgraded.
 fn resolve(
     resolver: Option<&dyn IdentityResolver>,
     principal: Principal,
@@ -421,7 +421,7 @@ fn resolve(
         Some(resolver) if principal.auth_kind == AuthKind::Device => {
             let identity = resolver.resolve(&principal, now);
             if identity.principal.auth_kind == AuthKind::Device
-                && identity.principal.azp == principal.azp
+                && identity.principal.client_id == principal.client_id
                 && identity.principal.device_id == principal.device_id
                 && identity.principal.scopes.is_subset(&principal.scopes)
             {

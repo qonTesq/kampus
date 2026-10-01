@@ -23,7 +23,7 @@ fn event(timestamp: DateTime<Utc>, rule: &str) -> AuditEvent {
         timestamp,
         school_id: "temple".into(),
         user_hash: "0123abcd".into(),
-        azp: Some("kampus-claude".into()),
+        client_id: Some("kampus-claude".into()),
         tool: "next_departures".into(),
         data_class: DataClass::Public,
         decision: AuditDecision::Allow,
@@ -36,7 +36,7 @@ fn event(timestamp: DateTime<Utc>, rule: &str) -> AuditEvent {
 fn student(subject: &str) -> Principal {
     Principal {
         subject: subject.into(),
-        azp: Some("kampus-claude".into()),
+        client_id: Some("kampus-claude".into()),
         roles: BTreeSet::from([Role::Student]),
         scopes: BTreeSet::new(),
         auth_kind: AuthKind::User,

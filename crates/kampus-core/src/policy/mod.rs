@@ -159,14 +159,14 @@ pub fn effective_class(policy: &PolicyConfig, class: DataClass) -> DataClass {
         .unwrap_or(DataClass::Confidential)
 }
 
-/// Approved = a user token whose verified `azp` is a pre-registered
+/// Approved = a user token whose verified `client_id` is a pre-registered
 /// confidential client with active approval. Everything else (DCR, CIMD,
 /// devices, guests, unknown clients) is unapproved, whatever it calls itself.
 pub fn is_approved_client(policy: &PolicyConfig, principal: &Principal) -> bool {
     principal.auth_kind == AuthKind::User
-        && principal.azp.as_deref().is_some_and(|azp| {
+        && principal.client_id.as_deref().is_some_and(|client_id| {
             policy.client_registry.iter().any(|c| {
-                c.azp == azp
+                c.client_id == client_id
                     && c.registration == ClientRegistration::PreRegisteredConfidential
                     && c.approved
             })

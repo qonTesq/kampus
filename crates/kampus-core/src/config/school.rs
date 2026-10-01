@@ -50,7 +50,8 @@ pub struct SchoolInfo {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ServerConfig {
-    /// Canonical MCP resource URL (also the token audience resource), e.g. `https://host/mcp`.
+    /// Canonical MCP resource URL, e.g. `https://host/mcp`. Access tokens must
+    /// name exactly this URL in `aud` (RFC 8707/9728); there is no alias.
     pub resource_url: Url,
     /// Public MCP listener (behind Caddy).
     pub listen: SocketAddr,
@@ -177,17 +178,15 @@ pub enum AuthMode {
 pub struct AuthConfig {
     #[serde(default)]
     pub mode: AuthMode,
-    /// Keycloak realm issuer URL (exact `iss`).
+    /// Authorization server issuer URL (exact `iss`; metadata via RFC 8414 or OIDC discovery).
     pub issuer: Url,
-    /// Required `aud` member.
-    pub audience: String,
-    /// Dotted claim path holding realm roles.
+    /// Dotted claim path holding the role names, e.g. `roles` or `entitlements.roles`.
     #[serde(default = "default_roles_claim")]
     pub roles_claim: String,
 }
 
 fn default_roles_claim() -> String {
-    "realm_access.roles".to_owned()
+    "roles".to_owned()
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
@@ -399,7 +398,7 @@ pub struct DeviceSticker {
 pub struct DeviceConfig {
     pub device_id: String,
     /// Keycloak client ID of the device's MCP token.
-    pub azp: String,
+    pub client_id: String,
     /// Env var holding the Pi-only bind secret.
     pub bind_secret_env: String,
     pub stickers: Vec<DeviceSticker>,
@@ -419,8 +418,12 @@ pub(super) fn validate(c: &SchoolConfig, env: &Env<'_>) -> Vec<super::ConfigIssu
     }
     validate_server(&mut v, &c.server);
     v.url("auth.issuer", &c.auth.issuer);
-    if c.auth.audience.trim().is_empty() {
-        v.push("auth.audience", "must not be empty");
+    if c.auth
+        .roles_claim
+        .split('.')
+        .any(|key| key.trim().is_empty())
+    {
+        v.push("auth.roles_claim", "must be a dotted claim path");
     }
     v.unique("modules", c.modules.iter().map(String::as_str));
 
@@ -509,7 +512,7 @@ fn validate_devices(v: &mut Issues, devices: &[DeviceConfig], env: &Env<'_>) {
     for (i, d) in devices.iter().enumerate() {
         let f = format!("devices[{i}]");
         v.id(&format!("{f}.device_id"), &d.device_id);
-        v.id(&format!("{f}.azp"), &d.azp);
+        v.id(&format!("{f}.client_id"), &d.client_id);
         v.secret_env(&format!("{f}.bind_secret_env"), &d.bind_secret_env, env);
         v.unique(
             &format!("{f}.stickers"),

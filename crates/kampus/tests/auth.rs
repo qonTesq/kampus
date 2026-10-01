@@ -1,6 +1,7 @@
 //! OAuth resource protection over real HTTP: path-inserted metadata, the 401
 //! challenge, bad tokens in both auth modes, and per-request verification on
-//! legacy sessions. Signing keys are generated locally per run.
+//! legacy sessions. Signing keys are generated locally per run; tokens are
+//! broker-shaped (RFC 9068 `at+jwt`, the resource URL as audience, `client_id`).
 
 // Test-only crate: helpers outside #[test] fns may panic on setup failure.
 #![allow(
@@ -11,12 +12,13 @@
 )]
 
 use std::path::Path;
-use std::sync::OnceLock;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{Arc, OnceLock};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use aws_lc_rs::rand::SystemRandom;
 use aws_lc_rs::rsa::KeySize;
-use aws_lc_rs::signature::{KeyPair as _, RSA_PKCS1_SHA256, RsaKeyPair};
+use aws_lc_rs::signature::{Ed25519KeyPair, KeyPair as _, RSA_PKCS1_SHA256, RsaKeyPair};
 use kampus::{App, AppOptions};
 use kampus_core::auth::KeySource;
 use kampus_core::config::{AuthMode, Env, PolicyConfig, SchoolConfig};
@@ -26,50 +28,106 @@ use tokio_util::sync::CancellationToken;
 const CURRENT: &str = "2026-07-28";
 const LEGACY: &str = "2025-11-25";
 /// From schools/temple/school.yaml (local development values).
-const ISSUER: &str = "http://127.0.0.1:8180/realms/kampus";
+const RESOURCE: &str = "http://127.0.0.1:8080/mcp";
 const METADATA_URL: &str = "http://127.0.0.1:8080/.well-known/oauth-protected-resource/mcp";
+
+fn temple_dir() -> std::path::PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../schools/temple")
+}
+
+/// The issuer configured in Temple's school.yaml.
+fn issuer() -> &'static str {
+    static ISSUER: OnceLock<String> = OnceLock::new();
+    ISSUER.get_or_init(|| {
+        SchoolConfig::load(&temple_dir().join("school.yaml"))
+            .unwrap()
+            .auth
+            .issuer
+            .to_string()
+    })
+}
 
 // ---- keys and tokens --------------------------------------------------------
 
+enum Pair {
+    Rsa(RsaKeyPair),
+    Ed25519(Ed25519KeyPair),
+}
+
 struct TestKey {
     kid: &'static str,
-    pair: RsaKeyPair,
+    pair: Pair,
 }
 
 impl TestKey {
-    fn new(kid: &'static str) -> Self {
+    fn ed25519(kid: &'static str) -> Self {
+        let pkcs8 = Ed25519KeyPair::generate_pkcs8(&SystemRandom::new()).unwrap();
         Self {
             kid,
-            pair: RsaKeyPair::generate(KeySize::Rsa2048).unwrap(),
+            pair: Pair::Ed25519(Ed25519KeyPair::from_pkcs8(pkcs8.as_ref()).unwrap()),
         }
     }
 
-    fn jwks(&self) -> Value {
-        let public = self.pair.public_key();
-        json!({ "keys": [{
-            "kty": "RSA", "use": "sig", "alg": "RS256", "kid": self.kid,
-            "n": b64(public.modulus().big_endian_without_leading_zero()),
-            "e": b64(public.exponent().big_endian_without_leading_zero()),
-        }] })
+    fn rsa(kid: &'static str) -> Self {
+        Self {
+            kid,
+            pair: Pair::Rsa(RsaKeyPair::generate(KeySize::Rsa2048).unwrap()),
+        }
     }
 
-    fn token(&self, claims: &Value) -> String {
-        let header = json!({ "alg": "RS256", "typ": "JWT", "kid": self.kid });
+    fn alg(&self) -> &'static str {
+        match self.pair {
+            Pair::Rsa(_) => "RS256",
+            Pair::Ed25519(_) => "EdDSA",
+        }
+    }
+
+    fn jwk(&self) -> Value {
+        match &self.pair {
+            Pair::Rsa(pair) => {
+                let public = pair.public_key();
+                json!({
+                    "kty": "RSA", "use": "sig", "alg": "RS256", "kid": self.kid,
+                    "n": b64(public.modulus().big_endian_without_leading_zero()),
+                    "e": b64(public.exponent().big_endian_without_leading_zero()),
+                })
+            }
+            Pair::Ed25519(pair) => json!({
+                "kty": "OKP", "crv": "Ed25519", "use": "sig", "alg": "EdDSA", "kid": self.kid,
+                "x": b64(pair.public_key().as_ref()),
+            }),
+        }
+    }
+
+    /// Sign with this key, whatever the header claims.
+    fn sign(&self, header: &Value, claims: &Value) -> String {
         let input = format!(
             "{}.{}",
             b64(header.to_string().as_bytes()),
             b64(claims.to_string().as_bytes())
         );
-        let mut signature = vec![0; self.pair.public_modulus_len()];
-        self.pair
-            .sign(
-                &RSA_PKCS1_SHA256,
-                &SystemRandom::new(),
-                input.as_bytes(),
-                &mut signature,
-            )
-            .unwrap();
+        let signature = match &self.pair {
+            Pair::Rsa(pair) => {
+                let mut signature = vec![0; pair.public_modulus_len()];
+                pair.sign(
+                    &RSA_PKCS1_SHA256,
+                    &SystemRandom::new(),
+                    input.as_bytes(),
+                    &mut signature,
+                )
+                .unwrap();
+                signature
+            }
+            Pair::Ed25519(pair) => pair.sign(input.as_bytes()).as_ref().to_vec(),
+        };
         format!("{input}.{}", b64(&signature))
+    }
+
+    fn token(&self, claims: &Value) -> String {
+        self.sign(
+            &json!({ "alg": self.alg(), "typ": "at+jwt", "kid": self.kid }),
+            claims,
+        )
     }
 }
 
@@ -88,9 +146,18 @@ fn b64(bytes: &[u8]) -> String {
     out
 }
 
-fn realm_key() -> &'static TestKey {
-    static KEY: OnceLock<TestKey> = OnceLock::new();
-    KEY.get_or_init(|| TestKey::new("realm-key"))
+/// The issuer's keys: Ed25519 (default) and RSA.
+fn issuer_keys() -> &'static [TestKey; 2] {
+    static KEYS: OnceLock<[TestKey; 2]> = OnceLock::new();
+    KEYS.get_or_init(|| [TestKey::ed25519("issuer-ed"), TestKey::rsa("issuer-rsa")])
+}
+
+fn issuer_key() -> &'static TestKey {
+    &issuer_keys()[0]
+}
+
+fn issuer_jwks() -> Value {
+    json!({ "keys": issuer_keys().iter().map(TestKey::jwk).collect::<Vec<_>>() })
 }
 
 fn now() -> i64 {
@@ -103,11 +170,11 @@ fn now() -> i64 {
     .unwrap()
 }
 
-fn claims(azp: &str, exp_offset: i64) -> Value {
+fn claims(client_id: &str, exp_offset: i64) -> Value {
     json!({
-        "iss": ISSUER, "aud": ["kampus-temple", "account"], "sub": "synthetic-student-a",
-        "azp": azp, "typ": "Bearer", "exp": now() + exp_offset, "iat": now(),
-        "scope": "openid profile", "realm_access": { "roles": ["student"] },
+        "iss": issuer(), "aud": RESOURCE, "sub": "synthetic-student-a",
+        "client_id": client_id, "exp": now() + exp_offset, "iat": now(),
+        "scope": "openid profile", "roles": ["student"],
     })
 }
 
@@ -117,8 +184,14 @@ fn with(key: &str, value: Value) -> Value {
     c
 }
 
+fn without(key: &str) -> Value {
+    let mut c = claims("kampus-claude", 300);
+    c.as_object_mut().unwrap().remove(key);
+    c
+}
+
 fn bearer(claims: &Value) -> String {
-    format!("Bearer {}", realm_key().token(claims))
+    format!("Bearer {}", issuer_key().token(claims))
 }
 
 fn valid() -> String {
@@ -155,7 +228,7 @@ async fn spawn(mode: AuthMode) -> Server {
 }
 
 async fn spawn_with(mode: AuthMode, edit: impl FnOnce(&mut SchoolConfig)) -> Server {
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../schools/temple");
+    let root = temple_dir();
     let mut school = SchoolConfig::load(&root.join("school.yaml")).unwrap();
     school.auth.mode = mode;
     edit(&mut school);
@@ -164,7 +237,7 @@ async fn spawn_with(mode: AuthMode, edit: impl FnOnce(&mut SchoolConfig)) -> Ser
         has_var: &|_| true,
         sandbox_compiled: false,
     };
-    let keys = KeySource::from_jwks_json(&realm_key().jwks()).unwrap();
+    let keys = KeySource::from_jwks_json(&issuer_jwks()).unwrap();
     let log_path = audit_path();
     let policy_path = log_path.with_extension("yaml");
     std::fs::copy(root.join("policy.yaml"), &policy_path).unwrap();
@@ -340,7 +413,7 @@ async fn metadata_is_path_inserted_and_ignores_spoofed_hosts() {
         assert_eq!(response.status(), 200);
         let doc: Value = response.json().await.unwrap();
         assert_eq!(doc["resource"], "http://127.0.0.1:8080/mcp", "{name}");
-        assert_eq!(doc["authorization_servers"], json!([ISSUER]));
+        assert_eq!(doc["authorization_servers"], json!([issuer()]));
         assert_eq!(doc["bearer_methods_supported"], json!(["header"]));
         assert!(
             doc["scopes_supported"]
@@ -393,32 +466,194 @@ async fn valid_token_reaches_dispatch_on_both_protocol_versions() {
     assert_eq!(response.status(), 200);
 }
 
+/// The bad-token regression set (access-control spec), as named cases.
+#[allow(clippy::too_many_lines)] // one line per regression case
+fn bad_tokens() -> Vec<(&'static str, String)> {
+    let key = issuer_key();
+    let rsa = &issuer_keys()[1];
+    let signed = |header: Value| {
+        format!(
+            "Bearer {}",
+            key.sign(&header, &claims("kampus-claude", 300))
+        )
+    };
+    let generic = |typ: &str, extra: (&str, Value)| {
+        let mut c = claims("kampus-claude", 300);
+        c["typ"] = json!(typ);
+        c[extra.0] = extra.1;
+        format!(
+            "Bearer {}",
+            key.sign(&json!({ "alg": "EdDSA", "typ": "JWT", "kid": key.kid }), &c)
+        )
+    };
+    let mut both = claims("kampus-claude", 300);
+    both["azp"] = json!("kampus-chatgpt");
+    vec![
+        ("expired", expired()),
+        (
+            "wrong issuer",
+            bearer(&with("iss", json!("https://evil.example/auth"))),
+        ),
+        (
+            "issuer trailing slash",
+            bearer(&with(
+                "iss",
+                json!(format!("{}/", issuer().trim_end_matches('/'))),
+            )),
+        ),
+        (
+            "audience alias",
+            bearer(&with("aud", json!("kampus-temple"))),
+        ),
+        (
+            "other school audience",
+            bearer(&with("aud", json!("http://127.0.0.1:8090/mcp"))),
+        ),
+        (
+            "audience trailing slash",
+            bearer(&with("aud", json!(format!("{RESOURCE}/")))),
+        ),
+        (
+            "audience case variant",
+            bearer(&with("aud", json!("http://127.0.0.1:8080/MCP"))),
+        ),
+        ("missing aud", bearer(&without("aud"))),
+        ("missing client identity", bearer(&without("client_id"))),
+        ("empty client_id", bearer(&with("client_id", json!("")))),
+        ("null client_id", bearer(&with("client_id", json!(null)))),
+        (
+            "array client_id",
+            bearer(&with("client_id", json!(["kampus-claude"]))),
+        ),
+        ("client_id/azp mismatch", bearer(&both)),
+        ("future iat", bearer(&with("iat", json!(now() + 600)))),
+        ("missing iat", bearer(&without("iat"))),
+        (
+            "lifetime over the cap",
+            bearer(&with("exp", json!(now() + 3 * 3600))),
+        ),
+        ("cnf present", bearer(&with("cnf", json!({ "jkt": "abc" })))),
+        (
+            "bad signature",
+            format!(
+                "Bearer {}",
+                TestKey::ed25519("issuer-ed").token(&claims("kampus-claude", 300))
+            ),
+        ),
+        (
+            "alg none",
+            format!(
+                "Bearer {}.{}.",
+                b64(json!({ "alg": "none", "typ": "at+jwt", "kid": key.kid })
+                    .to_string()
+                    .as_bytes()),
+                b64(claims("kampus-claude", 300).to_string().as_bytes())
+            ),
+        ),
+        (
+            "alg HS256",
+            signed(json!({ "alg": "HS256", "typ": "at+jwt", "kid": key.kid })),
+        ),
+        (
+            "alg HS512",
+            signed(json!({ "alg": "HS512", "typ": "at+jwt", "kid": key.kid })),
+        ),
+        (
+            "unknown kid",
+            format!(
+                "Bearer {}",
+                TestKey::ed25519("stranger").token(&claims("kampus-claude", 300))
+            ),
+        ),
+        (
+            "Ed25519 key with ES256 header",
+            signed(json!({ "alg": "ES256", "typ": "at+jwt", "kid": key.kid })),
+        ),
+        (
+            "RSA key with EdDSA header",
+            format!(
+                "Bearer {}",
+                rsa.sign(
+                    &json!({ "alg": "EdDSA", "typ": "at+jwt", "kid": rsa.kid }),
+                    &claims("kampus-claude", 300)
+                )
+            ),
+        ),
+        ("ID token", generic("ID", ("nonce", json!("n-0S6")))),
+        (
+            "bearer look-alike with nonce",
+            generic("Bearer", ("nonce", json!("n-0S6"))),
+        ),
+        ("refresh token", generic("Refresh", ("sid", json!("s")))),
+        (
+            "conflicting marker under at+jwt",
+            bearer(&with("typ", json!("Refresh"))),
+        ),
+        ("not a JWT", "Bearer not.a.jwt".to_owned()),
+        ("wrong scheme", "Basic dXNlcjpwYXNz".to_owned()),
+    ]
+}
+
+/// A SEPTA stub that counts every request it receives.
+async fn counting_septa() -> (String, Arc<AtomicUsize>) {
+    let hits = Arc::new(AtomicUsize::new(0));
+    let counter = Arc::clone(&hits);
+    let router = axum::Router::new().fallback(move || {
+        counter.fetch_add(1, Ordering::SeqCst);
+        async { ([("content-type", "application/json")], "{}") }
+    });
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    tokio::spawn(async move { axum::serve(listener, router).await.unwrap() });
+    (format!("http://{addr}"), hits)
+}
+
 #[tokio::test]
 async fn bad_tokens_are_refused_in_both_modes_and_never_become_guests() {
-    let stranger = TestKey::new("realm-key");
-    let mut no_azp = claims("kampus-claude", 300);
-    no_azp.as_object_mut().unwrap().remove("azp");
-    let bad = [
-        expired(),
-        bearer(&with("iss", json!("https://evil.example/realms/kampus"))),
-        bearer(&with("aud", json!("kampus-sju"))),
-        bearer(&with("azp", json!(""))),
-        bearer(&no_azp),
-        format!("Bearer {}", stranger.token(&claims("kampus-claude", 300))),
-        "Bearer not.a.jwt".to_owned(),
-        "Basic dXNlcjpwYXNz".to_owned(),
-    ];
+    let departures = json!({ "name": "next_departures", "arguments": { "stop": "Temple" } });
     for mode in [AuthMode::Oauth, AuthMode::NoLogin] {
-        let server = spawn(mode).await;
-        for token in &bad {
-            let response =
-                modern(&server, Some(token), "tools/call", call("next_departures")).await;
+        let (septa, hits) = counting_septa().await;
+        let server = spawn_with(mode, |school| point_septa_at(school, &septa)).await;
+        for (case, token) in bad_tokens() {
+            // A public tool a guest could use: no downgrade to guest.
+            let response = modern(&server, Some(&token), "tools/call", departures.clone()).await;
+            assert_eq!(response.status(), 401, "{mode:?}: {case}");
             assert_challenge(&response, true);
             // Even catalog requests refuse an invalid presented token.
-            let response = modern(&server, Some(token), "tools/list", json!({})).await;
+            let response = modern(&server, Some(&token), "tools/list", json!({})).await;
+            assert_eq!(response.status(), 401, "{mode:?}: {case} (catalog)");
             assert_challenge(&response, true);
+            // Legacy initialize, too.
+            let init = json!({ "jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {
+                "protocolVersion": LEGACY, "capabilities": {},
+                "clientInfo": { "name": "test", "version": "1.0" } } });
+            let response = legacy(&server, Some(&token), None, &init).await;
+            assert_eq!(response.status(), 401, "{mode:?}: {case} (initialize)");
         }
+        // Refused before policy, cache or provider: no call, no audit row.
+        assert_eq!(hits.load(Ordering::SeqCst), 0, "{mode:?}");
+        assert_eq!(admin_state(&server).await["audit"], json!([]), "{mode:?}");
+        // The same server still serves a valid token (the provider stub is reached).
+        let response = modern(&server, Some(&valid()), "tools/call", departures.clone()).await;
+        assert_eq!(response.status(), 200, "{mode:?}");
+        assert!(hits.load(Ordering::SeqCst) > 0, "{mode:?}");
     }
+}
+
+#[tokio::test]
+async fn transitional_generic_token_with_azp_and_audience_array_verifies() {
+    let server = spawn(AuthMode::Oauth).await;
+    let rsa = &issuer_keys()[1];
+    let mut c = without("client_id");
+    c["azp"] = json!("kampus-claude");
+    c["typ"] = json!("Bearer");
+    c["aud"] = json!([RESOURCE, "account"]);
+    let token = format!(
+        "Bearer {}",
+        rsa.sign(&json!({ "alg": "RS256", "typ": "JWT", "kid": rsa.kid }), &c)
+    );
+    let response = modern(&server, Some(&token), "tools/call", call("my_deadlines")).await;
+    assert_eq!(response.status(), 200);
 }
 
 #[tokio::test]
@@ -733,8 +968,8 @@ async fn finite_body(response: reqwest::Response) -> String {
         .unwrap()
 }
 
-fn user_token(subject: &str, azp: &str) -> String {
-    let mut c = claims(azp, 300);
+fn user_token(subject: &str, client_id: &str) -> String {
+    let mut c = claims(client_id, 300);
     c["sub"] = json!(subject);
     bearer(&c)
 }

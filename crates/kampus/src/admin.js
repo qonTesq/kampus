@@ -12,8 +12,8 @@ async function load() {
     const label = document.createElement('label');
     const input = document.createElement('input');
     input.type = 'checkbox'; input.checked = client.approved;
-    input.dataset.azp = client.azp;
-    label.append(input, document.createTextNode(`${client.workspace} (${client.azp})`));
+    input.dataset.clientId = client.client_id;
+    label.append(input, document.createTextNode(`${client.workspace} (${client.client_id})`));
     byId('clients').append(label);
   }
   byId('controls').disabled = !state.writable;
@@ -21,7 +21,7 @@ async function load() {
 }
 byId('switches').addEventListener('submit', async event => {
   event.preventDefault();
-  const approvals = Object.fromEntries([...byId('clients').querySelectorAll('input')].map(input => [input.dataset.azp, input.checked]));
+  const approvals = Object.fromEntries([...byId('clients').querySelectorAll('input')].map(input => [input.dataset.clientId, input.checked]));
   byId('controls').disabled = true;
   try {
     const response = await fetch('/state', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Kampus-CSRF': state.csrf }, body: JSON.stringify({ version: state.version, sensitive_enabled: byId('sensitive').checked, approvals }) });

@@ -41,11 +41,11 @@ fn setup() -> (Admin, Arc<PolicyEngine>, PathBuf) {
     (admin, engine, dir)
 }
 
-fn switches(azp: &str) -> Switches {
+fn switches(client_id: &str) -> Switches {
     Switches {
         version: 1,
         sensitive_enabled: true,
-        approvals: BTreeMap::from([(azp.to_owned(), true)]),
+        approvals: BTreeMap::from([(client_id.to_owned(), true)]),
     }
 }
 
@@ -64,7 +64,7 @@ async fn eligible_save_survives_reload_and_stale_save_is_refused() {
         saved
             .client_registry
             .iter()
-            .find(|c| c.azp == "kampus-chatgpt")
+            .find(|c| c.client_id == "kampus-chatgpt")
             .unwrap()
             .approved
     );
@@ -84,9 +84,9 @@ async fn eligible_save_survives_reload_and_stale_save_is_refused() {
 #[tokio::test]
 async fn device_unknown_and_self_registered_approval_cannot_change_policy() {
     let (admin, engine, dir) = setup();
-    for azp in ["kampus-mascot", "anonymous", "dcr-self-named-client"] {
+    for client_id in ["kampus-mascot", "anonymous", "dcr-self-named-client"] {
         assert!(matches!(
-            admin.save(switches(azp)).await,
+            admin.save(switches(client_id)).await,
             Err(AdminError::Invalid)
         ));
         assert_eq!(engine.current().version, 1);

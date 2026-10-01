@@ -24,8 +24,8 @@ pub enum AuthKind {
 pub struct Principal {
     /// Token `sub`, or a synthetic subject for bound devices, or [`Principal::GUEST_SUBJECT`].
     pub subject: String,
-    /// Validated token `azp`; `None` only for guests.
-    pub azp: Option<String>,
+    /// Validated token `client_id`; `None` only for guests.
+    pub client_id: Option<String>,
     pub roles: BTreeSet<Role>,
     pub scopes: BTreeSet<String>,
     pub auth_kind: AuthKind,
@@ -41,7 +41,7 @@ impl Principal {
     pub fn guest() -> Self {
         Self {
             subject: Self::GUEST_SUBJECT.to_owned(),
-            azp: None,
+            client_id: None,
             roles: BTreeSet::from([Role::Guest]),
             scopes: BTreeSet::new(),
             auth_kind: AuthKind::Guest,

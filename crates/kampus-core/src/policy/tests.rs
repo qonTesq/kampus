@@ -57,10 +57,10 @@ fn operation(name: &str) -> Operation {
     }
 }
 
-fn user(azp: &str, roles: &[Role], scopes: &[&str]) -> Principal {
+fn user(client_id: &str, roles: &[Role], scopes: &[&str]) -> Principal {
     Principal {
         subject: "synthetic-subject".into(),
-        azp: Some(azp.into()),
+        client_id: Some(client_id.into()),
         roles: roles.iter().copied().collect(),
         scopes: scopes.iter().map(|s| (*s).to_owned()).collect(),
         auth_kind: AuthKind::User,
@@ -68,8 +68,8 @@ fn user(azp: &str, roles: &[Role], scopes: &[&str]) -> Principal {
     }
 }
 
-fn student(azp: &str) -> Principal {
-    user(azp, &[Role::Student], &[])
+fn student(client_id: &str) -> Principal {
+    user(client_id, &[Role::Student], &[])
 }
 
 fn device(roles: &[Role]) -> Principal {
@@ -130,10 +130,10 @@ fn guest_reads_public_and_nothing_else() {
 
 #[test]
 fn unapproved_student_gets_public_and_proposal_but_not_sensitive() {
-    for azp in ["kampus-chatgpt", "dcr-4f2a", "some-unknown-client"] {
-        let s = student(azp);
+    for client_id in ["kampus-chatgpt", "dcr-4f2a", "some-unknown-client"] {
+        let s = student(client_id);
         for name in PUBLIC_READS {
-            assert!(allowed(&demo(), &s, name), "{azp} {name}");
+            assert!(allowed(&demo(), &s, name), "{client_id} {name}");
         }
         // book_study_room: student-only proposal, no write scope needed.
         assert_eq!(
@@ -142,7 +142,7 @@ fn unapproved_student_gets_public_and_proposal_but_not_sensitive() {
         );
         let d = decide(&demo(), &s, "my_deadlines");
         assert!(!d.allowed);
-        assert_eq!(d.rule_id, rules::SENSITIVE_CLIENT, "{azp}");
+        assert_eq!(d.rule_id, rules::SENSITIVE_CLIENT, "{client_id}");
         assert_eq!(d.effective_class, DataClass::Sensitive);
         assert_eq!(d.policy_version, 7);
     }
@@ -201,22 +201,22 @@ fn faculty_staff_and_admin() {
 fn self_registered_clients_cannot_borrow_approval() {
     // A DCR/CIMD client copying the approved workspace name, even marked approved.
     let mut policy = demo();
-    for (azp, registration) in [
+    for (client_id, registration) in [
         ("dcr-copy", ClientRegistration::Dcr),
         ("https://cimd.example/client", ClientRegistration::Cimd),
     ] {
         policy.client_registry.push(RegisteredClient {
-            azp: azp.into(),
+            client_id: client_id.into(),
             registration,
             approved: true,
             workspace: "Claude (school workspace)".into(),
         });
-        let d = decide(&policy, &student(azp), "my_deadlines");
-        assert_eq!(d.rule_id, rules::SENSITIVE_CLIENT, "{azp}");
+        let d = decide(&policy, &student(client_id), "my_deadlines");
+        assert_eq!(d.rule_id, rules::SENSITIVE_CLIENT, "{client_id}");
     }
-    // A pre-registered azp presented through a device token is still a device.
+    // A pre-registered client_id presented through a device token is still a device.
     let mut spoof = device(&[Role::Student]);
-    spoof.azp = Some("kampus-claude".into());
+    spoof.client_id = Some("kampus-claude".into());
     assert!(!allowed(&policy, &spoof, "my_deadlines"));
 }
 
@@ -334,7 +334,7 @@ fn swaps_are_atomic_and_versioned() {
     // The demo switch: approve the existing pre-registered ChatGPT entry.
     let mut next = demo();
     for c in &mut next.client_registry {
-        if c.azp == "kampus-chatgpt" {
+        if c.client_id == "kampus-chatgpt" {
             c.approved = true;
         }
     }

@@ -11,8 +11,6 @@ server:
 auth:
   mode: oauth
   issuer: http://127.0.0.1:8180/realms/kampus
-  audience: kampus-sju
-  roles_claim: realm_access.roles
 modules: [rooms, transit]
 sandbox:
   enabled: false

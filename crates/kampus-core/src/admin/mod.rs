@@ -47,7 +47,7 @@ pub struct Switches {
 
 #[derive(Debug, Serialize)]
 pub struct ClientSwitch {
-    pub azp: String,
+    pub client_id: String,
     pub workspace: String,
     pub approved: bool,
 }
@@ -132,7 +132,7 @@ impl Admin {
                 .iter()
                 .filter(|c| c.registration == ClientRegistration::PreRegisteredConfidential)
                 .map(|c| ClientSwitch {
-                    azp: c.azp.clone(),
+                    client_id: c.client_id.clone(),
                     workspace: c.workspace.clone(),
                     approved: c.approved,
                 })
@@ -153,12 +153,13 @@ impl Admin {
         }
         let mut candidate = revision.config.clone();
         candidate.sensitive_enabled = switches.sensitive_enabled;
-        for (azp, approved) in switches.approvals {
+        for (client_id, approved) in switches.approvals {
             let client = candidate
                 .client_registry
                 .iter_mut()
                 .find(|c| {
-                    c.azp == azp && c.registration == ClientRegistration::PreRegisteredConfidential
+                    c.client_id == client_id
+                        && c.registration == ClientRegistration::PreRegisteredConfidential
                 })
                 .ok_or(AdminError::Invalid)?;
             client.approved = approved;
@@ -183,7 +184,7 @@ impl Admin {
                 timestamp: Utc::now(),
                 school_id: self.school.school.id.clone(),
                 user_hash: ADMIN_MARKER.into(),
-                azp: None,
+                client_id: None,
                 tool: "admin_policy".into(),
                 data_class: DataClass::Public,
                 decision: AuditDecision::Allow,

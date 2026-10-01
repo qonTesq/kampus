@@ -12,15 +12,15 @@ tier_mapping:
   confidential: confidential
 
 client_registry:
-  - azp: kampus-claude
+  - client_id: kampus-claude
     registration: pre_registered_confidential
     approved: true
     workspace: Claude (school workspace)
-  - azp: kampus-chatgpt
+  - client_id: kampus-chatgpt
     registration: pre_registered_confidential
     approved: false
     workspace: ChatGPT (school workspace)
-  - azp: kampus-mascot
+  - client_id: kampus-mascot
     registration: device
     approved: false
     workspace: Mascot device

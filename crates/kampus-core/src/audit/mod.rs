@@ -1,7 +1,7 @@
 //! Metadata-only JSONL audit log implementing
 //! [`crate::contracts::AuditSink`]. OWNED BY auth-policy-audit.
 //!
-//! One line per [`AuditEvent`]: timestamp, school, salted subject hash, azp,
+//! One line per [`AuditEvent`]: timestamp, school, salted subject hash, `client_id`,
 //! tool, effective class, decision, rule, latency and policy version. The
 //! event type has no field for arguments, results, raw subjects, IPs or
 //! tokens. Rows older than the retention window are pruned on startup and
