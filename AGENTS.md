@@ -85,3 +85,12 @@ The toolchain is pinned in `rust-toolchain.toml`, so artifacts stay compatible a
 ## Commit style
 
 Small, focused commits on your branch. Imperative subject of at most 72 characters (`Add LibCal availability parser`), a short bullet body when useful, and a `Co-Authored-By:` trailer for the agent. Never commit secrets, `.env`, tokens, cookies or `target/`.
+
+## Monorepo areas
+
+Everything above is about the Rust server. Two other areas live here, each with its own instructions and CI:
+
+- `clients/owl/`: the Python voice client for the Raspberry Pi mascot. Read `clients/owl/AGENTS.md`.
+- `hardware/owl/`: CAD, print files, wiring and the parts list (large files via Git LFS).
+
+Ownership is in `.github/CODEOWNERS`. The server's Rust rules don't apply to these folders; the rules on secrets, privacy and commits do.

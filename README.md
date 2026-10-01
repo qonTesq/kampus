@@ -88,17 +88,23 @@ For the full setup, with school login, the synthetic Canvas and booking (`--feat
 
 ## Repository layout
 
+kampus is a monorepo: the Rust server, the owl voice client and its hardware.
+
 ```
-crates/kampus          the binary: MCP mapping (rmcp), HTTP router, login middleware, admin page
+crates/kampus          the server binary: MCP mapping (rmcp), HTTP router, login middleware, admin page
 crates/kampus-core     contracts, config, policy, audit, dispatch, output sanitizing
 crates/kampus-*        vendor adapters: libcal, banner, transit, hours, canvas; device binding
 modules/*              one folder per capability: module.yaml + a small crate
 schools/<id>/          school.yaml and policy.yaml per school
 fixtures/              recorded real responses used by tests
-openspec/specs/        the living specification
-deploy/keycloak/       Keycloak + Caddy deployment files
+clients/owl/           the talking mascot (Python, Raspberry Pi)
+hardware/owl/          the mascot's CAD, print files, wiring and parts list
+deploy/                server deployment, and the owl's Pi setup (deploy/owl-pi)
+openspec/              the living specification and the change history
 docs/                  contracts, auth, transit, device API, demo, research
 ```
+
+Each part has its own CI (`.github/workflows/server.yml`, `owl.yml`), so a change in one doesn't rebuild the others.
 
 ## Development
 

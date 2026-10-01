@@ -1,0 +1,44 @@
+name: owl
+
+# The voice mascot client (Python, Raspberry Pi). Runs only when its files change.
+on:
+  push:
+    branches: [master]
+    paths:
+      - "clients/owl/**"
+      - ".github/workflows/owl.yml"
+  pull_request:
+    paths:
+      - "clients/owl/**"
+      - ".github/workflows/owl.yml"
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: clients/owl
+
+jobs:
+  check:
+    name: lint + test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Detect the Python project
+        id: project
+        run: |
+          if [ -f pyproject.toml ]; then echo "present=true" >> "$GITHUB_OUTPUT"; else echo "present=false" >> "$GITHUB_OUTPUT"; echo "No pyproject.toml yet; nothing to check."; fi
+      - uses: astral-sh/setup-uv@v6
+        if: steps.project.outputs.present == 'true'
+      - name: Install
+        if: steps.project.outputs.present == 'true'
+        run: uv sync --locked --all-groups
+      - name: Lint
+        if: steps.project.outputs.present == 'true'
+        run: |
+          uv run ruff check .
+          uv run ruff format --check .
+      - name: Test
+        if: steps.project.outputs.present == 'true'
+        run: uv run pytest

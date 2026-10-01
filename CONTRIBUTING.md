@@ -33,6 +33,15 @@ If the school uses a vendor kampus already supports (LibCal, Banner 9, GTFS), no
 
 Larger changes start as an [OpenSpec](https://github.com/Fission-AI/OpenSpec) change in `openspec/changes/<name>/` (proposal, design, specs, tasks). The living specs are in `openspec/specs/`.
 
+## Owl client and hardware
+
+The talking mascot lives in [`clients/owl/`](clients/owl/) (Python) and [`hardware/owl/`](hardware/owl/) (CAD, wiring, parts). Read [`clients/owl/AGENTS.md`](clients/owl/AGENTS.md) first.
+
+1. **Fork** the repository (or create a branch if you're a collaborator), and run `git lfs install` once if you'll add CAD or print files.
+2. Bringing existing work from another repository? Keep its history: rewrite it into `clients/owl/` (for example `git filter-repo --to-subdirectory-filter clients/owl`), then merge it into your branch with `--allow-unrelated-histories`.
+3. Use a commit email that's linked to your GitHub account, so the commits count as yours.
+4. Open a pull request against `master`. It's merged with a **merge commit** (not squashed), so every commit keeps its author.
+
 ## Before opening a pull request
 
 ```bash

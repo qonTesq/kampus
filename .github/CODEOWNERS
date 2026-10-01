@@ -1,0 +1,17 @@
+# Who reviews what. GitHub requests these reviewers automatically on pull requests.
+# The last matching line wins.
+
+# Default: everything not listed below
+*                                   @qonTesq
+
+# Owl client (Python, Raspberry Pi) and the physical build.
+# When the hardware teammate joins, replace HARDWARE_OWNER with their GitHub username
+# and uncomment these lines.
+# /clients/owl/                     @HARDWARE_OWNER @qonTesq
+# /hardware/                        @HARDWARE_OWNER
+# /deploy/owl-pi/                   @HARDWARE_OWNER @qonTesq
+
+# Voice, the Gemini brain and the kampus MCP integration stay with the software owner.
+/clients/owl/src/owl/brain/         @qonTesq
+/clients/owl/src/owl/voice/         @qonTesq
+/clients/owl/src/owl/kampus/        @qonTesq

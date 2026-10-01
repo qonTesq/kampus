@@ -1,9 +1,30 @@
-name: CI
+name: server
 
+# The Rust MCP server. Runs only when server code, its config or its test data change.
 on:
   push:
     branches: [master]
+    paths:
+      - "crates/**"
+      - "modules/**"
+      - "schools/**"
+      - "fixtures/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "rust-toolchain.toml"
+      - "clippy.toml"
+      - ".github/workflows/server.yml"
   pull_request:
+    paths:
+      - "crates/**"
+      - "modules/**"
+      - "schools/**"
+      - "fixtures/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "rust-toolchain.toml"
+      - "clippy.toml"
+      - ".github/workflows/server.yml"
 
 permissions:
   contents: read

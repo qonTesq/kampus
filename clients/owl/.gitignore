@@ -1,0 +1,13 @@
+# Secrets and local config
+.env
+config/config.toml
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+
+# Large local assets (download them with scripts/setup_pi.sh)
+models/
