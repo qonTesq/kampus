@@ -344,3 +344,7 @@ CIMD, static confidential clients, the provider-neutral RS and the personal swit
 ## Open Questions
 
 - Which real OIDC IdP backs the live upstream run (task 6.7): a school test tenant if one is offered, otherwise a free developer tenant of a mainstream IdP? This doesn't change specs or tasks; the run records whichever is used.
+
+## Owner sign-off
+
+2026-10-01: the project owner approved every sign-off item listed in this change (the frozen `school.yaml`/`policy.yaml` schema changes, contract updates, new dependencies and cargo features). Implementation may proceed.

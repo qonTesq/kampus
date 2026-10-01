@@ -150,3 +150,7 @@ Rollback: revert the merge and restore the moved audit file. No other data exist
 ## Open Questions
 
 - Does the ChatGPT connector honor an HTTP 401 on a later `tools/call` (not only at connect)? This is answered by the `auth-broker` live run. It doesn't change this change's tasks.
+
+## Owner sign-off
+
+2026-10-01: the project owner approved every sign-off item listed in this change (the frozen `school.yaml`/`policy.yaml` schema changes, contract updates, new dependencies and cargo features). Implementation may proceed.
