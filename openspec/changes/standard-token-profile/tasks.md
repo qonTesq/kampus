@@ -4,8 +4,8 @@ Branch `change/standard-token-profile` from master. Every task is ≤ 2 h, and e
 
 ## 1. Sign-off and contract record (checkpoint: approved contract, no code) — 1 h
 
-- [ ] 1.1 Present sign-off items S1–S7 (design "Sign-off") to the owner and record the decisions, including the S4 rename choice and the S6 sweep pattern. Evidence: a dated owner-approval note appended to `docs/contracts/README.md` by the integrator; no schema edits before it exists. (45 min)
-- [ ] 1.2 Integrator updates the `school.yaml`/`policy.yaml` field reference in `docs/contracts/README.md` (auth fields, new policy fields, rule IDs, HTTP 401/403/429 note). Evidence: README diff reviewed; `openspec validate --all --strict` passes. (15 min)
+- [x] 1.1 Present sign-off items S1–S7 (design "Sign-off") to the owner and record the decisions, including the S4 rename choice and the S6 sweep pattern. Evidence: a dated owner-approval note appended to `docs/contracts/README.md` by the integrator; no schema edits before it exists. (45 min)
+- [x] 1.2 Integrator updates the `school.yaml`/`policy.yaml` field reference in `docs/contracts/README.md` (auth fields, new policy fields, rule IDs, HTTP 401/403/429 note). Evidence: README diff reviewed; `openspec validate --all --strict` passes. (15 min)
 
 ## 2. Verifier profile (checkpoint: broker-shaped tokens verify, legacy shape rejected) — 6 h
 
