@@ -772,7 +772,7 @@ async fn preflight_lets_guest_allowed_calls_proceed_without_side_effects() {
         .await;
     assert_eq!(p, Preflight::Proceed);
     // Proceeding is not admission or audit: the dispatcher does both later.
-    assert!(h.rows().is_empty());
+    assert_eq!(h.rows(), [] as [AuditEvent; 0]);
     assert_eq!(h.total_calls(), 0);
 }
 
@@ -848,7 +848,7 @@ async fn preflight_asks_for_a_step_up_only_when_a_scope_is_missing() {
             .await,
         Preflight::Proceed
     );
-    assert!(h.rows().is_empty());
+    assert_eq!(h.rows(), [] as [AuditEvent; 0]);
 }
 
 #[tokio::test]

@@ -154,7 +154,7 @@ async fn find_filters_by_window_and_capacity() {
     assert_eq!(names, ["387", "405"], "only the 12- and 14-seat rooms");
     for r in &found.value {
         assert!(r.capacity.unwrap() >= 10);
-        assert!(!r.slots.is_empty());
+        assert_ne!(r.slots, [] as [TimeSlot; 0]);
         for s in &r.slots {
             assert!(s.start >= q.start && s.end <= q.end);
         }
@@ -183,7 +183,7 @@ async fn window_across_midnight_reads_both_local_days() {
     let provider = libcal("temple", &server, &runtime);
     let q = query("2026-09-26T22:00:00-04:00", "2026-09-27T12:30:00-04:00");
     let found = provider.find(&q).await.unwrap().value;
-    assert!(!found.is_empty());
+    assert_ne!(found, [] as [Room; 0]);
     assert!(
         found
             .iter()
@@ -207,7 +207,7 @@ async fn recorded_empty_day_is_ok_and_empty() {
     let runtime = Arc::new(SharedRuntime::new());
     let provider = libcal("temple", &server, &runtime);
     let q = query("2026-09-26T09:00:00-04:00", "2026-09-26T20:00:00-04:00");
-    assert!(provider.find(&q).await.unwrap().value.is_empty());
+    assert_eq!(provider.find(&q).await.unwrap().value, [] as [Room; 0]);
 }
 
 #[tokio::test]
@@ -437,7 +437,7 @@ async fn short_retry_after_is_honored_before_the_retry() {
     let q = query("2026-09-27T14:00:00-04:00", "2026-09-27T16:00:00-04:00");
     let started = std::time::Instant::now();
     let found = provider_at(&base).find(&q).await.unwrap();
-    assert!(!found.value.is_empty());
+    assert_ne!(found.value, [] as [Room; 0]);
     assert!(started.elapsed() >= std::time::Duration::from_secs(1));
     assert_eq!(*hits.lock().unwrap(), 2);
 }

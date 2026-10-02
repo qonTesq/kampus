@@ -130,18 +130,6 @@ impl Rooms {
             None => Err(ToolError::unsupported_source()),
         }
     }
-
-    #[cfg(not(feature = "sandbox"))]
-    #[allow(clippy::unused_async)]
-    async fn propose(&self, _args: Value, _ctx: &CallContext) -> Result<ToolSuccess, ToolError> {
-        Err(ToolError::unsupported_source())
-    }
-
-    #[cfg(not(feature = "sandbox"))]
-    #[allow(clippy::unused_async)]
-    async fn confirm(&self, _args: Value, _ctx: &CallContext) -> Result<ToolSuccess, ToolError> {
-        Err(ToolError::unsupported_source())
-    }
 }
 
 impl Module for Rooms {
@@ -158,8 +146,13 @@ impl Module for Rooms {
         Box::pin(async move {
             match tool {
                 "find_study_room" => self.find(args, ctx).await,
+                #[cfg(feature = "sandbox")]
                 "book_study_room" => self.propose(args, ctx).await,
+                #[cfg(feature = "sandbox")]
                 "confirm_booking" => self.confirm(args, ctx).await,
+                // The booking simulation is sandbox-only; production has no booking provider.
+                #[cfg(not(feature = "sandbox"))]
+                "book_study_room" | "confirm_booking" => Err(ToolError::unsupported_source()),
                 _ => Err(ToolError::configuration_error()),
             }
         })

@@ -7,7 +7,7 @@ kampus is an open-source [MCP](https://modelcontextprotocol.io) server that conn
 🥈 **Runner-up (2nd place) at OwlHacks 2026** (September 2026).
 
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
-![Rust 1.96](https://img.shields.io/badge/rust-1.96-orange.svg)
+![Rust 1.99](https://img.shields.io/badge/rust-1.99-orange.svg)
 ![MCP 2026-07-28 + 2025-11-25](https://img.shields.io/badge/MCP-2026--07--28%20%2B%202025--11--25-purple.svg)
 
 ---
@@ -70,7 +70,7 @@ Adding a school means writing a `school.yaml` and a `policy.yaml`. See [CONTRIBU
 
 ## Quickstart (local, no login)
 
-You need Rust 1.96 (pinned in `rust-toolchain.toml`).
+You need Rust 1.99 (pinned in `rust-toolchain.toml`).
 
 ```bash
 git clone <this repo> && cd kampus

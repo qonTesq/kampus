@@ -3,7 +3,10 @@
 use chrono::NaiveDate;
 use chrono_tz::America::New_York;
 use kampus_core::config::{Library, ParserProfile};
-use kampus_core::contracts::{ErrorCode, providers::OpenStatus};
+use kampus_core::contracts::{
+    ErrorCode,
+    providers::{OpenInterval, OpenStatus},
+};
 use kampus_hours::HoursParser;
 
 const HTML: &str =
@@ -76,7 +79,7 @@ fn recorded_closed_and_full_day_are_explicit() {
         .parse(HTML, &lib, date, New_York)
         .unwrap();
     assert_eq!(result.status, OpenStatus::Closed);
-    assert!(result.intervals.is_empty());
+    assert_eq!(result.intervals, [] as [OpenInterval; 0]);
     assert!(result.note.unwrap().contains("reservation"));
     let lib = library("/spaces/24-7-study-area");
     let result = HoursParser::new(&lib.parser)
@@ -119,7 +122,7 @@ fn derived_closed_unknown_and_exception_override() {
         let html = HTML.replace("9:00 am - 5:00 pm", text);
         let result = parse(&html, "2026-09-26").unwrap();
         assert_eq!(result.status, status);
-        assert!(result.intervals.is_empty());
+        assert_eq!(result.intervals, [] as [OpenInterval; 0]);
     }
     let html = HTML.replacen(
         "9:00 am - 5:00 pm",

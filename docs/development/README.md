@@ -1,7 +1,7 @@
 # Development
 
 ## Toolchain
-- Rust `1.96.0` (stable, x86_64-pc-windows-msvc on the dev machine), pinned in `rust-toolchain.toml`. Edition 2024, resolver 3.
+- Rust `1.99.0` (stable, x86_64-pc-windows-msvc on the dev machine), pinned in `rust-toolchain.toml`. Edition 2024, resolver 3.
 - `rmcp = "=3.4.1"` with `server` + `transport-streamable-http-server`. `Cargo.lock` is committed.
 - Shared target directory: `CARGO_TARGET_DIR=E:/cargo-target/kampus` (see root `AGENTS.md`). `sccache` isn't installed.
 

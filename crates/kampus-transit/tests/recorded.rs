@@ -13,7 +13,9 @@ use chrono_tz::America::New_York;
 use kampus_core::config::GtfsValidity;
 use kampus_core::contracts::ErrorCode;
 use kampus_core::contracts::SourceKind;
-use kampus_core::contracts::providers::{DepartureQuery, ServiceStatus, Timing, TransitProvider};
+use kampus_core::contracts::providers::{
+    Departure, DepartureQuery, ServiceStatus, Timing, TransitProvider,
+};
 use kampus_transit::{GtfsProvider, GtfsSchedule, parse_arrivals};
 
 fn septa(fixture: &str) -> PathBuf {
@@ -118,14 +120,17 @@ fn recorded_subway_400_is_an_error_not_an_empty_board() {
 fn recorded_cynwyd_empty_board_is_success() {
     let (status, body) = recording("20260926T225827539240Z-cynwyd-arrivals");
     assert_eq!(status, 200);
-    assert!(parse_arrivals(status, &body, New_York).unwrap().is_empty());
+    assert_eq!(
+        parse_arrivals(status, &body, New_York).unwrap(),
+        [] as [Departure; 0]
+    );
 }
 
 #[test]
 fn recorded_evening_rail_board_has_departures() {
     let (status, body) = recording("20260926T225827539240Z-temple-arrivals");
     let board = parse_arrivals(status, &body, New_York).unwrap();
-    assert!(!board.is_empty());
+    assert_ne!(board, [] as [Departure; 0]);
     assert!(
         board
             .iter()
@@ -163,7 +168,10 @@ fn derived_empty_board_is_the_only_empty_success() {
     // Derived: the recorded board's shape with both direction lists emptied.
     // Also test the object form independently of the recorded empty array form.
     let body = br#"{"Temple U Departures: September 26, 2026, 5:05 pm":[{"Northbound":[]},{"Southbound":[]}]}"#;
-    assert!(parse_arrivals(200, body, New_York).unwrap().is_empty());
+    assert_eq!(
+        parse_arrivals(200, body, New_York).unwrap(),
+        [] as [Departure; 0]
+    );
 }
 
 // ---------------------------------------------------------------- GTFS

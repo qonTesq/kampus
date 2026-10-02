@@ -12,7 +12,7 @@ use axum::response::{IntoResponse, Response};
 use axum::routing::get;
 use chrono::{DateTime, Utc};
 use kampus_core::contracts::providers::{
-    DeadlineProvider, DeadlineQuery, Deadlines, SubmissionStatus,
+    Deadline, DeadlineProvider, DeadlineQuery, Deadlines, SubmissionStatus,
 };
 use kampus_core::contracts::{ErrorCode, ToolError};
 use url::Url;
@@ -455,7 +455,7 @@ async fn expect_code(courses: Response, items: Response, code: ErrorCode) {
 #[tokio::test]
 async fn valid_empty_lists_are_an_empty_success() {
     let d = run(ok("[]"), ok("[]")).await.unwrap();
-    assert!(d.deadlines.is_empty());
+    assert_eq!(d.deadlines, [] as [Deadline; 0]);
     assert!(!d.truncated);
 }
 
