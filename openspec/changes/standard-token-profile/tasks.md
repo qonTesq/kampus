@@ -51,8 +51,8 @@ Branch `change/standard-token-profile` from master. Every task is ≤ 2 h, and e
 
 ## 8. Gate, review and integration (checkpoint: merged) — 2 h
 
-- [ ] 8.1 Forbidden-pattern review (all 12) against the diff, plus privacy evidence: challenge bodies and audit rows contain no arguments, tokens or content; `outputSchema` is unchanged for all seven tools. Evidence: a checklist in the merge note. (30 min)
-- [ ] 8.2 Gate once: `cargo fmt --all`; `cargo clippy --workspace --all-targets -- -D warnings`; `cargo test --workspace`; `cargo clippy --workspace --all-targets --features kampus/sandbox -- -D warnings`; `cargo test --workspace --features kampus/sandbox`; `openspec validate --all --strict`. Evidence: all pass with `CARGO_TARGET_DIR=E:/cargo-target/kampus`. (60 min)
+- [x] 8.1 Forbidden-pattern review (all 12) against the diff, plus privacy evidence: challenge bodies and audit rows contain no arguments, tokens or content; `outputSchema` is unchanged for all seven tools. Evidence: a checklist in the merge note. (30 min)
+- [x] 8.2 Gate once: `cargo fmt --all`; `cargo clippy --workspace --all-targets -- -D warnings`; `cargo test --workspace`; `cargo clippy --workspace --all-targets --features kampus/sandbox -- -D warnings`; `cargo test --workspace --features kampus/sandbox`; `openspec validate --all --strict`. Evidence: all pass with `CARGO_TARGET_DIR=E:/cargo-target/kampus`. (60 min)
 - [ ] 8.3 After the integrator merges and archives this change: run `rg -i "keycloak|realm_access|\b8180\b" --hidden -g '!.git'` and confirm every hit is under `openspec/changes/archive/` or `docs/research/`. Evidence: output recorded; any other hit is fixed in a follow-up commit before `auth-broker` task group 2 starts. (30 min)
 
 **Estimate: 28.5 h** (1 + 6 + 1.5 + 7 + 6 + 2 + 3 + 2), about four focused days.
