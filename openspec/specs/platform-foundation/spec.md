@@ -35,7 +35,7 @@ The platform SHALL register task-level modules from explicit descriptors with in
 
 ### Requirement: Dual protocol transport
 
-The server SHALL serve MCP 2026-07-28 and 2025-11-25 on the configured Streamable HTTP endpoint, preserving the appropriate legacy session behavior and keeping credentials and identity request-scoped. Each legacy session SHALL be owned by the verified identity (school, subject, authorized party, authentication kind and device) that created it; a session created without credentials MAY be claimed once by the first verified identity that uses it and is then locked to that identity. Any request (POST, GET or DELETE) naming a session its caller does not own SHALL receive the same response as an unknown session, revealing nothing about the session. The server SHALL NOT replay buffered results through stream resumption; a result can only be delivered by a call that passes current policy and is audited.
+The server SHALL serve MCP 2026-07-28 and 2025-11-25 on the configured Streamable HTTP endpoint, preserving the appropriate legacy session behavior and keeping credentials and identity request-scoped. Each legacy session SHALL be owned by the verified identity (school, subject, canonical client identity, authentication kind and device) that created it; a session created without credentials MAY be claimed once by the first verified identity that uses it and is then locked to that identity. Any request (POST, GET or DELETE) naming a session its caller does not own SHALL receive the same response as an unknown session, revealing nothing about the session. This applies to tokenless requests admitted as guests under lazy authentication. The server SHALL NOT replay buffered results through stream resumption; a result can only be delivered by a call that passes current policy and is audited.
 
 #### Scenario: Current and legacy clients
 
@@ -52,6 +52,11 @@ The server SHALL serve MCP 2026-07-28 and 2025-11-25 on the configured Streamabl
 - **WHEN** a guest or another verified user sends GET (with or without `Last-Event-ID`), POST or DELETE with a session ID owned by an approved user
 - **THEN** each request receives 404 Not Found exactly as for a session that never existed, no result of the owner is delivered, and the owner's session keeps working
 
+#### Scenario: Same user through a different client
+
+- **WHEN** the owner's subject presents a valid token issued to a different client identity on the owner's session
+- **THEN** the request receives 404 exactly as for an unknown session
+
 #### Scenario: Owner attempts stream resumption
 
 - **WHEN** the owner of a legacy session sends GET with `Last-Event-ID` for an earlier response stream
@@ -59,7 +64,7 @@ The server SHALL serve MCP 2026-07-28 and 2025-11-25 on the configured Streamabl
 
 #### Scenario: Anonymous session upgraded by login
 
-- **WHEN** a legacy client initializes without credentials and later presents a verified token on the same session
+- **WHEN** a legacy client initializes without credentials, calls a public tool as a guest, and later presents a verified token on the same session
 - **THEN** the call is served for that user, and from then on requests on that session without that identity, including unauthenticated ones, receive 404
 
 ### Requirement: Safe output contract

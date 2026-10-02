@@ -6,7 +6,7 @@ context: |
   This plan covers software only: the Rust server, its configuration and served
   interfaces, including POST /device/bind. Exclude Pi code, voice clients, NFC
   wiring, audio, printing, and stretch tools.
-  Rust stack is fixed: rmcp 3.4, exact patch pinned with Cargo.lock, axum, tokio,
+  Rust stack is fixed: rmcp 3.5, exact patch pinned with Cargo.lock, axum, tokio,
   reqwest, serde, jsonwebtoken, scraper, prost. Vendor matching rmcp docs/examples.
   Workspace: kampus-core, kampus-libcal, kampus-banner, kampus-transit,
   kampus-hours, kampus-canvas, kampus-device, and kampus binary, invoked as
