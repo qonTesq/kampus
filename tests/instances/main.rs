@@ -53,7 +53,15 @@ impl Instance {
                 &format!("127.0.0.1:{}", original + 1),
                 &format!("127.0.0.1:{admin_port}"),
             )
-            .replace("http://127.0.0.1:8180/realms/kampus", issuer);
+            .lines()
+            .map(|line| {
+                if line.starts_with("  issuer:") {
+                    format!("  issuer: {issuer}\n")
+                } else {
+                    format!("{line}\n")
+                }
+            })
+            .collect::<String>();
         let config = dir.join(format!("{school}.yaml"));
         let policy = dir.join(format!("{school}-policy.yaml"));
         std::fs::write(&config, yaml).unwrap();
@@ -150,21 +158,34 @@ async fn call(instance: &Instance, token: &str, name: &str, args: Value) -> Valu
 async fn same_binary_processes_reject_foreign_tokens_and_keep_policy_and_audit_separate() {
     let temp = Temp::new();
     let key = std::sync::Arc::new(TestKey::new());
-    let realm = realm(std::sync::Arc::clone(&key)).await;
-    let temple = Instance::start("temple", &realm.base, &temp.path).await;
-    let sju = Instance::start("sju", &realm.base, &temp.path).await;
-    let temple_token = key.token(&realm.base, "kampus-temple", "kampus-claude");
-    let sju_token = key.token(&realm.base, "kampus-sju", "kampus-sju-claude");
+    let issuer = issuer(std::sync::Arc::clone(&key)).await;
+    let temple = Instance::start("temple", &issuer.base, &temp.path).await;
+    let sju = Instance::start("sju", &issuer.base, &temp.path).await;
+    // Each token names its own instance's resource URL as the audience.
+    let temple_token = key.token(
+        &issuer.base,
+        &format!("{}/mcp", temple.base),
+        "kampus-claude",
+    );
+    let sju_token = key.token(
+        &issuer.base,
+        &format!("{}/mcp", sju.base),
+        "kampus-sju-claude",
+    );
     for (instance, own, foreign) in [
         (&temple, &temple_token, &sju_token),
         (&sju, &sju_token, &temple_token),
     ] {
         let args = json!({"name":"library_hours", "arguments":{}});
-        assert_eq!(
-            rpc(&instance.base, foreign, "tools/call", args)
-                .await
-                .status(),
-            401
+        // Same issuer and key: only the audience (the other resource URL)
+        // differs, and the token is refused rather than run as a guest.
+        let refused = rpc(&instance.base, foreign, "tools/call", args).await;
+        assert_eq!(refused.status(), 401);
+        assert!(
+            refused.headers()["www-authenticate"]
+                .to_str()
+                .unwrap()
+                .contains("error=\"invalid_token\"")
         );
         let tools = body(rpc(&instance.base, own, "tools/list", json!({})).await).await;
         assert_eq!(tools["result"]["tools"].as_array().unwrap().len(), 7);
@@ -237,7 +258,7 @@ async fn same_binary_processes_reject_foreign_tokens_and_keep_policy_and_audit_s
         .unwrap();
     let response = client.post(format!("{}/state", sju.admin)).header("Origin", &sju.admin)
         .header("X-Kampus-CSRF", snapshot["csrf"].as_str().unwrap())
-        .json(&json!({"version":snapshot["version"],"sensitive_enabled":true,"approvals":{"kampus-sju-claude":true}})).send().await.unwrap();
+        .json(&json!({"version":snapshot["version"],"sensitive_enabled":true,"allow_self_registered_sensitive":false,"approvals":{"kampus-sju-claude":true}})).send().await.unwrap();
     assert_eq!(response.status(), 200);
     // The disabled SJU deadlines module is reached only after its policy allows.
     assert_eq!(
@@ -264,7 +285,7 @@ async fn same_binary_processes_reject_foreign_tokens_and_keep_policy_and_audit_s
                 "timestamp",
                 "school_id",
                 "user_hash",
-                "azp",
+                "client_id",
                 "tool",
                 "data_class",
                 "decision",

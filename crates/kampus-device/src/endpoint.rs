@@ -253,7 +253,7 @@ impl DeviceBindings {
             timestamp: self.clock.wall(),
             school_id: self.school_id.clone(),
             user_hash: self.hasher.user_hash(&principal),
-            azp: device.map(|d| d.azp.clone()),
+            client_id: device.map(|d| d.client_id.clone()),
             tool: "device.bind".to_owned(),
             data_class: DataClass::Public,
             decision: if allowed {

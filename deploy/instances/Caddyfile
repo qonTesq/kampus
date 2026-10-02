@@ -1,11 +1,30 @@
-# Include beside the existing Temple and Keycloak sites, not as a replacement.
-# Supply a stable DNS hostname in SJU_DOMAIN before validation/reload.
+# Caddy in front of the kampus instances on one host (Caddy runs on the host,
+# so upstreams are loopback). Supply stable DNS hostnames in KAMPUS_DOMAIN
+# (Temple) and SJU_DOMAIN before validating or reloading.
+#
+# Only the public MCP routes are proxied. Each instance's admin listener
+# (server.admin_listen) stays on loopback and is never routed here. The
+# authorization broker's /auth/* routes are added by the auth-broker change.
+{
+	email {$ACME_EMAIL}
+}
+
+{$KAMPUS_DOMAIN} {
+	@public path /mcp /mcp/* /.well-known/oauth-protected-resource /.well-known/oauth-protected-resource/mcp /device/bind
+	handle @public {
+		reverse_proxy 127.0.0.1:8080
+	}
+	handle {
+		respond 404
+	}
+}
+
 {$SJU_DOMAIN} {
-    @public path /mcp /mcp/* /.well-known/oauth-protected-resource/mcp /device/bind
-    handle @public {
-        reverse_proxy 127.0.0.1:8090
-    }
-    handle {
-        respond 404
-    }
+	@public path /mcp /mcp/* /.well-known/oauth-protected-resource /.well-known/oauth-protected-resource/mcp /device/bind
+	handle @public {
+		reverse_proxy 127.0.0.1:8090
+	}
+	handle {
+		respond 404
+	}
 }

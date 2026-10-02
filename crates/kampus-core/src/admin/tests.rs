@@ -26,7 +26,7 @@ fn setup() -> (Admin, Arc<PolicyEngine>, PathBuf) {
         "library_hours",
     ]
     .into_iter()
-    .map(str::to_owned)
+    .map(|t| (t.to_owned(), crate::config::tool_operation(t)))
     .collect();
     let engine = Arc::new(PolicyEngine::new(policy));
     let audit = Arc::new(JsonlAudit::open(dir.join("audit.jsonl"), 24).unwrap());
@@ -41,11 +41,12 @@ fn setup() -> (Admin, Arc<PolicyEngine>, PathBuf) {
     (admin, engine, dir)
 }
 
-fn switches(azp: &str) -> Switches {
+fn switches(client_id: &str) -> Switches {
     Switches {
         version: 1,
         sensitive_enabled: true,
-        approvals: BTreeMap::from([(azp.to_owned(), true)]),
+        allow_self_registered_sensitive: false,
+        approvals: BTreeMap::from([(client_id.to_owned(), true)]),
     }
 }
 
@@ -64,7 +65,7 @@ async fn eligible_save_survives_reload_and_stale_save_is_refused() {
         saved
             .client_registry
             .iter()
-            .find(|c| c.azp == "kampus-chatgpt")
+            .find(|c| c.client_id == "kampus-chatgpt")
             .unwrap()
             .approved
     );
@@ -84,9 +85,9 @@ async fn eligible_save_survives_reload_and_stale_save_is_refused() {
 #[tokio::test]
 async fn device_unknown_and_self_registered_approval_cannot_change_policy() {
     let (admin, engine, dir) = setup();
-    for azp in ["kampus-mascot", "anonymous", "dcr-self-named-client"] {
+    for client_id in ["kampus-mascot", "anonymous", "dcr-self-named-client"] {
         assert!(matches!(
-            admin.save(switches(azp)).await,
+            admin.save(switches(client_id)).await,
             Err(AdminError::Invalid)
         ));
         assert_eq!(engine.current().version, 1);
@@ -125,5 +126,67 @@ async fn disk_and_audit_failures_leave_previous_policy_active() {
             .unwrap()
             .sensitive_enabled
     );
+    fs::remove_dir_all(dir).unwrap();
+}
+
+const CIMD: &str = "https://claude.ai/oauth/mcp-oauth-client-metadata";
+
+#[tokio::test]
+async fn forged_cimd_approval_and_relabel_fail_and_keep_the_previous_policy() {
+    let (admin, engine, dir) = setup();
+    // The bundled CIMD entry is listed nowhere as an approval switch...
+    let snapshot = admin.snapshot().unwrap();
+    assert!(snapshot.clients.iter().all(|c| c.client_id != CIMD));
+    // ...and a forged approval naming it is refused.
+    assert!(matches!(
+        admin.save(switches(CIMD)).await,
+        Err(AdminError::Invalid)
+    ));
+    // A save cannot re-label it either: the request has no such field.
+    let relabel = serde_json::json!({
+        "version": 1, "sensitive_enabled": true, "allow_self_registered_sensitive": false,
+        "approvals": { CIMD: true },
+        "client_registry": [{ "client_id": CIMD, "registration": "pre_registered_confidential",
+                              "approved": true, "workspace": "Claude" }]
+    });
+    assert!(serde_json::from_value::<Switches>(relabel).is_err());
+    assert_eq!(engine.current().version, 1);
+    let saved = PolicyConfig::load(&dir.join("policy.yaml")).unwrap();
+    let entry = saved
+        .client_registry
+        .iter()
+        .find(|c| c.client_id == CIMD)
+        .unwrap();
+    assert_eq!(
+        (entry.registration, entry.approved),
+        (ClientRegistration::Cimd, false)
+    );
+    assert!(admin.audit.recent(10).unwrap().is_empty());
+    fs::remove_dir_all(dir).unwrap();
+}
+
+#[tokio::test]
+async fn personal_switch_saves_atomically_with_an_admin_audit_row() {
+    let (admin, engine, dir) = setup();
+    assert!(!admin.snapshot().unwrap().allow_self_registered_sensitive);
+    let on = Switches {
+        version: 1,
+        sensitive_enabled: true,
+        allow_self_registered_sensitive: true,
+        approvals: BTreeMap::new(),
+    };
+    assert_eq!(admin.save(on).await.unwrap(), 2);
+    assert!(engine.current().config.allow_self_registered_sensitive);
+    assert!(
+        PolicyConfig::load(&dir.join("policy.yaml"))
+            .unwrap()
+            .allow_self_registered_sensitive
+    );
+    let snapshot = admin.snapshot().unwrap();
+    assert!(snapshot.allow_self_registered_sensitive);
+    let rows = admin.audit.recent(10).unwrap();
+    assert_eq!(rows.len(), 1);
+    assert_eq!(rows[0].rule, "admin:policy_save_authorized");
+    assert_eq!(rows[0].policy_version, 1);
     fs::remove_dir_all(dir).unwrap();
 }

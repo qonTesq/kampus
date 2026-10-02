@@ -1,6 +1,6 @@
 //! Startup: validate configuration, register modules, compose the HTTP router.
 
-use std::collections::BTreeSet;
+use std::collections::BTreeMap;
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -13,7 +13,7 @@ use axum::response::{IntoResponse, Response};
 use kampus_core::audit::{JsonlAudit, PRUNE_INTERVAL, SubjectHasher};
 use kampus_core::auth::{AuthSettings, Authenticator, KeySource};
 use kampus_core::config::{ConfigError, Env, PolicyConfig, SchoolConfig};
-use kampus_core::contracts::{AuditError, ModuleInit, RegistryError, ToolRegistry};
+use kampus_core::contracts::{AuditError, ModuleInit, Operation, RegistryError, ToolRegistry};
 use kampus_core::dispatch::{CallerLimits, Dispatcher, Security};
 use kampus_core::policy::{PolicyEngine, PolicyRevision};
 use kampus_core::runtime::SharedRuntime;
@@ -43,7 +43,7 @@ pub enum AppError {
     Registry(#[from] RegistryError),
     #[error("school.yaml modules: unknown module {0}")]
     UnknownModule(String),
-    #[error("cannot build the realm key client")]
+    #[error("cannot build the issuer key client")]
     KeyClient,
     #[error("cannot open the audit log {path}")]
     Audit { path: PathBuf },
@@ -127,11 +127,7 @@ impl App {
     ) -> Result<Self, AppError> {
         let (init, registry, known_tools) = validate(school, &policy, env)?;
         // Activation starts here.
-        let scopes = registry
-            .tools()
-            .flat_map(|t| t.descriptor.scopes.iter().cloned())
-            .collect();
-        let settings = AuthSettings::from_school(&init.school, scopes);
+        let settings = AuthSettings::from_school(&init.school);
         let keys = match options.keys {
             Some(keys) => keys,
             None => KeySource::Discovery {
@@ -238,8 +234,18 @@ impl App {
         let sessions = Arc::new(LocalSessionManager::default());
         let owners = Arc::new(SessionOwners::new(&school.school.id, Arc::clone(&sessions)));
         let service = StreamableHttpService::new(move || Ok(mcp.clone()), sessions, config);
+        let preflight = crate::auth::PreflightState {
+            auth: Arc::clone(&self.auth),
+            dispatcher: Arc::clone(&self.dispatcher),
+        };
         Router::new()
             .nest_service(mcp_path(school), service)
+            // Lazy authentication: after session ownership, so a foreign
+            // session is refused like an unknown one before any challenge.
+            .layer(middleware::from_fn_with_state(
+                preflight,
+                crate::auth::preflight,
+            ))
             // Runs after authentication: needs the verified principal.
             .layer(middleware::from_fn_with_state(
                 owners,
@@ -330,7 +336,7 @@ fn validate(
     school: SchoolConfig,
     policy: &PolicyConfig,
     env: &Env<'_>,
-) -> Result<(ModuleInit, ToolRegistry, BTreeSet<String>), AppError> {
+) -> Result<(ModuleInit, ToolRegistry, BTreeMap<String, Operation>), AppError> {
     school.validate(env)?;
     let init = ModuleInit {
         runtime: Arc::new(SharedRuntime::for_school(&school)),
@@ -345,7 +351,10 @@ fn validate(
     {
         return Err(AppError::UnknownModule(unknown.clone()));
     }
-    let known_tools: BTreeSet<String> = registry.tool_names().map(str::to_owned).collect();
+    let known_tools: BTreeMap<String, Operation> = registry
+        .tools()
+        .map(|t| (t.descriptor.name.clone(), t.operation))
+        .collect();
     policy.validate(&init.school, &known_tools, env)?;
     Ok((init, registry, known_tools))
 }

@@ -52,7 +52,7 @@ fn context(school: &str) -> CallContext {
         school_id: school.into(),
         principal: Principal {
             subject: "synthetic:student-a".into(),
-            azp: Some("synthetic-client".into()),
+            client_id: Some("synthetic-client".into()),
             roles: [Role::Student].into_iter().collect(),
             scopes: ["rooms:book".into()].into_iter().collect(),
             auth_kind: AuthKind::User,

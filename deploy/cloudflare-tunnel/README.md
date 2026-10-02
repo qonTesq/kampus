@@ -1,14 +1,13 @@
 # Run kampus behind a Cloudflare Tunnel
 
-This is how the hackathon demo ran: Keycloak and kampus on one machine (a laptop), published on a real domain through a named Cloudflare Tunnel. There are no open ports and no VM, and HTTPS is handled by Cloudflare.
+kampus on one machine (a laptop), published on a real domain through a named Cloudflare Tunnel. There are no open ports and no VM, and Cloudflare handles HTTPS. It suits demos and pilots. For anything long-lived, prefer a server with Caddy in front ([../instances/Caddyfile](../instances/Caddyfile)), since the machine has to stay on and awake.
 
-It suits demos and pilots. For anything long-lived, prefer a server (see [../keycloak/README.md](../keycloak/README.md)), since the machine has to stay on and awake.
+**Interim state.** The repository currently ships no authorization server; the kampus broker arrives with the `auth-broker` change. Until then, public tools work without a token, and protected calls (`my_deadlines`, booking) get an HTTP 401 sign-in challenge that nothing can answer yet. A school can instead point `auth.issuer` at its own standards-compliant authorization server (see [../../docs/auth/README.md](../../docs/auth/README.md) for the token profile it must issue).
 
 ## What you need
 
-- A domain whose DNS is managed by Cloudflare (free plan is fine). The demo used `kampus.study`, with nameservers pointed at Cloudflare.
+- A domain whose DNS is managed by Cloudflare (the free plan is fine).
 - `cloudflared` installed.
-- Keycloak 26.6 or later. Without Docker, the Keycloak zip plus a JDK 21 works: `bin/kc.sh start-dev` (or `kc.bat` on Windows).
 - A kampus build: `cargo build --release -p kampus` (add `--features sandbox` for the synthetic Canvas and simulated bookings).
 
 ## 1. Create the tunnel and hostnames
@@ -16,7 +15,6 @@ It suits demos and pilots. For anything long-lived, prefer a server (see [../key
 ```bash
 cloudflared tunnel login                         # authorize your domain in the browser
 cloudflared tunnel create kampus                 # writes a credentials JSON; keep it secret
-cloudflared tunnel route dns kampus auth.example.edu
 cloudflared tunnel route dns kampus mcp.example.edu
 cloudflared tunnel route dns kampus sju.example.edu   # optional second school
 ```
@@ -27,8 +25,6 @@ cloudflared tunnel route dns kampus sju.example.edu   # optional second school
 tunnel: <tunnel-id>
 credentials-file: /path/to/<tunnel-id>.json
 ingress:
-  - hostname: auth.example.edu
-    service: http://127.0.0.1:8180   # Keycloak
   - hostname: mcp.example.edu
     service: http://127.0.0.1:8080   # kampus, first school
   - hostname: sju.example.edu
@@ -36,42 +32,22 @@ ingress:
   - service: http_status:404
 ```
 
-The kampus admin listeners (`127.0.0.1:8081` and so on) are **not** in the ingress list, so they stay local.
+The kampus admin listeners (`127.0.0.1:8081` and so on) are **not** in the ingress list, so they stay local. A named tunnel keeps the hostname stable, which the token audience and, later, the broker's issuer need.
 
-## 2. Start Keycloak with the public hostname
-
-```bash
-export KC_HOSTNAME=https://auth.example.edu
-export KC_PROXY_HEADERS=xforwarded
-export KC_HTTP_ENABLED=true
-export KC_HTTP_PORT=8180
-export KC_BOOTSTRAP_ADMIN_USERNAME=admin
-export KC_BOOTSTRAP_ADMIN_PASSWORD=<random>
-# plus the KAMPUS_* variables the realm import expects (see ../keycloak/.env.example)
-cp ../keycloak/realm-kampus.json <keycloak>/data/import/
-<keycloak>/bin/kc.sh start-dev --import-realm
-```
-
-`KC_HOSTNAME` makes every token's issuer `https://auth.example.edu/realms/kampus`, even for tokens requested locally.
-
-**Realm settings the assistants need,** learned the hard way:
-- Claude and ChatGPT request the scopes `rooms:book` and `offline_access`. Add both as **optional client scopes** on the assistant clients, or the login fails with "Invalid scopes".
-- Users need the **`offline_access` role** (put it in the realm's default roles), or the token exchange fails with "Offline tokens not allowed".
-- For the synthetic Canvas, demo users' IDs must match the fixture subjects (`5eed0000-0000-4000-8000-00000000000a` and `…0b`). Create them with those IDs, for example through Keycloak's partial import.
-
-## 3. Point kampus at the domain
+## 2. Point kampus at the domain
 
 In the school's `school.yaml`:
 
 ```yaml
 server:
-  resource_url: https://mcp.example.edu/mcp
-  listen: 127.0.0.1:8080          # the tunnel connects locally, so loopback is fine here
+  resource_url: https://mcp.example.edu/mcp   # also the only accepted token audience
+  listen: 127.0.0.1:8080                      # the tunnel connects locally, so loopback is fine
+  trusted_proxy: { header: cf_connecting_ip, peers: ["127.0.0.1", "::1"] }
 auth:
-  issuer: https://auth.example.edu/realms/kampus
+  issuer: https://mcp.example.edu/auth        # the kampus broker, once auth-broker lands
 ```
 
-Then:
+`trusted_proxy` lets guest rate limits see each visitor's address instead of the tunnel's. Then:
 
 ```bash
 export KAMPUS_TEMPLE_AUDIT_SALT=<random, stable>
@@ -79,13 +55,13 @@ export KAMPUS_TEMPLE_AUDIT_SALT=<random, stable>
 cloudflared tunnel --config cf-config.yml run kampus
 ```
 
-## 4. Connect the assistants
+## 3. Connect the assistants
 
-- **Claude:** add a custom connector with `https://mcp.example.edu/mcp`, choose **Sign in now**, then **Use your own OAuth client** with the pre-registered client ID and secret.
-- **ChatGPT** (developer mode): create an app with the same URL, **OAuth**, and the predefined client ID and secret.
-- **A public second school without login:** run it with `auth.mode: no_login` and add its URL with no sign-in. It serves Public tools only.
+- **Claude:** add a custom connector with `https://mcp.example.edu/mcp`. Public tools work right away without signing in (lazy authentication); a protected call asks for sign-in, which works once an authorization server is configured.
+- **ChatGPT** (developer mode): create an app with the same URL. The same applies to sign-in.
+- **A public school without login:** run it with `auth.mode: no_login`. It serves Public tools only, and refusals are `permission_denied` results rather than sign-in challenges.
 
 ## Notes
 
-- kampus serves its login metadata at both `/.well-known/oauth-protected-resource/mcp` and `/.well-known/oauth-protected-resource`; ChatGPT uses the root form.
-- If the machine restarts, the URLs stay the same, but Keycloak, kampus and `cloudflared` must be started again.
+- kampus serves its protected-resource metadata at both `/.well-known/oauth-protected-resource/mcp` and `/.well-known/oauth-protected-resource`; ChatGPT uses the root form.
+- If the machine restarts, the URLs stay the same, but kampus and `cloudflared` must be started again.

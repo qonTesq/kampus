@@ -3,7 +3,7 @@
 #[cfg(test)]
 mod tests;
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 use std::fs::{self, OpenOptions};
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -17,7 +17,7 @@ use tokio::sync::Mutex;
 
 use crate::audit::{ADMIN_MARKER, JsonlAudit};
 use crate::config::{ClientRegistration, Env, SchoolConfig};
-use crate::contracts::{AuditDecision, AuditEvent, AuditSink, DataClass};
+use crate::contracts::{AuditDecision, AuditEvent, AuditSink, DataClass, Operation};
 use crate::policy::PolicyEngine;
 
 #[derive(Debug, thiserror::Error)]
@@ -41,13 +41,15 @@ pub enum AdminError {
 pub struct Switches {
     pub version: u64,
     pub sensitive_enabled: bool,
+    /// The personal switch (`allow_self_registered_sensitive`).
+    pub allow_self_registered_sensitive: bool,
     /// Only existing pre-registered confidential clients are accepted.
     pub approvals: BTreeMap<String, bool>,
 }
 
 #[derive(Debug, Serialize)]
 pub struct ClientSwitch {
-    pub azp: String,
+    pub client_id: String,
     pub workspace: String,
     pub approved: bool,
 }
@@ -56,6 +58,7 @@ pub struct ClientSwitch {
 pub struct Snapshot {
     pub version: u64,
     pub sensitive_enabled: bool,
+    pub allow_self_registered_sensitive: bool,
     pub clients: Vec<ClientSwitch>,
     pub writable: bool,
     pub csrf: String,
@@ -66,7 +69,7 @@ pub struct Admin {
     policy: Arc<PolicyEngine>,
     audit: Arc<JsonlAudit>,
     school: Arc<SchoolConfig>,
-    known_tools: BTreeSet<String>,
+    known_tools: BTreeMap<String, Operation>,
     path: Option<PathBuf>,
     csrf: String,
     mutation: Mutex<()>,
@@ -83,7 +86,7 @@ impl Admin {
         policy: Arc<PolicyEngine>,
         audit: Arc<JsonlAudit>,
         school: Arc<SchoolConfig>,
-        known_tools: BTreeSet<String>,
+        known_tools: BTreeMap<String, Operation>,
         path: Option<PathBuf>,
     ) -> Result<Self, AdminError> {
         let mut bytes = [0_u8; 32];
@@ -126,13 +129,14 @@ impl Admin {
         Ok(Snapshot {
             version: revision.version,
             sensitive_enabled: revision.config.sensitive_enabled,
+            allow_self_registered_sensitive: revision.config.allow_self_registered_sensitive,
             clients: revision
                 .config
                 .client_registry
                 .iter()
                 .filter(|c| c.registration == ClientRegistration::PreRegisteredConfidential)
                 .map(|c| ClientSwitch {
-                    azp: c.azp.clone(),
+                    client_id: c.client_id.clone(),
                     workspace: c.workspace.clone(),
                     approved: c.approved,
                 })
@@ -153,17 +157,19 @@ impl Admin {
         }
         let mut candidate = revision.config.clone();
         candidate.sensitive_enabled = switches.sensitive_enabled;
-        for (azp, approved) in switches.approvals {
+        candidate.allow_self_registered_sensitive = switches.allow_self_registered_sensitive;
+        for (client_id, approved) in switches.approvals {
             let client = candidate
                 .client_registry
                 .iter_mut()
                 .find(|c| {
-                    c.azp == azp && c.registration == ClientRegistration::PreRegisteredConfidential
+                    c.client_id == client_id
+                        && c.registration == ClientRegistration::PreRegisteredConfidential
                 })
                 .ok_or(AdminError::Invalid)?;
             client.approved = approved;
         }
-        // These two switches cannot change environment references. Startup has
+        // These switches cannot change environment references. Startup has
         // already checked the secrets; validate all structural invariants again.
         {
             let env = Env {
@@ -183,7 +189,7 @@ impl Admin {
                 timestamp: Utc::now(),
                 school_id: self.school.school.id.clone(),
                 user_hash: ADMIN_MARKER.into(),
-                azp: None,
+                client_id: None,
                 tool: "admin_policy".into(),
                 data_class: DataClass::Public,
                 decision: AuditDecision::Allow,

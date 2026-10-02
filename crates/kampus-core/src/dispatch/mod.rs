@@ -6,6 +6,10 @@
 //! provider) under the call deadline -> project -> exactly one
 //! metadata-only audit row -> emit.
 //!
+//! In OAuth mode, [`Dispatcher::preflight`] runs first for each `tools/call`
+//! so the HTTP layer can answer a 401 sign-in or 403 step-up challenge
+//! (admitted and audited there) before the MCP layer would commit a 200.
+//!
 //! Denials happen before any module code runs. No data leaves without a
 //! successful audit append. [`Dispatcher::with_security`] is the real
 //! pipeline and what `App` installs; [`Dispatcher::new`] without
@@ -31,7 +35,7 @@ use crate::contracts::{
     ToolRegistry,
 };
 use crate::output::project;
-use crate::policy::{PolicyEngine, effective_class};
+use crate::policy::{PolicyEngine, challenge_scopes, effective_class, rules as policy_rules};
 use crate::runtime::{RateLimiter, defaults, with_deadline};
 
 /// Module ID of the development-only hello-world module.
@@ -47,6 +51,26 @@ pub mod rules {
     pub const OVERLOADED: &str = "builtin:overloaded";
     /// The development acceptance tool (never in the demo build).
     pub const ACCEPTANCE: &str = "builtin:acceptance";
+    /// A call without a credential that policy refuses for a guest,
+    /// answered with an HTTP 401 sign-in challenge.
+    pub const AUTHENTICATION_REQUIRED: &str = "builtin:authentication_required";
+}
+
+/// What the HTTP layer does with a `tools/call` before the MCP layer runs
+/// (OAuth mode only). Every outcome but [`Preflight::Proceed`] has already
+/// passed admission once and written its one audit row.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Preflight {
+    /// Continue: the dispatcher admits, decides and audits the call.
+    Proceed,
+    /// HTTP 401: no credential, and policy refuses the call for a guest.
+    SignIn { scopes: BTreeSet<String> },
+    /// HTTP 403 `insufficient_scope`: signed in, refused only for a scope.
+    StepUp { scopes: BTreeSet<String> },
+    /// HTTP 429: admission refused the challenged call.
+    RateLimited { retry_after_seconds: u32 },
+    /// HTTP 503: the refusal could not be audited.
+    AuditUnavailable,
 }
 
 /// The requested tool is not registered (a protocol error, not a tool error).
@@ -240,7 +264,7 @@ impl Dispatcher {
             timestamp: now,
             school_id: self.school_id.clone(),
             user_hash: user_hash.clone(),
-            azp: principal.azp.clone(),
+            client_id: principal.client_id.clone(),
             tool: registered.descriptor.name.clone(),
             data_class: effective_class(&revision.config, registered.descriptor.data_class),
             decision,
@@ -321,6 +345,91 @@ impl Dispatcher {
         match security.audit.record(&event).await {
             Ok(()) => Ok(projected),
             Err(_) => Ok(project(registered, &ToolError::audit_unavailable().into())),
+        }
+    }
+
+    /// Decide, before the MCP layer, whether a `tools/call` needs a sign-in
+    /// (no credential, refused for a guest) or a scope step-up (signed in,
+    /// refused only by `builtin:tool_scopes` or `builtin:rule_scopes`).
+    /// Policy runs on the current revision without I/O. Only a challenged
+    /// call runs admission and writes its audit row here; every other call
+    /// proceeds and is admitted, decided and audited by [`Self::call_from`].
+    pub async fn preflight(
+        &self,
+        tool: &str,
+        principal: Principal,
+        client: Option<IpAddr>,
+    ) -> Preflight {
+        let (Some(registered), Some(security)) = (self.registry.get(tool), &self.security) else {
+            return Preflight::Proceed;
+        };
+        if registered.module.descriptor().id == ACCEPTANCE_MODULE {
+            return Preflight::Proceed;
+        }
+        let started = Instant::now();
+        let now = Utc::now();
+        let revision = security.policy.current();
+        let ResolvedIdentity {
+            principal,
+            binding_generation,
+        } = resolve(security.identity.as_deref(), principal, now);
+        let decision = PolicyEngine::evaluate_with(
+            &revision,
+            &principal,
+            binding_generation,
+            &registered.descriptor,
+            registered.operation,
+        );
+        if decision.allowed {
+            return Preflight::Proceed;
+        }
+        let descriptor = &registered.descriptor;
+        let (challenge, rule) = if principal.auth_kind == AuthKind::Guest {
+            let scopes = challenge_scopes(&revision.config, None, descriptor);
+            (
+                Preflight::SignIn { scopes },
+                rules::AUTHENTICATION_REQUIRED.to_owned(),
+            )
+        } else if [policy_rules::TOOL_SCOPES, policy_rules::RULE_SCOPES]
+            .contains(&decision.rule_id.as_str())
+        {
+            let scopes = challenge_scopes(&revision.config, Some(&principal), descriptor);
+            (Preflight::StepUp { scopes }, decision.rule_id)
+        } else {
+            return Preflight::Proceed;
+        };
+
+        let user_hash = security.hasher.user_hash(&principal);
+        let key = admission_key(&principal, &user_hash, client);
+        let deadline = tokio::time::Instant::now() + defaults::CALL_DEADLINE;
+        // The slot, if granted, is held until the row is written.
+        let admitted = security.limits.admit(&principal, &key, deadline).await;
+        let (outcome, rule) = match &admitted {
+            Ok(_slot) => (challenge, rule),
+            Err((limited, error)) => (
+                Preflight::RateLimited {
+                    retry_after_seconds: error.retry_after_seconds.unwrap_or(1),
+                },
+                (*limited).to_owned(),
+            ),
+        };
+        let event = AuditEvent {
+            timestamp: now,
+            school_id: self.school_id.clone(),
+            user_hash,
+            client_id: principal.client_id.clone(),
+            tool: descriptor.name.clone(),
+            data_class: effective_class(&revision.config, descriptor.data_class),
+            decision: AuditDecision::Deny,
+            rule,
+            latency_ms: u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX),
+            policy_version: revision.version,
+        };
+        let recorded = security.audit.record(&event).await;
+        drop(admitted);
+        match recorded {
+            Ok(()) => outcome,
+            Err(_) => Preflight::AuditUnavailable,
         }
     }
 
@@ -407,7 +516,7 @@ fn timed_out() -> Envelope {
 }
 
 /// Device principals go through the resolver; a resolution that changes the
-/// client (`azp`) or auth kind is ignored, so trust is never upgraded.
+/// client (`client_id`) or auth kind is ignored, so trust is never upgraded.
 fn resolve(
     resolver: Option<&dyn IdentityResolver>,
     principal: Principal,
@@ -421,7 +530,7 @@ fn resolve(
         Some(resolver) if principal.auth_kind == AuthKind::Device => {
             let identity = resolver.resolve(&principal, now);
             if identity.principal.auth_kind == AuthKind::Device
-                && identity.principal.azp == principal.azp
+                && identity.principal.client_id == principal.client_id
                 && identity.principal.device_id == principal.device_id
                 && identity.principal.scopes.is_subset(&principal.scopes)
             {

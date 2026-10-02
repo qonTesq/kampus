@@ -47,7 +47,7 @@ pub struct DeviceError;
 
 struct Device {
     id: String,
-    azp: String,
+    client_id: String,
     secret: digest::Digest,
     stickers: BTreeMap<String, String>,
 }
@@ -95,12 +95,12 @@ impl DeviceBindings {
                 .config
                 .client_registry
                 .iter()
-                .find(|c| c.azp == config.azp);
+                .find(|c| c.client_id == config.client_id);
             if !registered
                 .is_some_and(|c| c.registration == ClientRegistration::Device && !c.approved)
                 || devices
                     .iter()
-                    .any(|d| d.id == config.device_id || d.azp == config.azp)
+                    .any(|d| d.id == config.device_id || d.client_id == config.client_id)
             {
                 return Err(DeviceError);
             }
@@ -133,7 +133,7 @@ impl DeviceBindings {
             }
             devices.push(Device {
                 id: config.device_id.clone(),
-                azp: config.azp.clone(),
+                client_id: config.client_id.clone(),
                 secret,
                 stickers,
             });
@@ -184,7 +184,7 @@ impl IdentityResolver for DeviceBindings {
         result.principal.roles = BTreeSet::from([Role::Guest]);
         let Some(device) = self.devices.iter().find(|d| {
             Some(d.id.as_str()) == principal.device_id.as_deref()
-                && Some(d.azp.as_str()) == principal.azp.as_deref()
+                && Some(d.client_id.as_str()) == principal.client_id.as_deref()
         }) else {
             return result;
         };

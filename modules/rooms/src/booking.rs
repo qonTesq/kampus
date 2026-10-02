@@ -108,7 +108,7 @@ impl Booking {
             confirmation_id: random_id("cnf_")?,
             school_id: ctx.school_id.clone(),
             subject: ctx.principal.subject.clone(),
-            azp: ctx.principal.azp.clone(),
+            client_id: ctx.principal.client_id.clone(),
             device_id: ctx.principal.device_id.clone(),
             binding_generation: ctx.binding_generation,
             location_id,
@@ -214,7 +214,7 @@ impl Pending {
         let p = &self.proposal;
         p.school_id == ctx.school_id
             && p.subject == ctx.principal.subject
-            && p.azp == ctx.principal.azp
+            && p.client_id == ctx.principal.client_id
             && p.device_id == ctx.principal.device_id
             && p.binding_generation == ctx.binding_generation
     }

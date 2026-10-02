@@ -252,10 +252,10 @@ fn harness() -> Harness {
     )
 }
 
-fn user(azp: &str, scopes: &[&str]) -> Principal {
+fn user(client_id: &str, scopes: &[&str]) -> Principal {
     Principal {
         subject: "synthetic-student-a".into(),
-        azp: Some(azp.into()),
+        client_id: Some(client_id.into()),
         roles: BTreeSet::from([Role::Student]),
         scopes: scopes.iter().map(|s| (*s).to_owned()).collect(),
         auth_kind: AuthKind::User,
@@ -296,7 +296,7 @@ async fn mixed_turn_public_runs_sensitive_is_refused_before_module_code() {
     assert_eq!(rows[1].decision, AuditDecision::Deny);
     assert_eq!(rows[1].rule, crate::policy::rules::SENSITIVE_CLIENT);
     assert_eq!(rows[1].data_class, DataClass::Sensitive);
-    assert_eq!(rows[1].azp.as_deref(), Some("kampus-chatgpt"));
+    assert_eq!(rows[1].client_id.as_deref(), Some("kampus-chatgpt"));
     assert_eq!(rows[1].policy_version, 1);
     assert_eq!(rows[1].user_hash.len(), 32);
     assert!(!rows[1].user_hash.contains("synthetic"));
@@ -565,7 +565,7 @@ async fn live_policy_swap_changes_the_next_call() {
 
     let mut approved = demo_policy();
     for c in &mut approved.client_registry {
-        if c.azp == "kampus-chatgpt" {
+        if c.client_id == "kampus-chatgpt" {
             c.approved = true;
         }
     }
@@ -618,7 +618,7 @@ impl IdentityResolver for Upgrader {
         let mut upgraded = principal.clone();
         upgraded.roles = BTreeSet::from([Role::Student]);
         upgraded.auth_kind = AuthKind::User;
-        upgraded.azp = Some("kampus-claude".into());
+        upgraded.client_id = Some("kampus-claude".into());
         ResolvedIdentity {
             principal: upgraded,
             binding_generation: Some(1),
@@ -644,7 +644,7 @@ impl IdentityResolver for Binder {
 fn mascot() -> Principal {
     Principal {
         subject: "service-account-kampus-mascot".into(),
-        azp: Some("kampus-mascot".into()),
+        client_id: Some("kampus-mascot".into()),
         roles: BTreeSet::from([Role::Guest]),
         scopes: BTreeSet::from(["rooms:book".to_owned()]),
         auth_kind: AuthKind::Device,
@@ -759,4 +759,217 @@ async fn confirmation_rechecks_policy_after_proposal() {
     );
     assert_eq!(h.calls("rooms"), 1);
     assert_eq!(h.rows()[1].policy_version, 2);
+}
+
+// ---- preflight (lazy authentication) ----------------------------------------
+
+#[tokio::test]
+async fn preflight_lets_guest_allowed_calls_proceed_without_side_effects() {
+    let h = harness();
+    let p = h
+        .dispatcher
+        .preflight("next_departures", Principal::guest(), None)
+        .await;
+    assert_eq!(p, Preflight::Proceed);
+    // Proceeding is not admission or audit: the dispatcher does both later.
+    assert!(h.rows().is_empty());
+    assert_eq!(h.total_calls(), 0);
+}
+
+#[tokio::test]
+async fn preflight_asks_guests_to_sign_in_for_refused_calls() {
+    let h = harness();
+    for (tool, scopes) in [
+        ("my_deadlines", vec![]),
+        ("book_study_room", vec![]),
+        ("confirm_booking", vec!["rooms:book"]),
+    ] {
+        let p = h.dispatcher.preflight(tool, Principal::guest(), None).await;
+        let expected: BTreeSet<String> = scopes.iter().map(|s| (*s).to_owned()).collect();
+        assert_eq!(p, Preflight::SignIn { scopes: expected }, "{tool}");
+    }
+    let rows = h.rows();
+    assert_eq!(rows.len(), 3, "one row per challenged call");
+    for row in &rows {
+        assert_eq!(row.decision, AuditDecision::Deny);
+        assert_eq!(row.rule, rules::AUTHENTICATION_REQUIRED);
+        assert_eq!(row.user_hash, crate::audit::GUEST_MARKER);
+        assert_eq!(row.client_id, None);
+    }
+    assert_eq!(h.total_calls(), 0, "no module code ran");
+}
+
+#[tokio::test]
+async fn preflight_asks_for_a_step_up_only_when_a_scope_is_missing() {
+    let h = harness();
+    let student = user("kampus-claude", &[]);
+    let p = h
+        .dispatcher
+        .preflight("confirm_booking", student.clone(), None)
+        .await;
+    assert_eq!(
+        p,
+        Preflight::StepUp {
+            scopes: BTreeSet::from(["rooms:book".to_owned()])
+        }
+    );
+    let rows = h.rows();
+    assert_eq!(rows.len(), 1);
+    assert_eq!(rows[0].rule, crate::policy::rules::TOOL_SCOPES);
+    assert_eq!(rows[0].client_id.as_deref(), Some("kampus-claude"));
+
+    // A rule's required scope also asks for a step-up, naming every scope.
+    let mut policy = demo_policy();
+    let rule = policy
+        .rules
+        .iter_mut()
+        .find(|r| r.id == "booking-propose")
+        .unwrap();
+    rule.required_scopes.insert("rooms:propose".into());
+    let h = harness_with(policy, &["rooms"], None);
+    let p = h
+        .dispatcher
+        .preflight("book_study_room", student.clone(), None)
+        .await;
+    assert_eq!(
+        p,
+        Preflight::StepUp {
+            scopes: BTreeSet::from(["rooms:propose".to_owned()])
+        }
+    );
+    assert_eq!(h.rows()[0].rule, crate::policy::rules::RULE_SCOPES);
+
+    // With the scope, the call proceeds to the normal checks.
+    let stepped_up = user("kampus-claude", &["rooms:book"]);
+    let h = harness();
+    assert_eq!(
+        h.dispatcher
+            .preflight("confirm_booking", stepped_up, None)
+            .await,
+        Preflight::Proceed
+    );
+    assert!(h.rows().is_empty());
+}
+
+#[tokio::test]
+async fn preflight_leaves_refusals_a_step_up_cannot_fix_to_the_dispatcher() {
+    let h = harness();
+    let mut faculty = user("kampus-claude", &["rooms:book"]);
+    faculty.roles = BTreeSet::from([Role::Faculty]);
+    // Role refusal and an unapproved client: permission_denied, not a challenge.
+    for (tool, who, args) in [
+        ("book_study_room", faculty.clone(), booking_args()),
+        (
+            "confirm_booking",
+            faculty,
+            json!({ "confirmation_id": "c-0000000000000000" }),
+        ),
+        ("my_deadlines", user("kampus-chatgpt", &[]), json!({})),
+    ] {
+        assert_eq!(
+            h.dispatcher.preflight(tool, who.clone(), None).await,
+            Preflight::Proceed,
+            "{tool}"
+        );
+        assert_eq!(code(&h.call(tool, args, &who).await), "permission_denied");
+    }
+    // Unknown tools are the MCP layer's protocol error.
+    assert_eq!(
+        h.dispatcher
+            .preflight("nope", Principal::guest(), None)
+            .await,
+        Preflight::Proceed
+    );
+    // Only the dispatcher's own rows exist.
+    assert_eq!(h.rows().len(), 3);
+}
+
+#[tokio::test]
+async fn challenged_calls_pass_admission_once_and_are_audited_once() {
+    let mut policy = demo_policy();
+    policy.limits.guest_calls_per_minute = 8; // a burst of 2
+    let h = harness_with(policy, &["deadlines"], None);
+    let mut outcomes = Vec::new();
+    for _ in 0..5 {
+        outcomes.push(
+            h.dispatcher
+                .preflight(
+                    "my_deadlines",
+                    Principal::guest(),
+                    Some("203.0.113.9".parse().unwrap()),
+                )
+                .await,
+        );
+    }
+    let signed_in = outcomes
+        .iter()
+        .filter(|p| matches!(p, Preflight::SignIn { .. }))
+        .count();
+    let limited = outcomes
+        .iter()
+        .filter(|p| matches!(p, Preflight::RateLimited { retry_after_seconds } if *retry_after_seconds > 0))
+        .count();
+    assert_eq!((signed_in, limited), (2, 3));
+    let rows = h.rows();
+    assert_eq!(rows.len(), 5);
+    assert_eq!(
+        rows.iter()
+            .filter(|r| r.rule == rules::RATE_LIMITED)
+            .count(),
+        3
+    );
+    assert_eq!(h.total_calls(), 0);
+}
+
+#[tokio::test]
+async fn an_unaudited_challenge_is_a_server_fault() {
+    let h = harness();
+    h.audit.fail.store(true, Ordering::SeqCst);
+    assert_eq!(
+        h.dispatcher
+            .preflight("my_deadlines", Principal::guest(), None)
+            .await,
+        Preflight::AuditUnavailable
+    );
+}
+
+// ---- the personal switch reaches no module code when it denies -------------
+
+const CIMD: &str = "https://claude.ai/oauth/mcp-oauth-client-metadata";
+
+#[tokio::test]
+async fn personal_switch_denials_never_reach_the_module() {
+    let off = harness();
+    let student = user(CIMD, &[]);
+    let r = off.call("my_deadlines", json!({}), &student).await;
+    assert_eq!(code(&r), "permission_denied");
+    assert_eq!(
+        off.rows()[0].rule,
+        crate::policy::rules::SELF_REGISTERED_SENSITIVE_OFF
+    );
+    assert_eq!(off.calls("deadlines"), 0);
+
+    let mut policy = demo_policy();
+    policy.allow_self_registered_sensitive = true;
+    let on = harness_with(policy, &["deadlines"], None);
+    // Denied under the switch: a faculty member and a device.
+    let mut faculty = user(CIMD, &[]);
+    faculty.roles = BTreeSet::from([Role::Faculty]);
+    let device = Principal {
+        auth_kind: AuthKind::Device,
+        device_id: Some("owl-1".into()),
+        ..user(CIMD, &[])
+    };
+    for who in [&faculty, &device] {
+        let r = on.call("my_deadlines", json!({}), who).await;
+        assert_eq!(code(&r), "permission_denied");
+    }
+    assert_eq!(on.calls("deadlines"), 0);
+    // The student's own read reaches the module, under the personal rule.
+    on.call("my_deadlines", json!({}), &student).await;
+    assert_eq!(on.calls("deadlines"), 1);
+    let rows = on.rows();
+    let last = rows.last().unwrap();
+    assert_eq!(last.rule, "sensitive-self-registered-student");
+    assert_eq!(last.client_id.as_deref(), Some(CIMD));
 }

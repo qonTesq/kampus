@@ -60,7 +60,7 @@ pub struct BookingProposal {
     pub confirmation_id: String,
     pub school_id: String,
     pub subject: String,
-    pub azp: Option<String>,
+    pub client_id: Option<String>,
     pub device_id: Option<String>,
     pub binding_generation: Option<u64>,
     pub location_id: String,

@@ -38,7 +38,7 @@ fn init(school: SchoolConfig) -> ModuleInit {
 fn principal(kind: AuthKind, roles: &[Role], subject: &str) -> Principal {
     Principal {
         subject: subject.to_owned(),
-        azp: Some("kampus-claude".to_owned()),
+        client_id: Some("kampus-claude".to_owned()),
         roles: roles.iter().copied().collect(),
         scopes: BTreeSet::new(),
         auth_kind: kind,

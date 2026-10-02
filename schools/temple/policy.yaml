@@ -12,21 +12,34 @@ tier_mapping:
   confidential: confidential
 
 client_registry:
-  - azp: kampus-claude
+  - client_id: kampus-claude
     registration: pre_registered_confidential
     approved: true
     workspace: Claude (school workspace)
-  - azp: kampus-chatgpt
+  - client_id: kampus-chatgpt
     registration: pre_registered_confidential
     approved: false
     workspace: ChatGPT (school workspace)
-  - azp: kampus-mascot
+  - client_id: kampus-mascot
     registration: device
     approved: false
     workspace: Mascot device
+  # Self-registered assistants (CIMD client ID URLs). Never approved; they
+  # read Sensitive data only under allow_self_registered_sensitive.
+  - client_id: https://claude.ai/oauth/mcp-oauth-client-metadata
+    registration: cimd
+    approved: false
+    workspace: Claude (personal, CIMD)
+  - client_id: https://chatgpt.com/oauth/client.json
+    registration: cimd
+    approved: false
+    workspace: ChatGPT (personal, CIMD)
 
 # Global Sensitive switch; off by default outside the synthetic demo profile.
 sensitive_enabled: false
+# Personal switch: a student's own self-registered assistant may read that
+# student's own Sensitive data (needs sensitive_enabled and the rule below).
+allow_self_registered_sensitive: false
 
 rules:
   - id: public-read
@@ -51,12 +64,18 @@ rules:
     tools: [my_deadlines]
     effective_classes: [sensitive]
     client_trust: approved
+  - id: sensitive-self-registered-student
+    effect: allow
+    roles: [student]
+    tools: [my_deadlines]
+    effective_classes: [sensitive]
+    client_trust: self_registered
   - id: sensitive-unapproved-deny
     effect: deny
     roles: [student, faculty, staff, guest]
     tools: ["*"]
     effective_classes: [sensitive, confidential]
-    client_trust: unapproved
+    client_trust: unapproved_other
 
 audit:
   retention_hours: 24

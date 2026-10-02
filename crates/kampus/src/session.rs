@@ -23,7 +23,7 @@ const LAST_EVENT_ID: HeaderName = HeaderName::from_static("last-event-id");
 struct Owner {
     school: String,
     subject: String,
-    azp: Option<String>,
+    client_id: Option<String>,
     auth_kind: AuthKind,
     device_id: Option<String>,
 }
@@ -49,7 +49,7 @@ impl SessionOwners {
         Owner {
             school: self.school.clone(),
             subject: principal.subject.clone(),
-            azp: principal.azp.clone(),
+            client_id: principal.client_id.clone(),
             auth_kind: principal.auth_kind,
             device_id: principal.device_id.clone(),
         }

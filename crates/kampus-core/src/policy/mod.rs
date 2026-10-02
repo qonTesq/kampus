@@ -9,11 +9,13 @@
 #[cfg(test)]
 mod tests;
 
+use std::collections::BTreeSet;
 use std::sync::{Arc, PoisonError, RwLock};
 
 use crate::config::{ClientRegistration, ClientTrust, Effect, PolicyConfig, Rule};
 use crate::contracts::{
-    AuthKind, Authorizer, CallContext, DataClass, Decision, Operation, Principal, ToolDescriptor,
+    AuthKind, Authorizer, CallContext, DataClass, Decision, Operation, Principal, Role,
+    ToolDescriptor,
 };
 
 /// Stable rule IDs for built-in decisions (audited and documented).
@@ -26,8 +28,12 @@ pub mod rules {
     pub const TOOL_SCOPES: &str = "builtin:tool_scopes";
     /// The global Sensitive switch is off.
     pub const SENSITIVE_DISABLED: &str = "builtin:sensitive_disabled";
-    /// Sensitive data needs a user token from an approved pre-registered client.
+    /// Sensitive data needs a user token from an approved pre-registered
+    /// client (or, under the personal switch, a student's own read).
     pub const SENSITIVE_CLIENT: &str = "builtin:sensitive_unapproved_client";
+    /// A self-registered client asked for Sensitive data while
+    /// `allow_self_registered_sensitive` is off.
+    pub const SELF_REGISTERED_SENSITIVE_OFF: &str = "builtin:self_registered_sensitive_off";
     /// A device may only propose or confirm with a live sticker binding.
     pub const DEVICE_UNBOUND: &str = "builtin:device_unbound";
     /// An allow rule matched but the token lacks its `required_scopes`.
@@ -98,13 +104,28 @@ impl PolicyEngine {
         if !tool.scopes.iter().all(|s| principal.has_scope(s)) {
             return deny(rules::TOOL_SCOPES);
         }
-        let approved = is_approved_client(policy, principal);
+        let client = client_class(policy, principal);
+        // Personal access: a student's own self-registered assistant reading
+        // that student's Sensitive data, only through an explicit rule.
+        let personal = class == DataClass::Sensitive && client == ClientClass::SelfRegistered;
         if class == DataClass::Sensitive {
             if !policy.sensitive_enabled {
                 return deny(rules::SENSITIVE_DISABLED);
             }
-            if !approved {
-                return deny(rules::SENSITIVE_CLIENT);
+            match client {
+                ClientClass::Approved => {}
+                ClientClass::SelfRegistered => {
+                    if !policy.allow_self_registered_sensitive {
+                        return deny(rules::SELF_REGISTERED_SENSITIVE_OFF);
+                    }
+                    if operation != Operation::Read
+                        || principal.auth_kind != AuthKind::User
+                        || !principal.has_role(Role::Student)
+                    {
+                        return deny(rules::SENSITIVE_CLIENT);
+                    }
+                }
+                ClientClass::Other => return deny(rules::SENSITIVE_CLIENT),
             }
         }
         if principal.auth_kind == AuthKind::Device
@@ -118,13 +139,21 @@ impl PolicyEngine {
             policy
                 .rules
                 .iter()
-                .filter(move |r| r.effect == effect && matches(r, principal, tool, class, approved))
+                .filter(move |r| r.effect == effect && matches(r, principal, tool, class, client))
         };
         if let Some(rule) = matching(Effect::Deny).next() {
             return deny(&rule.id);
         }
         let mut scope_miss = false;
         for rule in matching(Effect::Allow) {
+            // Under the personal switch only a `self_registered` rule naming
+            // the tool explicitly can allow; `*` and broader rules cannot.
+            if personal
+                && !(rule.client_trust == ClientTrust::SelfRegistered
+                    && rule.tools.contains(&tool.name))
+            {
+                continue;
+            }
             if rule.required_scopes.iter().all(|s| principal.has_scope(s)) {
                 return decide(true, &rule.id);
             }
@@ -150,6 +179,34 @@ impl Authorizer for PolicyEngine {
     }
 }
 
+/// Every scope a call to `tool` needs, for a challenge: the descriptor's
+/// scopes plus the `required_scopes` of the enabled allow rules that name
+/// the tool. With a principal, only rules that otherwise match that caller
+/// count; without one (no credential yet), any caller's rules do.
+pub fn challenge_scopes(
+    policy: &PolicyConfig,
+    principal: Option<&Principal>,
+    tool: &ToolDescriptor,
+) -> BTreeSet<String> {
+    let class = effective_class(policy, tool.data_class);
+    let applies = |rule: &&Rule| match principal {
+        Some(p) => matches(rule, p, tool, class, client_class(policy, p)),
+        None => {
+            rule.enabled
+                && (rule.tools.contains("*") || rule.tools.contains(&tool.name))
+                && rule.effective_classes.contains(&class)
+        }
+    };
+    policy
+        .rules
+        .iter()
+        .filter(|r| r.effect == Effect::Allow)
+        .filter(applies)
+        .flat_map(|r| r.required_scopes.iter().cloned())
+        .chain(tool.scopes.iter().cloned())
+        .collect()
+}
+
 /// The school's effective class; an unmapped class fails closed.
 pub fn effective_class(policy: &PolicyConfig, class: DataClass) -> DataClass {
     policy
@@ -159,18 +216,41 @@ pub fn effective_class(policy: &PolicyConfig, class: DataClass) -> DataClass {
         .unwrap_or(DataClass::Confidential)
 }
 
-/// Approved = a user token whose verified `azp` is a pre-registered
-/// confidential client with active approval. Everything else (DCR, CIMD,
-/// devices, guests, unknown clients) is unapproved, whatever it calls itself.
+/// How far a caller's client is trusted, from the verified principal and
+/// the client registry only (never names, audiences, scopes or metadata).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ClientClass {
+    /// A user token from a registered `pre_registered_confidential` client
+    /// with active approval.
+    Approved,
+    /// A user token from a registered `cimd` or `dcr` client. Never approved.
+    SelfRegistered,
+    /// Guests, devices, unregistered and unapproved clients.
+    Other,
+}
+
+/// Classify the caller. An unregistered client, even one whose ID looks like
+/// a CIMD URL, is [`ClientClass::Other`].
+pub fn client_class(policy: &PolicyConfig, principal: &Principal) -> ClientClass {
+    if principal.auth_kind != AuthKind::User {
+        return ClientClass::Other;
+    }
+    let entry = principal
+        .client_id
+        .as_deref()
+        .and_then(|id| policy.client_registry.iter().find(|c| c.client_id == id));
+    match entry.map(|c| (c.registration, c.approved)) {
+        Some((ClientRegistration::PreRegisteredConfidential, true)) => ClientClass::Approved,
+        Some((ClientRegistration::Cimd | ClientRegistration::Dcr, _)) => {
+            ClientClass::SelfRegistered
+        }
+        _ => ClientClass::Other,
+    }
+}
+
+/// Whether the caller is an approved workspace client.
 pub fn is_approved_client(policy: &PolicyConfig, principal: &Principal) -> bool {
-    principal.auth_kind == AuthKind::User
-        && principal.azp.as_deref().is_some_and(|azp| {
-            policy.client_registry.iter().any(|c| {
-                c.azp == azp
-                    && c.registration == ClientRegistration::PreRegisteredConfidential
-                    && c.approved
-            })
-        })
+    client_class(policy, principal) == ClientClass::Approved
 }
 
 fn matches(
@@ -178,7 +258,7 @@ fn matches(
     principal: &Principal,
     tool: &ToolDescriptor,
     class: DataClass,
-    approved: bool,
+    client: ClientClass,
 ) -> bool {
     rule.enabled
         && rule.roles.iter().any(|r| principal.has_role(*r))
@@ -186,7 +266,9 @@ fn matches(
         && rule.effective_classes.contains(&class)
         && match rule.client_trust {
             ClientTrust::Any => true,
-            ClientTrust::Approved => approved,
-            ClientTrust::Unapproved => !approved,
+            ClientTrust::Approved => client == ClientClass::Approved,
+            ClientTrust::Unapproved => client != ClientClass::Approved,
+            ClientTrust::SelfRegistered => client == ClientClass::SelfRegistered,
+            ClientTrust::UnapprovedOther => client == ClientClass::Other,
         }
 }

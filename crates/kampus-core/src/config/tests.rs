@@ -1,7 +1,7 @@
-use std::collections::BTreeSet;
+use std::collections::BTreeMap;
 
 use super::*;
-use crate::contracts::{DataClass, Role};
+use crate::contracts::{DataClass, Operation, Role};
 
 const TEMPLE_SCHOOL: &str = include_str!("../../../../schools/temple/school.yaml");
 const TEMPLE_POLICY: &str = include_str!("../../../../schools/temple/policy.yaml");
@@ -16,8 +16,11 @@ const TOOLS: [&str; 7] = [
     "library_hours",
 ];
 
-fn tools() -> BTreeSet<String> {
-    TOOLS.iter().map(|t| (*t).to_owned()).collect()
+fn tools() -> BTreeMap<String, Operation> {
+    TOOLS
+        .iter()
+        .map(|t| ((*t).to_owned(), tool_operation(t)))
+        .collect()
 }
 
 fn env(sandbox_compiled: bool) -> Env<'static> {
@@ -81,6 +84,35 @@ fn unknown_field_is_a_parse_error() {
 }
 
 #[test]
+fn leftover_audience_alias_fails_with_a_field_diagnostic() {
+    let yaml = TEMPLE_SCHOOL.replacen("auth:\n", "auth:\n  audience: kampus-temple\n", 1);
+    match SchoolConfig::from_yaml(&yaml) {
+        Err(ConfigError::Parse { message, .. }) => {
+            assert!(message.contains("audience"), "{message}");
+        }
+        other => panic!("expected a parse error naming audience, got {other:?}"),
+    }
+}
+
+#[test]
+fn roles_claim_defaults_to_roles_and_accepts_a_dotted_path() {
+    assert_eq!(school().auth.roles_claim, "roles");
+    let yaml = TEMPLE_SCHOOL.replacen("auth:\n", "auth:\n  roles_claim: entitlements.roles\n", 1);
+    let s = SchoolConfig::from_yaml(&yaml).unwrap();
+    assert_eq!(s.auth.roles_claim, "entitlements.roles");
+    s.validate(&env(false)).unwrap();
+    for bad in ["", "entitlements.", ".roles", "a..b"] {
+        let mut s = school();
+        s.auth.roles_claim = bad.into();
+        assert_eq!(
+            school_issues(&s, &env(false)),
+            ["auth.roles_claim"],
+            "{bad:?}"
+        );
+    }
+}
+
+#[test]
 fn unknown_role_and_class_are_parse_errors() {
     let yaml = TEMPLE_POLICY.replacen("roles: [student]", "roles: [provost]", 1);
     assert!(matches!(
@@ -135,11 +167,48 @@ fn only_pre_registered_confidential_clients_can_be_approved() {
         let mut p = policy();
         p.client_registry[1].registration = kind;
         p.client_registry[1].approved = true;
+        if kind == ClientRegistration::Cimd {
+            p.client_registry[1].client_id = "https://assistant.example/client.json".into();
+        }
         assert_eq!(
             policy_issues(&p, &env(false)),
             ["client_registry[1].approved"]
         );
     }
+}
+
+#[test]
+fn cimd_client_ids_are_https_document_urls() {
+    let i = policy()
+        .client_registry
+        .iter()
+        .position(|c| c.registration == ClientRegistration::Cimd)
+        .unwrap();
+    for bad in [
+        "short-client-id",
+        "http://assistant.example/client.json",
+        "https://assistant.example/",
+        "https://assistant.example",
+        "https://user:pw@assistant.example/client.json",
+        "https://assistant.example/client.json?v=1",
+        "https://assistant.example/client.json#x",
+        "https://assistant.example/a/../client.json",
+    ] {
+        let mut p = policy();
+        p.client_registry[i].client_id = bad.into();
+        assert_eq!(
+            policy_issues(&p, &env(false)),
+            [format!("client_registry[{i}].client_id")],
+            "{bad}"
+        );
+    }
+    // Non-CIMD entries keep the short ID rule.
+    let mut p = policy();
+    p.client_registry[0].client_id = "https://assistant.example/client.json".into();
+    assert_eq!(
+        policy_issues(&p, &env(false)),
+        ["client_registry[0].client_id"]
+    );
 }
 
 #[test]
@@ -236,7 +305,7 @@ fn device_stickers_must_be_synthetic_and_devices_unapproved() {
     let mut s = school();
     s.devices.push(DeviceConfig {
         device_id: "owl-1".into(),
-        azp: "kampus-mascot".into(),
+        client_id: "kampus-mascot".into(),
         bind_secret_env: "KAMPUS_OWL_BIND_SECRET".into(),
         stickers: vec![DeviceSticker {
             uid: "04:A2:19".into(),
@@ -256,12 +325,12 @@ fn device_stickers_must_be_synthetic_and_devices_unapproved() {
     s.devices[0].stickers[0].role = Role::Student;
     s.validate(&env(false)).unwrap();
 
-    // The device azp must be registered as a device client, never approved.
+    // The device client_id must be registered as a device client, never approved.
     let mut p = policy();
-    p.client_registry.retain(|c| c.azp != "kampus-mascot");
+    p.client_registry.retain(|c| c.client_id != "kampus-mascot");
     match p.validate(&s, &tools(), &env(false)) {
-        Err(ConfigError::Invalid(issues)) => assert_eq!(issues[0].field, "devices[0].azp"),
-        other => panic!("expected device azp issue, got {other:?}"),
+        Err(ConfigError::Invalid(issues)) => assert_eq!(issues[0].field, "devices[0].client_id"),
+        other => panic!("expected device client_id issue, got {other:?}"),
     }
 }
 
@@ -399,4 +468,90 @@ fn admission_limits_default_and_must_be_positive() {
     let mut zero = policy();
     zero.limits.max_concurrent_calls = 0;
     assert_eq!(policy_issues(&zero, &env(false)), ["limits"]);
+}
+
+// ---- self-registered clients and the personal switch -------------------------
+
+#[test]
+fn bundled_policy_ships_the_personal_rule_with_both_switches_off() {
+    let p = policy();
+    assert!(!p.sensitive_enabled);
+    assert!(!p.allow_self_registered_sensitive);
+    let rule = p
+        .rules
+        .iter()
+        .find(|r| r.id == "sensitive-self-registered-student")
+        .unwrap();
+    assert_eq!(rule.client_trust, ClientTrust::SelfRegistered);
+    let cimd: Vec<_> = p
+        .client_registry
+        .iter()
+        .filter(|c| c.registration == ClientRegistration::Cimd)
+        .collect();
+    assert_eq!(cimd.len(), 2);
+    assert!(cimd.iter().all(|c| !c.approved));
+    // The switch defaults to off when the field is absent.
+    let yaml = TEMPLE_POLICY.replace("allow_self_registered_sensitive: false\n", "");
+    assert!(
+        !PolicyConfig::from_yaml(&yaml)
+            .unwrap()
+            .allow_self_registered_sensitive
+    );
+}
+
+#[test]
+fn self_registered_allow_rules_name_read_tools_explicitly() {
+    let index = |p: &PolicyConfig| {
+        p.rules
+            .iter()
+            .position(|r| r.id == "sensitive-self-registered-student")
+            .unwrap()
+    };
+    for tools in [
+        &["*"][..],
+        &["confirm_booking"],
+        &["my_deadlines", "book_study_room"],
+    ] {
+        let mut p = policy();
+        let i = index(&p);
+        p.rules[i].tools = tools.iter().map(|t| (*t).to_owned()).collect();
+        assert_eq!(
+            policy_issues(&p, &env(false)),
+            [format!("rules[{i}].tools")],
+            "{tools:?}"
+        );
+    }
+    let mut p = policy();
+    let i = index(&p);
+    p.rules[i].effective_classes.insert(DataClass::Confidential);
+    assert_eq!(
+        policy_issues(&p, &env(false)),
+        [format!("rules[{i}].effective_classes")]
+    );
+    // A deny rule may select self-registered clients broadly.
+    let mut p = policy();
+    let i = index(&p);
+    p.rules[i].effect = Effect::Deny;
+    p.rules[i].tools = std::iter::once("*".to_owned()).collect();
+    p.validate(&school(), &tools(), &env(false)).unwrap();
+}
+
+#[test]
+fn new_trust_selectors_parse() {
+    for trust in [
+        "self_registered",
+        "unapproved_other",
+        "unapproved",
+        "approved",
+        "any",
+    ] {
+        let yaml = TEMPLE_POLICY.replacen(
+            "client_trust: approved",
+            &format!("client_trust: {trust}"),
+            1,
+        );
+        assert!(PolicyConfig::from_yaml(&yaml).is_ok(), "{trust}");
+    }
+    let yaml = TEMPLE_POLICY.replacen("client_trust: approved", "client_trust: personal", 1);
+    assert!(PolicyConfig::from_yaml(&yaml).is_err());
 }

@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use super::validate::{Env, Issues};
 use super::{ConfigIssue, SchoolConfig};
-use crate::contracts::{DataClass, Role};
+use crate::contracts::{DataClass, Operation, Role};
 
 /// `policy.yaml` version 1: role x tool x data class x client rules.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -19,6 +19,11 @@ pub struct PolicyConfig {
     pub client_registry: Vec<RegisteredClient>,
     /// Global Sensitive switch; off unless a demo profile turns it on.
     pub sensitive_enabled: bool,
+    /// Personal switch: with `sensitive_enabled` and an explicit
+    /// `self_registered` allow rule, a student's own `cimd`/`dcr` client may
+    /// read that student's own Sensitive data. Off unless turned on.
+    #[serde(default)]
+    pub allow_self_registered_sensitive: bool,
     pub rules: Vec<Rule>,
     pub audit: AuditPolicy,
     #[serde(default)]
@@ -34,11 +39,11 @@ pub enum ClientRegistration {
     Device,
 }
 
-/// A known OAuth client keyed by validated `azp`.
+/// A known OAuth client keyed by validated `client_id`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct RegisteredClient {
-    pub azp: String,
+    pub client_id: String,
     pub registration: ClientRegistration,
     /// Workspace approval; only `pre_registered_confidential` may be true.
     pub approved: bool,
@@ -57,8 +62,15 @@ pub enum Effect {
 pub enum ClientTrust {
     #[default]
     Any,
+    /// Registered `pre_registered_confidential` with active approval.
     Approved,
+    /// Not approved: `self_registered` or `unapproved_other`.
     Unapproved,
+    /// A registered `cimd` or `dcr` client.
+    SelfRegistered,
+    /// Neither approved nor self-registered: guests, devices, unregistered
+    /// and unapproved clients.
+    UnapprovedOther,
 }
 
 /// One policy rule. Deny wins; unmatched calls deny.
@@ -146,10 +158,26 @@ impl Default for PolicyLimits {
     }
 }
 
+/// A Client ID Metadata Document URL: https, a host, a non-root path, and
+/// no credentials, query or fragment.
+fn is_cimd_url(id: &str) -> bool {
+    id.len() <= 2048
+        && url::Url::parse(id).is_ok_and(|u| {
+            u.scheme() == "https"
+                && u.host_str().is_some()
+                && u.as_str() == id
+                && u.path() != "/"
+                && u.username().is_empty()
+                && u.password().is_none()
+                && u.query().is_none()
+                && u.fragment().is_none()
+        })
+}
+
 pub(super) fn validate(
     p: &PolicyConfig,
     school: &SchoolConfig,
-    known_tools: &BTreeSet<String>,
+    known_tools: &BTreeMap<String, Operation>,
     env: &Env<'_>,
 ) -> Vec<ConfigIssue> {
     let mut v = Issues::default();
@@ -176,51 +204,8 @@ pub(super) fn validate(
         }
     }
 
-    v.unique(
-        "client_registry",
-        p.client_registry.iter().map(|c| c.azp.as_str()),
-    );
-    for (i, c) in p.client_registry.iter().enumerate() {
-        v.id(&format!("client_registry[{i}].azp"), &c.azp);
-        if c.approved && c.registration != ClientRegistration::PreRegisteredConfidential {
-            v.push(
-                format!("client_registry[{i}].approved"),
-                "only pre_registered_confidential clients can be approved",
-            );
-        }
-    }
-    for (i, d) in school.devices.iter().enumerate() {
-        let entry = p.client_registry.iter().find(|c| c.azp == d.azp);
-        if !entry.is_some_and(|c| c.registration == ClientRegistration::Device) {
-            v.push(
-                format!("devices[{i}].azp"),
-                "device clients must be registered with registration: device",
-            );
-        }
-    }
-
-    v.unique("rules", p.rules.iter().map(|r| r.id.as_str()));
-    for (i, r) in p.rules.iter().enumerate() {
-        let f = format!("rules[{i}]");
-        v.id(&format!("{f}.id"), &r.id);
-        if r.roles.is_empty() || r.tools.is_empty() || r.effective_classes.is_empty() {
-            v.push(&f, "roles, tools and effective_classes must not be empty");
-        }
-        let wildcard = r.tools.len() == 1 && r.tools.contains("*");
-        if !wildcard {
-            for tool in &r.tools {
-                if !known_tools.contains(tool) {
-                    v.push(format!("{f}.tools"), format!("unknown tool {tool}"));
-                }
-            }
-        }
-        if r.effect == Effect::Allow && r.effective_classes.contains(&DataClass::Confidential) {
-            v.push(
-                format!("{f}.effective_classes"),
-                "confidential data can never be allowed",
-            );
-        }
-    }
+    validate_clients(&mut v, p, school);
+    validate_rules(&mut v, p, known_tools);
 
     if p.audit.retention_hours == 0 || p.audit.retention_hours > 24 * 30 {
         v.push("audit.retention_hours", "must be within 1..=720");
@@ -244,4 +229,79 @@ pub(super) fn validate(
         v.push("limits", "all limits must be positive");
     }
     v.0
+}
+
+fn validate_clients(v: &mut Issues, p: &PolicyConfig, school: &SchoolConfig) {
+    v.unique(
+        "client_registry",
+        p.client_registry.iter().map(|c| c.client_id.as_str()),
+    );
+    for (i, c) in p.client_registry.iter().enumerate() {
+        let field = format!("client_registry[{i}].client_id");
+        if c.registration == ClientRegistration::Cimd {
+            if !is_cimd_url(&c.client_id) {
+                v.push(
+                    field,
+                    "a cimd client ID must be an https URL with a path and no credentials, query or fragment",
+                );
+            }
+        } else {
+            v.id(&field, &c.client_id);
+        }
+        if c.approved && c.registration != ClientRegistration::PreRegisteredConfidential {
+            v.push(
+                format!("client_registry[{i}].approved"),
+                "only pre_registered_confidential clients can be approved",
+            );
+        }
+    }
+    for (i, d) in school.devices.iter().enumerate() {
+        let entry = p
+            .client_registry
+            .iter()
+            .find(|c| c.client_id == d.client_id);
+        if !entry.is_some_and(|c| c.registration == ClientRegistration::Device) {
+            v.push(
+                format!("devices[{i}].client_id"),
+                "device clients must be registered with registration: device",
+            );
+        }
+    }
+}
+
+fn validate_rules(v: &mut Issues, p: &PolicyConfig, known_tools: &BTreeMap<String, Operation>) {
+    v.unique("rules", p.rules.iter().map(|r| r.id.as_str()));
+    for (i, r) in p.rules.iter().enumerate() {
+        let f = format!("rules[{i}]");
+        v.id(&format!("{f}.id"), &r.id);
+        if r.roles.is_empty() || r.tools.is_empty() || r.effective_classes.is_empty() {
+            v.push(&f, "roles, tools and effective_classes must not be empty");
+        }
+        let wildcard = r.tools.len() == 1 && r.tools.contains("*");
+        if !wildcard {
+            for tool in &r.tools {
+                if !known_tools.contains_key(tool) {
+                    v.push(format!("{f}.tools"), format!("unknown tool {tool}"));
+                }
+            }
+        }
+        if r.effect == Effect::Allow && r.effective_classes.contains(&DataClass::Confidential) {
+            v.push(
+                format!("{f}.effective_classes"),
+                "confidential data can never be allowed",
+            );
+        }
+        if r.effect == Effect::Allow && r.client_trust == ClientTrust::SelfRegistered {
+            let explicit_reads = r
+                .tools
+                .iter()
+                .all(|t| known_tools.get(t) == Some(&Operation::Read));
+            if !explicit_reads {
+                v.push(
+                    format!("{f}.tools"),
+                    "self_registered allow rules must name read-only tools explicitly, never *",
+                );
+            }
+        }
+    }
 }

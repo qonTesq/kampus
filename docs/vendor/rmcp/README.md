@@ -11,7 +11,7 @@ Code against **these files**, not memory. rmcp went through v1, v2 and v3 in 202
 
 ## Contents
 - `CHANGELOG-3.x.md` (3.x releases only) and `OAUTH_SUPPORT.md`: upstream docs. This `README.md` is the kampus note.
-- `examples/`: official server examples. `counter_streamhttp.rs` is the axum + Streamable HTTP pattern kampus uses; `structured_output.rs` covers structured output; `simple_auth_streamhttp.rs` and `complex_auth_streamhttp.rs` are the upstream auth examples. The complex one hand-writes an authorization server, which kampus must **not** do: Keycloak is the authorization server.
+- `examples/`: official server examples. `counter_streamhttp.rs` is the axum + Streamable HTTP pattern kampus uses; `structured_output.rs` covers structured output; `simple_auth_streamhttp.rs` and `complex_auth_streamhttp.rs` are the upstream auth examples. The complex one hand-writes an authorization server inside the MCP server; kampus doesn't. The resource server verifies tokens from a separately configured issuer (the school's own AS, or the kampus broker from the `auth-broker` change).
 - `source/`: rustdoc-bearing sources: `StreamableHttpServerConfig`/`StreamableHttpService` (`streamable_http_server_tower.rs`), the `ServerHandler` trait (`handler_server.rs`), `Tool`/`ToolAnnotations` (`model_tool.rs`), and protocol negotiation (`service_server.rs`).
 - `tests/`: upstream wire-level tests showing exact 2026-07-28 and legacy request shapes.
 - `docs-rs/`: text snapshots of the key docs.rs pages.

@@ -1,5 +1,6 @@
-//! Resource-server authentication (JWT verification against Keycloak,
-//! protected-resource metadata, 401 challenges). OWNED BY auth-policy-audit.
+//! Resource-server authentication (RFC 9068 access-token verification
+//! against the configured issuer, protected-resource metadata, 401
+//! challenges). OWNED BY auth-policy-audit.
 //!
 //! Output: a verified [`Principal`], inserted into the HTTP request extensions
 //! by the server's middleware before the MCP service runs. Nothing here trusts
@@ -13,21 +14,29 @@ mod tests;
 use std::collections::{BTreeMap, BTreeSet};
 
 use jsonwebtoken::errors::ErrorKind;
-use jsonwebtoken::{Algorithm, DecodingKey, Validation};
+use jsonwebtoken::jwk::{AlgorithmParameters, EllipticCurve, Jwk};
+use jsonwebtoken::{Algorithm, DecodingKey, Header, Validation};
 use serde_json::{Value, json};
 use url::Url;
 
 pub use jwks::{FORCED_REFRESH_INTERVAL, JWKS_TTL, KeyCache, KeySource};
-pub use request::requires_credentials;
+pub use request::{RequestClass, classify};
 
 use crate::config::{AuthMode, SchoolConfig};
 use crate::contracts::{AuthKind, Principal, Role};
 
-/// Maximum clock skew accepted on `exp` and `nbf`.
+/// Maximum clock skew accepted on `exp`, `nbf` and `iat`.
 pub const CLOCK_SKEW_SECONDS: u64 = 30;
-/// Asymmetric algorithms Keycloak signs with. `none` and HMAC are never accepted.
-pub const ALLOWED_ALGORITHMS: &[Algorithm] =
-    &[Algorithm::RS256, Algorithm::PS256, Algorithm::ES256];
+/// Longest accepted access-token lifetime (`exp - iat`), in seconds.
+pub const MAX_ACCESS_TOKEN_LIFETIME_SECONDS: u64 = 2 * 60 * 60;
+/// The fixed signature allowlist. `none` and HMAC are never accepted; an
+/// issuer that signs with something else is a reason to extend this list.
+pub const ALLOWED_ALGORITHMS: &[Algorithm] = &[
+    Algorithm::EdDSA,
+    Algorithm::ES256,
+    Algorithm::PS256,
+    Algorithm::RS256,
+];
 
 /// Why a presented credential was refused. Messages are safe to log: they
 /// never contain token contents.
@@ -51,10 +60,14 @@ pub enum AuthError {
     Audience,
     #[error("missing or empty subject")]
     Subject,
-    #[error("missing or malformed azp")]
-    Azp,
+    #[error("missing, malformed or conflicting client identity")]
+    ClientId,
     #[error("not an access token")]
     TokenType,
+    #[error("issued in the future or lifetime too long")]
+    Lifetime,
+    #[error("sender-constrained tokens are not supported")]
+    Confirmation,
     #[error("signing keys unavailable")]
     KeysUnavailable,
 }
@@ -70,30 +83,26 @@ impl AuthError {
 #[derive(Debug, Clone)]
 pub struct AuthSettings {
     pub mode: AuthMode,
+    /// The canonical resource; also the only accepted token audience.
     pub resource_url: Url,
     pub issuer: Url,
-    pub audience: String,
     pub roles_claim: String,
-    /// Device client `azp` -> device ID (from `school.yaml` `devices`).
-    pub device_azps: BTreeMap<String, String>,
-    /// Advertised in metadata (the union of registered tool scopes).
-    pub scopes_supported: BTreeSet<String>,
+    /// Device client ID -> device ID (from `school.yaml` `devices`).
+    pub device_clients: BTreeMap<String, String>,
 }
 
 impl AuthSettings {
-    pub fn from_school(school: &SchoolConfig, scopes_supported: BTreeSet<String>) -> Self {
+    pub fn from_school(school: &SchoolConfig) -> Self {
         Self {
             mode: school.auth.mode,
             resource_url: school.server.resource_url.clone(),
             issuer: school.auth.issuer.clone(),
-            audience: school.auth.audience.clone(),
             roles_claim: school.auth.roles_claim.clone(),
-            device_azps: school
+            device_clients: school
                 .devices
                 .iter()
-                .map(|d| (d.azp.clone(), d.device_id.clone()))
+                .map(|d| (d.client_id.clone(), d.device_id.clone()))
                 .collect(),
-            scopes_supported,
         }
     }
 }
@@ -131,7 +140,7 @@ impl Authenticator {
         }
     }
 
-    /// Keys fetched through the configured realm's discovery document.
+    /// Keys fetched through the configured issuer's metadata.
     pub fn with_discovery(settings: AuthSettings, client: reqwest::Client) -> Self {
         let issuer = settings.issuer.clone();
         Self::new(settings, KeySource::Discovery { client, issuer })
@@ -154,13 +163,14 @@ impl Authenticator {
         format!("{origin}{}", self.metadata_path())
     }
 
-    /// RFC 9728 protected-resource metadata document.
+    /// RFC 9728 protected-resource metadata document. It lists no
+    /// `scopes_supported`: tool scopes such as `rooms:book` are requested
+    /// only through a 403 step-up, so a first sign-in asks for none of them.
     pub fn metadata(&self) -> Value {
         json!({
             "resource": self.settings.resource_url.as_str(),
             "authorization_servers": [self.settings.issuer.as_str()],
             "bearer_methods_supported": ["header"],
-            "scopes_supported": self.settings.scopes_supported,
         })
     }
 
@@ -171,6 +181,28 @@ impl Authenticator {
             value.push_str(", error=\"invalid_token\"");
         }
         value
+    }
+
+    /// 401 for a call without a credential that policy refuses for a guest
+    /// (RFC 6750 section 3: no `error`, since no token was presented).
+    pub fn sign_in_challenge(&self, scopes: &BTreeSet<String>) -> String {
+        let base = self.challenge(None);
+        match scope_param(scopes) {
+            Some(scope) => format!("{base}, scope=\"{scope}\""),
+            None => base,
+        }
+    }
+
+    /// 403 for a signed-in call refused only for a missing scope: every
+    /// scope the call needs, in one challenge.
+    pub fn step_up_challenge(&self, scopes: &BTreeSet<String>) -> String {
+        let scope = scope_param(scopes)
+            .map(|scope| format!(", scope=\"{scope}\""))
+            .unwrap_or_default();
+        format!(
+            "Bearer error=\"insufficient_scope\"{scope}, resource_metadata=\"{}\"",
+            self.metadata_url()
+        )
     }
 
     /// Decide a request: verify any presented credential (a present but
@@ -207,7 +239,7 @@ impl Authenticator {
         self.verify(token.trim()).await.map(Credential::Verified)
     }
 
-    /// Verify a Keycloak access token and build the principal.
+    /// Verify an access token from the configured issuer and build the principal.
     pub async fn verify(&self, token: &str) -> Result<Principal, AuthError> {
         let header = jsonwebtoken::decode_header(token).map_err(|_| AuthError::Malformed)?;
         if !ALLOWED_ALGORITHMS.contains(&header.alg) {
@@ -215,11 +247,7 @@ impl Authenticator {
         }
         let kid = header.kid.as_deref().ok_or(AuthError::UnknownKey)?;
         let jwk = self.keys.key(kid).await?;
-        if jwk
-            .common
-            .key_algorithm
-            .is_some_and(|alg| alg.to_string().parse::<Algorithm>().ok() != Some(header.alg))
-        {
+        if !key_fits(&jwk, header.alg) {
             return Err(AuthError::Algorithm);
         }
         let key = DecodingKey::from_jwk(&jwk).map_err(|_| AuthError::UnknownKey)?;
@@ -229,23 +257,23 @@ impl Authenticator {
         validation.validate_nbf = true;
         validation.set_required_spec_claims(&["exp", "iss", "aud", "sub"]);
         validation.set_issuer(&[self.settings.issuer.as_str()]);
-        validation.set_audience(&[self.settings.audience.as_str()]);
+        // RFC 8707/9728: the audience is the exact resource URL, never an alias.
+        validation.set_audience(&[self.settings.resource_url.as_str()]);
         let claims = jsonwebtoken::decode::<Value>(token, &key, &validation)
             .map_err(|e| map_jwt_error(e.kind()))?
             .claims;
+        check_token_type(&header, &claims)?;
+        check_lifetime(&claims)?;
+        // No proof of possession is verified, so a bound token is refused.
+        if claims.get("cnf").is_some() {
+            return Err(AuthError::Confirmation);
+        }
         self.principal(&claims)
     }
 
     fn principal(&self, claims: &Value) -> Result<Principal, AuthError> {
-        // Keycloak access tokens carry `typ: Bearer`; ID/refresh tokens differ.
-        if claims
-            .get("typ")
-            .is_some_and(|t| !t.as_str().is_some_and(|t| t.eq_ignore_ascii_case("bearer")))
-        {
-            return Err(AuthError::TokenType);
-        }
         let subject = nonempty(claims.get("sub")).ok_or(AuthError::Subject)?;
-        let azp = nonempty(claims.get("azp")).ok_or(AuthError::Azp)?;
+        let client_id = client_identity(claims)?;
         let scopes = claims
             .get("scope")
             .and_then(Value::as_str)
@@ -260,7 +288,7 @@ impl Authenticator {
                     .collect::<BTreeSet<_>>()
             })
             .unwrap_or_default();
-        let device_id = self.settings.device_azps.get(&azp).cloned();
+        let device_id = self.settings.device_clients.get(&client_id).cloned();
         let auth_kind = if device_id.is_some() {
             AuthKind::Device
         } else {
@@ -268,12 +296,106 @@ impl Authenticator {
         };
         Ok(Principal {
             subject,
-            azp: Some(azp),
+            client_id: Some(client_id),
             roles,
             scopes,
             auth_kind,
             device_id,
         })
+    }
+}
+
+/// Space-separated scope tokens (RFC 6749 section 3.3); values that are not
+/// valid scope tokens are left out rather than quoted into a header.
+fn scope_param(scopes: &BTreeSet<String>) -> Option<String> {
+    let valid = |s: &&String| {
+        !s.is_empty()
+            && s.bytes()
+                .all(|b| b == 0x21 || (0x23..=0x5b).contains(&b) || (0x5d..=0x7e).contains(&b))
+    };
+    let joined = scopes
+        .iter()
+        .filter(valid)
+        .cloned()
+        .collect::<Vec<_>>()
+        .join(" ");
+    (!joined.is_empty()).then_some(joined)
+}
+
+/// The signing key must suit the header's algorithm: key type, curve and
+/// any published `alg` all agree.
+fn key_fits(jwk: &Jwk, alg: Algorithm) -> bool {
+    let published = jwk
+        .common
+        .key_algorithm
+        .is_none_or(|k| k.to_string().parse::<Algorithm>().ok() == Some(alg));
+    let shape = match (&jwk.algorithm, alg) {
+        (AlgorithmParameters::OctetKeyPair(p), Algorithm::EdDSA) => {
+            p.curve == EllipticCurve::Ed25519
+        }
+        (AlgorithmParameters::EllipticCurve(p), Algorithm::ES256) => p.curve == EllipticCurve::P256,
+        (AlgorithmParameters::RSA(_), Algorithm::RS256 | Algorithm::PS256) => true,
+        _ => false,
+    };
+    published && shape
+}
+
+/// RFC 9068: the JOSE header `typ` is `at+jwt`. Transition rule: a header
+/// without it (absent or `JWT`) passes only with payload `typ: Bearer` and
+/// no `nonce`. ID tokens, refresh tokens and conflicting markers are refused.
+fn check_token_type(header: &Header, claims: &Value) -> Result<(), AuthError> {
+    let payload_typ = claims.get("typ");
+    let payload_bearer = payload_typ
+        .and_then(Value::as_str)
+        .is_some_and(|t| t.eq_ignore_ascii_case("bearer"));
+    let header_typ = header.typ.as_deref();
+    let at_jwt = header_typ.is_some_and(|t| {
+        t.eq_ignore_ascii_case("at+jwt") || t.eq_ignore_ascii_case("application/at+jwt")
+    });
+    let generic = header_typ.is_none_or(|t| t.eq_ignore_ascii_case("jwt"));
+    let accepted = if at_jwt {
+        payload_typ.is_none() || payload_bearer
+    } else {
+        generic && payload_bearer && claims.get("nonce").is_none()
+    };
+    if accepted {
+        Ok(())
+    } else {
+        Err(AuthError::TokenType)
+    }
+}
+
+/// `iat` is not in the future and `exp - iat` stays within the maximum lifetime.
+fn check_lifetime(claims: &Value) -> Result<(), AuthError> {
+    let seconds = |name| claims.get(name).and_then(Value::as_i64);
+    let (Some(iat), Some(exp)) = (seconds("iat"), seconds("exp")) else {
+        return Err(AuthError::Lifetime);
+    };
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .ok()
+        .and_then(|d| i64::try_from(d.as_secs()).ok())
+        .ok_or(AuthError::Lifetime)?;
+    let skew = i64::try_from(CLOCK_SKEW_SECONDS).unwrap_or(i64::MAX);
+    let max = i64::try_from(MAX_ACCESS_TOKEN_LIFETIME_SECONDS).unwrap_or(0);
+    if iat > now.saturating_add(skew) || exp.saturating_sub(iat) > max {
+        return Err(AuthError::Lifetime);
+    }
+    Ok(())
+}
+
+/// The canonical client identity (RFC 9068 section 2.2): `client_id`,
+/// falling back to `azp` only when `client_id` is absent. Each present
+/// value must be a non-empty string, and both must agree.
+fn client_identity(claims: &Value) -> Result<String, AuthError> {
+    let claim = |name| match claims.get(name) {
+        None => Ok(None),
+        Some(value) => nonempty(Some(value)).map(Some).ok_or(AuthError::ClientId),
+    };
+    match (claim("client_id")?, claim("azp")?) {
+        (Some(client_id), Some(azp)) if client_id != azp => Err(AuthError::ClientId),
+        (Some(id), _) | (None, Some(id)) => Ok(id),
+        (None, None) => Err(AuthError::ClientId),
     }
 }
 
@@ -284,7 +406,7 @@ fn nonempty(value: Option<&Value>) -> Option<String> {
         .map(str::to_owned)
 }
 
-/// Follow a dotted claim path such as `realm_access.roles`.
+/// Follow a dotted claim path such as `entitlements.roles`.
 fn claim_path<'a>(claims: &'a Value, path: &str) -> Option<&'a Value> {
     path.split('.')
         .try_fold(claims, |value, key| value.get(key))

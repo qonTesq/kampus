@@ -167,7 +167,7 @@ fn school(extra_transit: &str, sandbox: bool) -> SchoolConfig {
 version: 1
 school: {{ id: testu, display_name: Test University, timezone: America/New_York }}
 server: {{ resource_url: "http://127.0.0.1:9/mcp", listen: "127.0.0.1:9", admin_listen: "127.0.0.1:10" }}
-auth: {{ issuer: "http://127.0.0.1:11/realms/k", audience: testu }}
+auth: {{ issuer: "http://127.0.0.1:11/auth" }}
 modules: [transit]
 sandbox: {{ enabled: {sandbox} }}
 transit:

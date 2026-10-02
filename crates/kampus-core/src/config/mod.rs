@@ -8,7 +8,7 @@ mod policy;
 mod school;
 mod validate;
 
-use std::collections::BTreeSet;
+use std::collections::BTreeMap;
 use std::path::Path;
 
 pub use policy::{
@@ -22,6 +22,8 @@ pub use school::{
     TransitProvider, TransitRoute, TransitStop, TrustedProxy, UpstreamLimits, parse_range,
 };
 pub use validate::{ConfigIssue, Env};
+
+use crate::contracts::Operation;
 
 /// Configuration failure with safe, field-level diagnostics.
 #[derive(Debug, thiserror::Error)]
@@ -92,7 +94,7 @@ impl PolicyConfig {
     pub fn validate(
         &self,
         school: &SchoolConfig,
-        known_tools: &BTreeSet<String>,
+        known_tools: &BTreeMap<String, Operation>,
         env: &Env<'_>,
     ) -> Result<(), ConfigError> {
         let issues = policy::validate(self, school, known_tools, env);
@@ -101,6 +103,17 @@ impl PolicyConfig {
         } else {
             Err(ConfigError::Invalid(issues))
         }
+    }
+}
+
+/// The operation of each of the seven tools, for tests that validate a
+/// policy without registering modules.
+#[cfg(test)]
+pub(crate) fn tool_operation(tool: &str) -> Operation {
+    match tool {
+        "confirm_booking" => Operation::Confirm,
+        "book_study_room" => Operation::Propose,
+        _ => Operation::Read,
     }
 }
 

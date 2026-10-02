@@ -98,7 +98,7 @@ fn secrets() -> [String; 2] {
 fn principal() -> Principal {
     Principal {
         subject: "service-account".into(),
-        azp: Some("mascot-a".into()),
+        client_id: Some("mascot-a".into()),
         roles: BTreeSet::from([Role::Guest]),
         scopes: BTreeSet::from(["rooms:book".into()]),
         auth_kind: AuthKind::Device,
@@ -210,7 +210,7 @@ async fn binding_expiry_uses_monotonic_time_and_preserves_trust() {
     );
     let bound = h.identity();
     assert!(bound.principal.has_role(Role::Student));
-    assert_eq!(bound.principal.azp, principal().azp);
+    assert_eq!(bound.principal.client_id, principal().client_id);
     assert_eq!(bound.principal.scopes, principal().scopes);
     assert_eq!(bound.principal.auth_kind, AuthKind::Device);
     assert_eq!(bound.binding_generation, Some(1));
@@ -671,13 +671,15 @@ async fn pi_and_verified_vendor_credentials_cannot_cross_authentication_paths() 
     let public = key.public_key();
     let jwks = json!({"keys":[{"kty":"RSA", "use":"sig", "alg":"RS256", "kid":"test", "n":b64(public.modulus().big_endian_without_leading_zero()), "e":b64(public.exponent().big_endian_without_leading_zero())}]});
     let auth = Authenticator::new(
-        AuthSettings::from_school(&school(), BTreeSet::new()),
+        AuthSettings::from_school(&school()),
         KeySource::from_jwks_json(&jwks).unwrap(),
     );
-    let claims = json!({"iss":school().auth.issuer, "aud":"demo", "sub":"synthetic:service", "azp":"mascot-a", "typ":"Bearer", "exp":Utc::now().timestamp()+300, "scope":"rooms:book"});
+    let claims = json!({"iss":school().auth.issuer, "aud":school().server.resource_url, "sub":"synthetic:service", "client_id":"mascot-a", "iat":Utc::now().timestamp(), "exp":Utc::now().timestamp()+300, "scope":"rooms:book"});
     let input = format!(
         "{}.{}",
-        b64(json!({"alg":"RS256", "kid":"test"}).to_string().as_bytes()),
+        b64(json!({"alg":"RS256", "typ":"at+jwt", "kid":"test"})
+            .to_string()
+            .as_bytes()),
         b64(claims.to_string().as_bytes())
     );
     let mut signature = vec![0; key.public_modulus_len()];

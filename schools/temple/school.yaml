@@ -4,7 +4,7 @@
 #
 # server/auth below are LOCAL DEVELOPMENT values. For the VM, set
 #   server.resource_url: https://<KAMPUS_DOMAIN>/mcp
-#   auth.issuer:         https://<AUTH_DOMAIN>/realms/kampus
+#   auth.issuer:         https://<KAMPUS_DOMAIN>/auth   (the kampus broker, or the school's own AS)
 # (hosts ending in .invalid are rejected at startup as unfilled placeholders).
 version: 1
 
@@ -20,9 +20,10 @@ server:
 
 auth:
   mode: oauth
-  issuer: http://127.0.0.1:8180/realms/kampus
-  audience: kampus-temple
-  roles_claim: realm_access.roles
+  # The kampus authorization broker (auth-broker change). Until it lands,
+  # nothing serves this issuer: public tools work without a token, and
+  # protected calls get 401.
+  issuer: http://127.0.0.1:8082/auth
 
 modules: [rooms, courses, transit, library_hours, deadlines]
 

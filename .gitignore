@@ -9,7 +9,6 @@ target/
 *.pem
 *.key
 secrets/
-deploy/keycloak/.env
 
 # Local runtime state
 /data/audit/

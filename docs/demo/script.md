@@ -95,7 +95,7 @@ Option 2 takes about 15 seconds; give the spare time to the owl by letting a jud
 **Slide 3.** **A**, one line each:
 - "**Live, public data:** Temple LibCal, Banner, SEPTA, library hours. **Synthetic:** anything personal."
 - "Rust, no `unsafe`, 276 tests, policy checked on every call, never by hiding tools."
-- "Login through the school's own identity provider; we use Keycloak, which Temple itself runs."
+- "Login through a standards-based authorization server; public tools need no sign-in at all."
 - "Running on **kampus.study**, with Cloudflare, Gemini and ElevenLabs."
 
 ### 4:40–5:00 · Close
@@ -128,7 +128,7 @@ For the submission, and as a backup during the live demo. Record screen and audi
 - [ ] **ChatGPT approval is OFF** (it's off by default; don't touch the admin page).
 - [ ] **Audit terminal** open in a large font, with old entries scrolled away.
 - [ ] **The laptop doesn't sleep,** it's plugged in, and a phone hotspot is ready as backup.
-- [ ] **These are running:** Keycloak (`java`), two `kampus.exe` (Temple on 8080, SJU on 8090), `cloudflared`. Quick check: `https://mcp.kampus.study/.well-known/oauth-protected-resource` and `https://sju.kampus.study/.well-known/oauth-protected-resource` both load.
+- [ ] **These are running:** the authorization server (once `auth-broker` lands), two `kampus.exe` (Temple on 8080, SJU on 8090), `cloudflared`. Quick check: `https://mcp.kampus.study/.well-known/oauth-protected-resource` and `https://sju.kampus.study/.well-known/oauth-protected-resource` both load.
 - [ ] **Claude has both connectors:** `kampus` (signed in as `student-a`) and `kampus-sju` (no sign-in).
 - [ ] **The owl** has been tested awake, and the JBL was reconnected right before.
 - [ ] **Backup video** open in a tab. If any beat takes more than 20 seconds, say "here's the recorded run" and play that part.

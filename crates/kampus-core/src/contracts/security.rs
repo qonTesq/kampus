@@ -26,7 +26,7 @@ pub struct ResolvedIdentity {
 }
 
 /// Maps a verified device principal to its current synthetic binding.
-/// Never upgrades client trust (azp and auth kind are preserved).
+/// Never upgrades client trust (`client_id` and auth kind are preserved).
 pub trait IdentityResolver: Send + Sync {
     fn resolve(&self, principal: &Principal, now: DateTime<Utc>) -> ResolvedIdentity;
 }
@@ -46,7 +46,7 @@ pub struct AuditEvent {
     pub school_id: String,
     /// Salted hash of the subject, or the fixed guest marker.
     pub user_hash: String,
-    pub azp: Option<String>,
+    pub client_id: Option<String>,
     pub tool: String,
     pub data_class: DataClass,
     pub decision: AuditDecision,
