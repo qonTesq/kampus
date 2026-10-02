@@ -4,8 +4,8 @@ Branch `change/auth-broker`, created after `standard-token-profile` is merged an
 
 ## 1. Sign-off and scaffolding (checkpoint: empty crate builds in both feature sets) — 1.5 h
 
-- [ ] 1.1 Present sign-off items S1–S5 (design "Sign-off") to the owner and record them in `docs/contracts/README.md` (integrator). Evidence: a dated owner-approval note; no schema or manifest edit before it. (45 min)
-- [ ] 1.2 Integrator: add `crates/kampus-auth` to the workspace, the approved dependencies, the `broker` feature on `kampus` (with `sandbox` enabling `kampus-auth?/sandbox`) and `exclude = ["fuzz"]`. Evidence: `cargo check -p kampus --features broker` and `--features sandbox,broker` pass; `cargo tree -p kampus -e normal` (no `broker`) does not contain `kampus-auth`, `openidconnect` or `askama`. (45 min)
+- [x] 1.1 Present sign-off items S1–S5 (design "Sign-off") to the owner and record them in `docs/contracts/README.md` (integrator). Evidence: a dated owner-approval note; no schema or manifest edit before it. (45 min)
+- [x] 1.2 Integrator: add `crates/kampus-auth` to the workspace, the approved dependencies, the `broker` feature on `kampus` (with `sandbox` enabling `kampus-auth?/sandbox`) and `exclude = ["fuzz"]`. Evidence: `cargo check -p kampus --features broker` and `--features sandbox,broker` pass; `cargo tree -p kampus -e normal` (no `broker`) does not contain `kampus-auth`, `openidconnect` or `askama`. (45 min)
 
 ## 2. Metadata, JWKS and minting (checkpoint: the RS verifies a broker-minted token through discovery) — 7.5 h
 

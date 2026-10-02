@@ -98,3 +98,13 @@ On 2026-09-26, America/New_York, the human project owner instructed foundation t
 - S5: the new built-in rule IDs `builtin:authentication_required` and `builtin:self_registered_sensitive_off`, and the pre-dispatch HTTP 401/403/429 answers described above.
 - S6: the final sweep pattern for the removed bundled IdP is the word-bounded one recorded in the change's design (section 8), so recorded SEPTA trip IDs and lockfile checksums don't match it.
 - S7: the `openspec/config.yaml` context is rewritten to the broker decision.
+
+**2026-10-01:** the project owner approved every sign-off item of the `auth-broker` change (`openspec/changes/auth-broker/design.md`, "Sign-off"):
+
+- S1: the optional `school.yaml` `auth.broker` section and its validation rules (field reference below).
+- S2: the `broker` cargo feature on `kampus` (`sandbox` also enables the broker's sandbox parts). The demo build is `--features sandbox,broker`, and the gate adds a clippy and test run with `--features kampus/sandbox,kampus/broker`.
+- S3: the dependencies `openidconnect` 4.0.1 (default features off) and `askama` 0.16.1; dev-only `proptest`, rmcp's `auth`, `client` and `transport-streamable-http-client-reqwest` features for `crates/kampus` tests, and `libfuzzer-sys` in the `fuzz/` crate, which the root manifest excludes from the workspace.
+- S4: the synthetic Canvas seed subjects become `synthetic:student-a` and `synthetic:student-b`.
+- S5: the `client_credentials` grant for pre-registered device clients.
+
+Owner decisions recorded with the implementation (2026-10-02): a `policy.yaml` `cimd` client ID must be an https URL, except a loopback `http` URL in a sandbox build with `sandbox.enabled` (the broker's end-to-end test client); deny rules for self-registered clients may keep using `*` (only allow rules are restricted); ChatGPT's `_meta` sign-in variant is not implemented.
