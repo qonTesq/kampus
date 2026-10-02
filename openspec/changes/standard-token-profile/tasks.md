@@ -39,8 +39,8 @@ Branch `change/standard-token-profile` from master. Every task is ≤ 2 h, and e
 
 ## 6. Instance and regression coverage (checkpoint: multi-school still isolated) — 2 h
 
-- [ ] 6.1 Update `tests/instances` to broker-shaped tokens with URL audiences. Evidence: a Temple token is refused at SJU and vice versa; the sandbox instance test passes. (60 min)
-- [ ] 6.2 Rerun the preserved safeguards: cached-key outage/backoff/single-flight, unknown-`kid` throttling, expired-cache 503, dependency log cap with trace sentinels, admission and trusted proxy, whole-call deadline. Evidence: the named tests pass unchanged. (60 min)
+- [x] 6.1 Update `tests/instances` to broker-shaped tokens with URL audiences. Evidence: a Temple token is refused at SJU and vice versa; the sandbox instance test passes. (60 min)
+- [x] 6.2 Rerun the preserved safeguards: cached-key outage/backoff/single-flight, unknown-`kid` throttling, expired-cache 503, dependency log cap with trace sentinels, admission and trusted proxy, whole-call deadline. Evidence: the named tests pass unchanged. (60 min)
 
 ## 7. Removing the previous bundled IdP (checkpoint: nothing active refers to it) — 3 h
 

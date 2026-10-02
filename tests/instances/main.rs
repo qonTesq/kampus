@@ -177,11 +177,15 @@ async fn same_binary_processes_reject_foreign_tokens_and_keep_policy_and_audit_s
         (&sju, &sju_token, &temple_token),
     ] {
         let args = json!({"name":"library_hours", "arguments":{}});
-        assert_eq!(
-            rpc(&instance.base, foreign, "tools/call", args)
-                .await
-                .status(),
-            401
+        // Same issuer and key: only the audience (the other resource URL)
+        // differs, and the token is refused rather than run as a guest.
+        let refused = rpc(&instance.base, foreign, "tools/call", args).await;
+        assert_eq!(refused.status(), 401);
+        assert!(
+            refused.headers()["www-authenticate"]
+                .to_str()
+                .unwrap()
+                .contains("error=\"invalid_token\"")
         );
         let tools = body(rpc(&instance.base, own, "tools/list", json!({})).await).await;
         assert_eq!(tools["result"]["tools"].as_array().unwrap().len(), 7);
