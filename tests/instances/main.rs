@@ -254,7 +254,7 @@ async fn same_binary_processes_reject_foreign_tokens_and_keep_policy_and_audit_s
         .unwrap();
     let response = client.post(format!("{}/state", sju.admin)).header("Origin", &sju.admin)
         .header("X-Kampus-CSRF", snapshot["csrf"].as_str().unwrap())
-        .json(&json!({"version":snapshot["version"],"sensitive_enabled":true,"approvals":{"kampus-sju-claude":true}})).send().await.unwrap();
+        .json(&json!({"version":snapshot["version"],"sensitive_enabled":true,"allow_self_registered_sensitive":false,"approvals":{"kampus-sju-claude":true}})).send().await.unwrap();
     assert_eq!(response.status(), 200);
     // The disabled SJU deadlines module is reached only after its policy allows.
     assert_eq!(

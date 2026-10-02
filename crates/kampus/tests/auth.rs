@@ -235,7 +235,7 @@ async fn spawn_with(mode: AuthMode, edit: impl FnOnce(&mut SchoolConfig)) -> Ser
     let policy = PolicyConfig::load(&root.join("policy.yaml")).unwrap();
     let env = Env {
         has_var: &|_| true,
-        sandbox_compiled: false,
+        sandbox_compiled: cfg!(feature = "sandbox"),
     };
     let keys = KeySource::from_jwks_json(&issuer_jwks()).unwrap();
     let log_path = audit_path();
@@ -780,7 +780,7 @@ async fn save_admin(
 ) -> reqwest::Response {
     server.client.post(format!("{}/state", server.admin))
         .header("Origin", &server.admin).header("X-Kampus-CSRF", snapshot["csrf"].as_str().unwrap())
-        .json(&json!({"version": snapshot["version"], "sensitive_enabled": enabled, "approvals": {"kampus-chatgpt": approved}}))
+        .json(&json!({"version": snapshot["version"], "sensitive_enabled": enabled, "allow_self_registered_sensitive": false, "approvals": {"kampus-chatgpt": approved}}))
         .send().await.unwrap()
 }
 
@@ -802,7 +802,7 @@ async fn admin_rejects_rebinding_cross_origin_csrf_and_get_mutations() {
             403
         );
     }
-    let body = json!({"version":1,"sensitive_enabled":true,"approvals":{}});
+    let body = json!({"version":1,"sensitive_enabled":true,"allow_self_registered_sensitive":false,"approvals":{}});
     for origin in [None, Some("https://evil.example"), Some("null")] {
         let mut request = server
             .client
@@ -851,7 +851,7 @@ async fn admin_rejects_rebinding_cross_origin_csrf_and_get_mutations() {
         .post(&url)
         .header("Origin", &server.admin)
         .header("X-Kampus-CSRF", snapshot["csrf"].as_str().unwrap())
-        .json(&json!({"version":1,"sensitive_enabled":true,"approvals":{"kampus-mascot":true}}))
+        .json(&json!({"version":1,"sensitive_enabled":true,"allow_self_registered_sensitive":false,"approvals":{"kampus-mascot":true}}))
         .send()
         .await
         .unwrap();
@@ -1393,4 +1393,270 @@ async fn tokenless_challenge_flood_is_rate_limited_and_audited_once_per_call() {
     let after =
         rpc_body(modern(&server, None, "tools/list", json!({})).await).await["result"].clone();
     assert_eq!(before, after);
+}
+
+// ---- personal Sensitive access for self-registered clients ---------------------
+
+const CIMD: &str = "https://claude.ai/oauth/mcp-oauth-client-metadata";
+const STUDENT_A: &str = "5eed0000-0000-4000-8000-00000000000a";
+const STUDENT_B: &str = "5eed0000-0000-4000-8000-00000000000b";
+
+fn cimd_student(subject: &str) -> String {
+    let mut c = claims(CIMD, 300);
+    c["sub"] = json!(subject);
+    bearer(&c)
+}
+
+async fn save_switches(server: &Server, sensitive: bool, personal: bool) -> reqwest::Response {
+    let snapshot = admin_state(server).await;
+    server
+        .client
+        .post(format!("{}/state", server.admin))
+        .header("Origin", &server.admin)
+        .header("X-Kampus-CSRF", snapshot["csrf"].as_str().unwrap())
+        .json(
+            &json!({ "version": snapshot["version"], "sensitive_enabled": sensitive,
+                       "allow_self_registered_sensitive": personal, "approvals": {} }),
+        )
+        .send()
+        .await
+        .unwrap()
+}
+
+/// The audit rows of `my_deadlines` calls, newest first.
+async fn deadline_rows(server: &Server) -> Vec<Value> {
+    admin_state(server).await["audit"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|r| r["tool"] == "my_deadlines")
+        .cloned()
+        .collect()
+}
+
+#[tokio::test]
+async fn admin_switch_is_labeled_and_refuses_forged_cimd_approval() {
+    let server = spawn(AuthMode::Oauth).await;
+    let page = server
+        .client
+        .get(&server.admin)
+        .send()
+        .await
+        .unwrap()
+        .text()
+        .await
+        .unwrap();
+    assert!(page.contains("<label><input id=\"personal\" type=\"checkbox\""));
+    let snapshot = admin_state(&server).await;
+    assert_eq!(snapshot["allow_self_registered_sensitive"], false);
+    let post = |body: Value| {
+        server
+            .client
+            .post(format!("{}/state", server.admin))
+            .header("Origin", &server.admin)
+            .header("X-Kampus-CSRF", snapshot["csrf"].as_str().unwrap())
+            .json(&body)
+            .send()
+    };
+    // A forged approval of the CIMD entry, and a re-label in the same save.
+    let forged = post(json!({ "version": 1, "sensitive_enabled": true,
+        "allow_self_registered_sensitive": true, "approvals": { CIMD: true } }))
+    .await
+    .unwrap();
+    assert_eq!(forged.status(), 400);
+    let relabel = post(json!({ "version": 1, "sensitive_enabled": true,
+        "allow_self_registered_sensitive": true, "approvals": {},
+        "registrations": { CIMD: "pre_registered_confidential" } }))
+    .await
+    .unwrap();
+    assert!(relabel.status().is_client_error());
+    let after = admin_state(&server).await;
+    assert_eq!(after["version"], 1);
+    assert_eq!(after["allow_self_registered_sensitive"], false);
+    assert_eq!(after["audit"], json!([]));
+
+    // A genuine toggle is saved and audited.
+    assert_eq!(save_switches(&server, true, true).await.status(), 200);
+    let after = admin_state(&server).await;
+    assert_eq!(after["allow_self_registered_sensitive"], true);
+    assert_eq!(after["audit"][0]["rule"], "admin:policy_save_authorized");
+}
+
+/// Production build: no deadlines source, so the decisions and audit rows
+/// are the evidence. The provider can't run at all here; the sandbox test
+/// below checks the data.
+#[tokio::test]
+async fn two_students_on_one_cimd_client_follow_the_switch() {
+    let server = spawn(AuthMode::Oauth).await;
+    assert_eq!(save_switches(&server, true, false).await.status(), 200);
+    let tokens = [cimd_student(STUDENT_A), cimd_student(STUDENT_B)];
+    for token in &tokens {
+        let result =
+            rpc_body(modern(&server, Some(token), "tools/call", call("my_deadlines")).await).await
+                ["result"]["structuredContent"]
+                .clone();
+        assert_eq!(result["error"]["code"], "permission_denied");
+    }
+    let rows = deadline_rows(&server).await;
+    assert_eq!(rows.len(), 2);
+    for row in &rows {
+        assert_eq!(row["rule"], "builtin:self_registered_sensitive_off");
+        assert_eq!(row["client_id"], CIMD);
+    }
+    assert_ne!(rows[0]["user_hash"], rows[1]["user_hash"]);
+
+    assert_eq!(save_switches(&server, true, true).await.status(), 200);
+    for token in &tokens {
+        let session = legacy_session(&server, Some(token)).await;
+        let response = legacy(
+            &server,
+            Some(token),
+            Some(&session),
+            &legacy_call(2, "my_deadlines"),
+        )
+        .await;
+        let result = rpc_body(response).await["result"]["structuredContent"].clone();
+        assert_eq!(result["error"]["code"], "unsupported_source");
+    }
+    let rows = deadline_rows(&server).await;
+    for row in &rows[..2] {
+        assert_eq!(row["decision"], "allow");
+        assert_eq!(row["rule"], "sensitive-self-registered-student");
+        assert_eq!(row["client_id"], CIMD);
+    }
+    // Rows from an approved workspace client differ in rule and client.
+    let workspace = {
+        let mut c = claims("kampus-claude", 300);
+        c["sub"] = json!(STUDENT_A);
+        bearer(&c)
+    };
+    modern(
+        &server,
+        Some(&workspace),
+        "tools/call",
+        call("my_deadlines"),
+    )
+    .await;
+    let rows = deadline_rows(&server).await;
+    assert_eq!(rows[0]["rule"], "sensitive-approved-student");
+    assert_eq!(rows[0]["client_id"], "kampus-claude");
+
+    // Switched off mid-session: the next call on the same session is refused.
+    let token = &tokens[0];
+    let session = legacy_session(&server, Some(token)).await;
+    let allowed = legacy(
+        &server,
+        Some(token),
+        Some(&session),
+        &legacy_call(2, "my_deadlines"),
+    )
+    .await;
+    assert_eq!(
+        rpc_body(allowed).await["result"]["structuredContent"]["error"]["code"],
+        "unsupported_source"
+    );
+    assert_eq!(save_switches(&server, true, false).await.status(), 200);
+    let denied = legacy(
+        &server,
+        Some(token),
+        Some(&session),
+        &legacy_call(3, "my_deadlines"),
+    )
+    .await;
+    assert_eq!(
+        rpc_body(denied).await["result"]["structuredContent"]["error"]["code"],
+        "permission_denied"
+    );
+    assert_eq!(
+        deadline_rows(&server).await[0]["rule"],
+        "builtin:self_registered_sensitive_off"
+    );
+}
+
+#[cfg(feature = "sandbox")]
+#[tokio::test]
+async fn two_students_on_one_cimd_client_see_only_their_own_deadlines() {
+    let canvas = format!("http://127.0.0.1:{}", {
+        std::net::TcpListener::bind("127.0.0.1:0")
+            .unwrap()
+            .local_addr()
+            .unwrap()
+            .port()
+    });
+    let server = spawn_with(AuthMode::Oauth, |school| {
+        school.sandbox.enabled = true;
+        school.canvas = Some(kampus_core::config::CanvasConfig {
+            enabled: true,
+            base_url: canvas.parse().unwrap(),
+            service_token_env: None,
+        });
+    })
+    .await;
+    let own = |result: &Value| -> Vec<String> {
+        assert_eq!(result["status"], "ok", "{result}");
+        result["data"]["deadlines"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|d| d["course_code"].as_str().unwrap().to_owned())
+            .collect()
+    };
+
+    // Switch off: both refused with the distinct rule, before the provider.
+    assert_eq!(save_switches(&server, true, false).await.status(), 200);
+    for subject in [STUDENT_A, STUDENT_B] {
+        let token = cimd_student(subject);
+        let result =
+            rpc_body(modern(&server, Some(&token), "tools/call", call("my_deadlines")).await).await
+                ["result"]["structuredContent"]
+                .clone();
+        assert_eq!(result["error"]["code"], "permission_denied");
+    }
+
+    // Switch on: each student gets only their own synthetic deadlines, on
+    // both protocol versions.
+    assert_eq!(save_switches(&server, true, true).await.status(), 200);
+    for (subject, mine, theirs) in [
+        (STUDENT_A, "SYN-1010", "SYN-3030"),
+        (STUDENT_B, "SYN-3030", "SYN-1010"),
+    ] {
+        let token = cimd_student(subject);
+        let modern_result =
+            rpc_body(modern(&server, Some(&token), "tools/call", call("my_deadlines")).await).await
+                ["result"]["structuredContent"]
+                .clone();
+        let session = legacy_session(&server, Some(&token)).await;
+        let legacy_result = rpc_body(
+            legacy(
+                &server,
+                Some(&token),
+                Some(&session),
+                &legacy_call(2, "my_deadlines"),
+            )
+            .await,
+        )
+        .await["result"]["structuredContent"]
+            .clone();
+        for result in [&modern_result, &legacy_result] {
+            let courses = own(result);
+            assert!(courses.iter().any(|c| c == mine), "{subject}: {courses:?}");
+            assert!(
+                !courses.iter().any(|c| c == theirs),
+                "{subject}: {courses:?}"
+            );
+            assert_eq!(result["meta"]["sandbox"], true);
+        }
+    }
+    let rows = deadline_rows(&server).await;
+    assert_eq!(rows.len(), 6);
+    assert!(
+        rows[..4]
+            .iter()
+            .all(|r| r["rule"] == "sensitive-self-registered-student" && r["decision"] == "allow")
+    );
+    assert!(
+        rows[4..]
+            .iter()
+            .all(|r| r["rule"] == "builtin:self_registered_sensitive_off")
+    );
 }

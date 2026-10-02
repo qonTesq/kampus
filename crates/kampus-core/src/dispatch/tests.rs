@@ -932,3 +932,44 @@ async fn an_unaudited_challenge_is_a_server_fault() {
         Preflight::AuditUnavailable
     );
 }
+
+// ---- the personal switch reaches no module code when it denies -------------
+
+const CIMD: &str = "https://claude.ai/oauth/mcp-oauth-client-metadata";
+
+#[tokio::test]
+async fn personal_switch_denials_never_reach_the_module() {
+    let off = harness();
+    let student = user(CIMD, &[]);
+    let r = off.call("my_deadlines", json!({}), &student).await;
+    assert_eq!(code(&r), "permission_denied");
+    assert_eq!(
+        off.rows()[0].rule,
+        crate::policy::rules::SELF_REGISTERED_SENSITIVE_OFF
+    );
+    assert_eq!(off.calls("deadlines"), 0);
+
+    let mut policy = demo_policy();
+    policy.allow_self_registered_sensitive = true;
+    let on = harness_with(policy, &["deadlines"], None);
+    // Denied under the switch: a faculty member and a device.
+    let mut faculty = user(CIMD, &[]);
+    faculty.roles = BTreeSet::from([Role::Faculty]);
+    let device = Principal {
+        auth_kind: AuthKind::Device,
+        device_id: Some("owl-1".into()),
+        ..user(CIMD, &[])
+    };
+    for who in [&faculty, &device] {
+        let r = on.call("my_deadlines", json!({}), who).await;
+        assert_eq!(code(&r), "permission_denied");
+    }
+    assert_eq!(on.calls("deadlines"), 0);
+    // The student's own read reaches the module, under the personal rule.
+    on.call("my_deadlines", json!({}), &student).await;
+    assert_eq!(on.calls("deadlines"), 1);
+    let rows = on.rows();
+    let last = rows.last().unwrap();
+    assert_eq!(last.rule, "sensitive-self-registered-student");
+    assert_eq!(last.client_id.as_deref(), Some(CIMD));
+}

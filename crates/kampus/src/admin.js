@@ -7,6 +7,7 @@ async function load() {
   state = await response.json();
   byId('version').textContent = state.version;
   byId('sensitive').checked = state.sensitive_enabled;
+  byId('personal').checked = state.allow_self_registered_sensitive;
   byId('clients').replaceChildren();
   for (const client of state.clients) {
     const label = document.createElement('label');
@@ -24,7 +25,7 @@ byId('switches').addEventListener('submit', async event => {
   const approvals = Object.fromEntries([...byId('clients').querySelectorAll('input')].map(input => [input.dataset.clientId, input.checked]));
   byId('controls').disabled = true;
   try {
-    const response = await fetch('/state', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Kampus-CSRF': state.csrf }, body: JSON.stringify({ version: state.version, sensitive_enabled: byId('sensitive').checked, approvals }) });
+    const response = await fetch('/state', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Kampus-CSRF': state.csrf }, body: JSON.stringify({ version: state.version, sensitive_enabled: byId('sensitive').checked, allow_self_registered_sensitive: byId('personal').checked, approvals }) });
     const result = await response.json();
     if (!response.ok) throw new Error(result.error || 'Save failed. Reload the page before retrying.');
     await load();

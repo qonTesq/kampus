@@ -1,6 +1,6 @@
 //! Startup: validate configuration, register modules, compose the HTTP router.
 
-use std::collections::BTreeSet;
+use std::collections::BTreeMap;
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -13,7 +13,7 @@ use axum::response::{IntoResponse, Response};
 use kampus_core::audit::{JsonlAudit, PRUNE_INTERVAL, SubjectHasher};
 use kampus_core::auth::{AuthSettings, Authenticator, KeySource};
 use kampus_core::config::{ConfigError, Env, PolicyConfig, SchoolConfig};
-use kampus_core::contracts::{AuditError, ModuleInit, RegistryError, ToolRegistry};
+use kampus_core::contracts::{AuditError, ModuleInit, Operation, RegistryError, ToolRegistry};
 use kampus_core::dispatch::{CallerLimits, Dispatcher, Security};
 use kampus_core::policy::{PolicyEngine, PolicyRevision};
 use kampus_core::runtime::SharedRuntime;
@@ -336,7 +336,7 @@ fn validate(
     school: SchoolConfig,
     policy: &PolicyConfig,
     env: &Env<'_>,
-) -> Result<(ModuleInit, ToolRegistry, BTreeSet<String>), AppError> {
+) -> Result<(ModuleInit, ToolRegistry, BTreeMap<String, Operation>), AppError> {
     school.validate(env)?;
     let init = ModuleInit {
         runtime: Arc::new(SharedRuntime::for_school(&school)),
@@ -351,7 +351,10 @@ fn validate(
     {
         return Err(AppError::UnknownModule(unknown.clone()));
     }
-    let known_tools: BTreeSet<String> = registry.tool_names().map(str::to_owned).collect();
+    let known_tools: BTreeMap<String, Operation> = registry
+        .tools()
+        .map(|t| (t.descriptor.name.clone(), t.operation))
+        .collect();
     policy.validate(&init.school, &known_tools, env)?;
     Ok((init, registry, known_tools))
 }
