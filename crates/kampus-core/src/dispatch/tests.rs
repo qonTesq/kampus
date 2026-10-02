@@ -760,3 +760,175 @@ async fn confirmation_rechecks_policy_after_proposal() {
     assert_eq!(h.calls("rooms"), 1);
     assert_eq!(h.rows()[1].policy_version, 2);
 }
+
+// ---- preflight (lazy authentication) ----------------------------------------
+
+#[tokio::test]
+async fn preflight_lets_guest_allowed_calls_proceed_without_side_effects() {
+    let h = harness();
+    let p = h
+        .dispatcher
+        .preflight("next_departures", Principal::guest(), None)
+        .await;
+    assert_eq!(p, Preflight::Proceed);
+    // Proceeding is not admission or audit: the dispatcher does both later.
+    assert!(h.rows().is_empty());
+    assert_eq!(h.total_calls(), 0);
+}
+
+#[tokio::test]
+async fn preflight_asks_guests_to_sign_in_for_refused_calls() {
+    let h = harness();
+    for (tool, scopes) in [
+        ("my_deadlines", vec![]),
+        ("book_study_room", vec![]),
+        ("confirm_booking", vec!["rooms:book"]),
+    ] {
+        let p = h.dispatcher.preflight(tool, Principal::guest(), None).await;
+        let expected: BTreeSet<String> = scopes.iter().map(|s| (*s).to_owned()).collect();
+        assert_eq!(p, Preflight::SignIn { scopes: expected }, "{tool}");
+    }
+    let rows = h.rows();
+    assert_eq!(rows.len(), 3, "one row per challenged call");
+    for row in &rows {
+        assert_eq!(row.decision, AuditDecision::Deny);
+        assert_eq!(row.rule, rules::AUTHENTICATION_REQUIRED);
+        assert_eq!(row.user_hash, crate::audit::GUEST_MARKER);
+        assert_eq!(row.client_id, None);
+    }
+    assert_eq!(h.total_calls(), 0, "no module code ran");
+}
+
+#[tokio::test]
+async fn preflight_asks_for_a_step_up_only_when_a_scope_is_missing() {
+    let h = harness();
+    let student = user("kampus-claude", &[]);
+    let p = h
+        .dispatcher
+        .preflight("confirm_booking", student.clone(), None)
+        .await;
+    assert_eq!(
+        p,
+        Preflight::StepUp {
+            scopes: BTreeSet::from(["rooms:book".to_owned()])
+        }
+    );
+    let rows = h.rows();
+    assert_eq!(rows.len(), 1);
+    assert_eq!(rows[0].rule, crate::policy::rules::TOOL_SCOPES);
+    assert_eq!(rows[0].client_id.as_deref(), Some("kampus-claude"));
+
+    // A rule's required scope also asks for a step-up, naming every scope.
+    let mut policy = demo_policy();
+    let rule = policy
+        .rules
+        .iter_mut()
+        .find(|r| r.id == "booking-propose")
+        .unwrap();
+    rule.required_scopes.insert("rooms:propose".into());
+    let h = harness_with(policy, &["rooms"], None);
+    let p = h
+        .dispatcher
+        .preflight("book_study_room", student.clone(), None)
+        .await;
+    assert_eq!(
+        p,
+        Preflight::StepUp {
+            scopes: BTreeSet::from(["rooms:propose".to_owned()])
+        }
+    );
+    assert_eq!(h.rows()[0].rule, crate::policy::rules::RULE_SCOPES);
+
+    // With the scope, the call proceeds to the normal checks.
+    let stepped_up = user("kampus-claude", &["rooms:book"]);
+    let h = harness();
+    assert_eq!(
+        h.dispatcher
+            .preflight("confirm_booking", stepped_up, None)
+            .await,
+        Preflight::Proceed
+    );
+    assert!(h.rows().is_empty());
+}
+
+#[tokio::test]
+async fn preflight_leaves_refusals_a_step_up_cannot_fix_to_the_dispatcher() {
+    let h = harness();
+    let mut faculty = user("kampus-claude", &["rooms:book"]);
+    faculty.roles = BTreeSet::from([Role::Faculty]);
+    // Role refusal and an unapproved client: permission_denied, not a challenge.
+    for (tool, who, args) in [
+        ("book_study_room", faculty.clone(), booking_args()),
+        (
+            "confirm_booking",
+            faculty,
+            json!({ "confirmation_id": "c-0000000000000000" }),
+        ),
+        ("my_deadlines", user("kampus-chatgpt", &[]), json!({})),
+    ] {
+        assert_eq!(
+            h.dispatcher.preflight(tool, who.clone(), None).await,
+            Preflight::Proceed,
+            "{tool}"
+        );
+        assert_eq!(code(&h.call(tool, args, &who).await), "permission_denied");
+    }
+    // Unknown tools are the MCP layer's protocol error.
+    assert_eq!(
+        h.dispatcher
+            .preflight("nope", Principal::guest(), None)
+            .await,
+        Preflight::Proceed
+    );
+    // Only the dispatcher's own rows exist.
+    assert_eq!(h.rows().len(), 3);
+}
+
+#[tokio::test]
+async fn challenged_calls_pass_admission_once_and_are_audited_once() {
+    let mut policy = demo_policy();
+    policy.limits.guest_calls_per_minute = 8; // a burst of 2
+    let h = harness_with(policy, &["deadlines"], None);
+    let mut outcomes = Vec::new();
+    for _ in 0..5 {
+        outcomes.push(
+            h.dispatcher
+                .preflight(
+                    "my_deadlines",
+                    Principal::guest(),
+                    Some("203.0.113.9".parse().unwrap()),
+                )
+                .await,
+        );
+    }
+    let signed_in = outcomes
+        .iter()
+        .filter(|p| matches!(p, Preflight::SignIn { .. }))
+        .count();
+    let limited = outcomes
+        .iter()
+        .filter(|p| matches!(p, Preflight::RateLimited { retry_after_seconds } if *retry_after_seconds > 0))
+        .count();
+    assert_eq!((signed_in, limited), (2, 3));
+    let rows = h.rows();
+    assert_eq!(rows.len(), 5);
+    assert_eq!(
+        rows.iter()
+            .filter(|r| r.rule == rules::RATE_LIMITED)
+            .count(),
+        3
+    );
+    assert_eq!(h.total_calls(), 0);
+}
+
+#[tokio::test]
+async fn an_unaudited_challenge_is_a_server_fault() {
+    let h = harness();
+    h.audit.fail.store(true, Ordering::SeqCst);
+    assert_eq!(
+        h.dispatcher
+            .preflight("my_deadlines", Principal::guest(), None)
+            .await,
+        Preflight::AuditUnavailable
+    );
+}

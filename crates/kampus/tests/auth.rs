@@ -415,19 +415,15 @@ async fn metadata_is_path_inserted_and_ignores_spoofed_hosts() {
         assert_eq!(doc["resource"], "http://127.0.0.1:8080/mcp", "{name}");
         assert_eq!(doc["authorization_servers"], json!([issuer()]));
         assert_eq!(doc["bearer_methods_supported"], json!(["header"]));
-        assert!(
-            doc["scopes_supported"]
-                .as_array()
-                .unwrap()
-                .contains(&json!("rooms:book"))
-        );
+        // Temple's only tool scope, rooms:book, is requested by step-up only.
+        assert!(doc.get("scopes_supported").is_none(), "{doc}");
     }
 }
 
 #[tokio::test]
-async fn oauth_challenges_unauthenticated_tool_calls_but_serves_the_catalog() {
+async fn oauth_challenges_unauthenticated_protected_calls_but_serves_the_catalog() {
     let server = spawn(AuthMode::Oauth).await;
-    let response = modern(&server, None, "tools/call", call("next_departures")).await;
+    let response = modern(&server, None, "tools/call", call("my_deadlines")).await;
     assert_challenge(&response, false);
 
     let response = modern(&server, None, "tools/list", json!({})).await;
@@ -688,6 +684,7 @@ async fn legacy_session_does_not_outlive_the_token() {
     )
     .await;
     assert_challenge(&response, true);
+    // Without a token the caller is a guest, who does not own this session.
     let response = legacy(
         &server,
         None,
@@ -695,7 +692,7 @@ async fn legacy_session_does_not_outlive_the_token() {
         &legacy_call(4, "my_deadlines"),
     )
     .await;
-    assert_challenge(&response, false);
+    assert_eq!(response.status(), 404);
 }
 
 #[cfg(feature = "acceptance")]
@@ -1158,4 +1155,242 @@ async fn duplicated_session_headers_are_refused() {
         .await
         .unwrap();
     assert_eq!(response.status(), 404);
+}
+
+// ---- lazy authentication and step-up -------------------------------------------
+
+fn token_with(client_id: &str, roles: &[&str], scope: &str) -> String {
+    let mut c = claims(client_id, 300);
+    c["roles"] = json!(roles);
+    c["scope"] = json!(scope);
+    bearer(&c)
+}
+
+fn www_authenticate(response: &reqwest::Response) -> String {
+    response.headers()["www-authenticate"]
+        .to_str()
+        .unwrap()
+        .to_owned()
+}
+
+fn assert_exposed(response: &reqwest::Response) {
+    assert_eq!(
+        response.headers()["access-control-expose-headers"],
+        "www-authenticate"
+    );
+}
+
+/// The `confirm_booking` arguments (an unknown proposal: the normal checks refuse it).
+fn confirm() -> Value {
+    json!({ "name": "confirm_booking", "arguments": { "confirmation_id": "c-unknown" } })
+}
+
+fn departures() -> Value {
+    json!({ "name": "next_departures", "arguments": { "stop": "Temple" } })
+}
+
+#[tokio::test]
+async fn lazy_sign_in_and_step_up_on_the_current_protocol() {
+    let (septa, _hits) = counting_septa().await;
+    let server = spawn_with(AuthMode::Oauth, |school| point_septa_at(school, &septa)).await;
+    let sign_in = format!("Bearer resource_metadata=\"{METADATA_URL}\"");
+
+    // Public tool, no token: served as a guest.
+    let response = modern(&server, None, "tools/call", departures()).await;
+    assert_eq!(response.status(), 200);
+    assert!(rpc_body(response).await["result"]["structuredContent"].is_object());
+    let audit = admin_state(&server).await["audit"].clone();
+    assert_eq!(audit.as_array().unwrap().len(), 1);
+    assert_eq!(audit[0]["user_hash"], "guest");
+    assert_eq!(audit[0]["decision"], "allow");
+
+    // Protected tools, no token: 401 before any module runs.
+    let response = modern(&server, None, "tools/call", call("my_deadlines")).await;
+    assert_eq!(response.status(), 401);
+    assert_eq!(www_authenticate(&response), sign_in);
+    assert_exposed(&response);
+    let response = modern(&server, None, "tools/call", confirm()).await;
+    assert_eq!(response.status(), 401);
+    assert_eq!(
+        www_authenticate(&response),
+        format!("{sign_in}, scope=\"rooms:book\"")
+    );
+
+    // Signed in without rooms:book: 403 step-up naming every needed scope.
+    let student = token_with("kampus-claude", &["student"], "openid");
+    let response = modern(&server, Some(&student), "tools/call", confirm()).await;
+    assert_eq!(response.status(), 403);
+    assert_eq!(
+        www_authenticate(&response),
+        format!(
+            "Bearer error=\"insufficient_scope\", scope=\"rooms:book\", resource_metadata=\"{METADATA_URL}\""
+        )
+    );
+    assert_exposed(&response);
+
+    // The stepped-up token reaches the normal confirmation checks.
+    let stepped_up = token_with("kampus-claude", &["student"], "openid rooms:book");
+    let response = modern(&server, Some(&stepped_up), "tools/call", confirm()).await;
+    assert_eq!(response.status(), 200);
+    let result = rpc_body(response).await["result"]["structuredContent"].clone();
+    assert_eq!(result["status"], "error");
+    assert_ne!(result["error"]["code"], "permission_denied", "{result}");
+
+    // Every challenged call was audited once, with no arguments.
+    let audit = admin_state(&server).await["audit"].clone();
+    let rules: Vec<&str> = audit
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|r| r["rule"].as_str().unwrap())
+        .collect();
+    assert_eq!(
+        rules,
+        [
+            "booking-confirm",
+            "builtin:tool_scopes",
+            "builtin:authentication_required",
+            "builtin:authentication_required",
+            "public-read"
+        ]
+    );
+    assert!(!audit.to_string().contains("c-unknown"));
+}
+
+#[tokio::test]
+async fn lazy_sign_in_and_step_up_on_a_legacy_session() {
+    let server = spawn(AuthMode::Oauth).await;
+    let session = legacy_session(&server, None).await;
+    let call = |id: u32, name: &str, args: Value| {
+        json!({ "jsonrpc": "2.0", "id": id, "method": "tools/call",
+                "params": { "name": name, "arguments": args } })
+    };
+    let response = legacy(
+        &server,
+        None,
+        Some(&session),
+        &call(2, "next_departures", json!({ "stop": "Temple" })),
+    )
+    .await;
+    assert_eq!(response.status(), 200);
+    let response = legacy(
+        &server,
+        None,
+        Some(&session),
+        &call(3, "my_deadlines", json!({})),
+    )
+    .await;
+    assert_challenge(&response, false);
+
+    // The login claims the anonymous session; the scope is stepped up later.
+    let student = token_with("kampus-claude", &["student"], "openid");
+    let confirm_args = json!({ "confirmation_id": "c-unknown" });
+    let response = legacy(
+        &server,
+        Some(&student),
+        Some(&session),
+        &call(4, "confirm_booking", confirm_args.clone()),
+    )
+    .await;
+    assert_eq!(response.status(), 403);
+    assert!(www_authenticate(&response).contains("scope=\"rooms:book\""));
+    let stepped_up = token_with("kampus-claude", &["student"], "openid rooms:book");
+    let response = legacy(
+        &server,
+        Some(&stepped_up),
+        Some(&session),
+        &call(5, "confirm_booking", confirm_args),
+    )
+    .await;
+    assert_eq!(response.status(), 200);
+}
+
+#[tokio::test]
+async fn discovery_and_tokenless_session_requests_need_no_credential() {
+    let server = spawn(AuthMode::Oauth).await;
+    let response = modern(&server, None, "server/discover", json!({})).await;
+    assert_ne!(response.status(), 401);
+    assert_ne!(response.status(), 403);
+
+    // A guest may end its own anonymous session without a token...
+    let session = legacy_session(&server, None).await;
+    let closed = on_session(&server, reqwest::Method::DELETE, None, &session, None).await;
+    assert!(closed.status().is_success(), "{}", closed.status());
+    // ...but never touch a signed-in user's session.
+    let owned = legacy_session(&server, Some(&valid())).await;
+    for method in [reqwest::Method::GET, reqwest::Method::DELETE] {
+        let response = on_session(&server, method.clone(), None, &owned, None).await;
+        assert_eq!(response.status(), 404, "{method}");
+    }
+}
+
+#[tokio::test]
+async fn refusals_a_step_up_cannot_fix_stay_permission_denied() {
+    let server = spawn(AuthMode::Oauth).await;
+    let faculty = token_with("kampus-claude", &["faculty"], "openid rooms:book");
+    let booking = json!({ "name": "book_study_room", "arguments": {
+        "room_id": "1", "location_id": "8404",
+        "start": "2031-03-14T21:00:00-04:00", "end": "2031-03-14T22:00:00-04:00" } });
+    let unapproved = token_with("kampus-chatgpt", &["student"], "openid");
+    for (token, params) in [(&faculty, booking), (&unapproved, call("my_deadlines"))] {
+        let response = modern(&server, Some(token), "tools/call", params).await;
+        assert_eq!(response.status(), 200);
+        let result = rpc_body(response).await["result"].clone();
+        assert_eq!(
+            result["structuredContent"]["error"]["code"],
+            "permission_denied"
+        );
+        assert_eq!(result["isError"], true);
+    }
+}
+
+#[tokio::test]
+async fn no_login_mode_never_challenges() {
+    let server = spawn(AuthMode::NoLogin).await;
+    let student = token_with("kampus-claude", &["student"], "openid");
+    for (token, params) in [
+        (None, call("my_deadlines")),
+        (None, confirm()),
+        (Some(student.as_str()), confirm()),
+    ] {
+        let response = modern(&server, token, "tools/call", params).await;
+        assert_eq!(response.status(), 200);
+        assert_eq!(
+            rpc_body(response).await["result"]["structuredContent"]["error"]["code"],
+            "permission_denied"
+        );
+    }
+}
+
+#[tokio::test]
+async fn tokenless_challenge_flood_is_rate_limited_and_audited_once_per_call() {
+    let server = spawn(AuthMode::Oauth).await;
+    let before =
+        rpc_body(modern(&server, None, "tools/list", json!({})).await).await["result"].clone();
+    let mut statuses = Vec::new();
+    for _ in 0..45 {
+        let response = modern(&server, None, "tools/call", call("my_deadlines")).await;
+        if response.status() == 429 {
+            let retry: u32 = response.headers()["retry-after"]
+                .to_str()
+                .unwrap()
+                .parse()
+                .unwrap();
+            assert!(retry > 0);
+        }
+        statuses.push(response.status().as_u16());
+    }
+    // Guest admission allows a burst of a quarter of 60 per minute.
+    let challenged = statuses.iter().filter(|s| **s == 401).count();
+    let limited = statuses.iter().filter(|s| **s == 429).count();
+    assert_eq!((challenged, limited), (15, 30), "{statuses:?}");
+    let audit = admin_state(&server).await["audit"].clone();
+    let rows = audit.as_array().unwrap();
+    assert_eq!(rows.len(), 45, "exactly one row per call");
+    assert!(rows.iter().all(|r| r["decision"] == "deny"
+        && (r["rule"] == "builtin:authentication_required"
+            || r["rule"] == "builtin:rate_limited")));
+    let after =
+        rpc_body(modern(&server, None, "tools/list", json!({})).await).await["result"].clone();
+    assert_eq!(before, after);
 }

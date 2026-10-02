@@ -226,7 +226,6 @@ fn settings(mode: AuthMode) -> AuthSettings {
         issuer: ISSUER.parse().unwrap(),
         roles_claim: "roles".to_owned(),
         device_clients: BTreeMap::from([("mascot-device".to_owned(), "owl-1".to_owned())]),
-        scopes_supported: BTreeSet::from(["rooms:book".to_owned()]),
     }
 }
 
@@ -812,7 +811,8 @@ fn metadata_is_path_inserted_and_bound_to_config() {
     assert_eq!(doc["resource"], RESOURCE);
     assert_eq!(doc["authorization_servers"], json!([ISSUER]));
     assert_eq!(doc["bearer_methods_supported"], json!(["header"]));
-    assert_eq!(doc["scopes_supported"], json!(["rooms:book"]));
+    // Step-up scopes (and offline_access) are never advertised up front.
+    assert!(doc.get("scopes_supported").is_none(), "{doc}");
 
     let mut nested = settings(AuthMode::Oauth);
     nested.resource_url = "https://host.example.edu/tenant/temple/mcp"
@@ -826,28 +826,68 @@ fn metadata_is_path_inserted_and_bound_to_config() {
 }
 
 #[test]
-fn open_and_protected_requests() {
-    let open = [
+fn challenges_carry_metadata_and_scopes() {
+    let auth = authenticator(AuthMode::Oauth, &[]);
+    let metadata =
+        "resource_metadata=\"https://kampus.example.edu/.well-known/oauth-protected-resource/mcp\"";
+    let none = BTreeSet::new();
+    let book = BTreeSet::from(["rooms:book".to_owned()]);
+    assert_eq!(auth.sign_in_challenge(&none), format!("Bearer {metadata}"));
+    assert_eq!(
+        auth.sign_in_challenge(&book),
+        format!("Bearer {metadata}, scope=\"rooms:book\"")
+    );
+    let two = BTreeSet::from(["rooms:book".to_owned(), "a:b".to_owned()]);
+    assert_eq!(
+        auth.step_up_challenge(&two),
+        format!("Bearer error=\"insufficient_scope\", scope=\"a:b rooms:book\", {metadata}")
+    );
+    // A value that is not a scope token never reaches the header.
+    let hostile = BTreeSet::from(["x\", error=\"evil".to_owned(), "a b".to_owned()]);
+    assert_eq!(
+        auth.sign_in_challenge(&hostile),
+        format!("Bearer {metadata}")
+    );
+}
+
+#[test]
+fn request_classes() {
+    let class = |body: Value| classify(body.to_string().as_bytes());
+    for body in [
         json!({ "jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {} }),
+        json!({ "jsonrpc": "2.0", "id": 1, "method": "server/discover", "params": {} }),
         json!({ "jsonrpc": "2.0", "method": "notifications/initialized" }),
+        json!({ "jsonrpc": "2.0", "method": "notifications/cancelled", "params": { "requestId": 1 } }),
         json!({ "jsonrpc": "2.0", "id": 2, "method": "tools/list" }),
         json!({ "jsonrpc": "2.0", "id": 3, "method": "ping" }),
-    ];
-    for body in open {
-        assert!(!requires_credentials(body.to_string().as_bytes()), "{body}");
+        json!([{ "jsonrpc": "2.0", "id": 1, "method": "tools/list" }, { "jsonrpc": "2.0", "id": 2, "method": "ping" }]),
+    ] {
+        assert_eq!(class(body.clone()), RequestClass::Open, "{body}");
     }
-    let protected = [
-        json!({ "jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": { "name": "my_deadlines" } }),
+    assert_eq!(
+        class(
+            json!({ "jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": { "name": "my_deadlines", "arguments": {} } })
+        ),
+        RequestClass::ToolCall("my_deadlines".to_owned())
+    );
+    for body in [
+        // A call without a tool name, or with a non-string one.
+        json!({ "jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {} }),
+        json!({ "jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": { "name": 7 } }),
         json!({ "jsonrpc": "2.0", "id": 1, "method": "resources/read" }),
+        json!({ "jsonrpc": "2.0", "id": 1, "method": "tasks/get" }),
         json!({ "jsonrpc": "2.0", "id": 1, "result": {} }),
-        json!([{ "jsonrpc": "2.0", "id": 1, "method": "tools/list" }, { "jsonrpc": "2.0", "id": 2, "method": "tools/call" }]),
+        // Batches: open only when every member is open.
+        json!([{ "jsonrpc": "2.0", "id": 1, "method": "tools/list" }, { "jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": { "name": "next_departures" } }]),
         json!([]),
-    ];
-    for body in protected {
-        assert!(requires_credentials(body.to_string().as_bytes()), "{body}");
+    ] {
+        assert_eq!(class(body.clone()), RequestClass::Protected, "{body}");
     }
-    assert!(requires_credentials(b"not json"));
-    assert!(requires_credentials(b""));
+    assert_eq!(classify(b"not json"), RequestClass::Protected);
+    assert_eq!(classify(b""), RequestClass::Protected);
+    assert!(RequestClass::Protected.needs_credentials());
+    assert!(!RequestClass::ToolCall("x".into()).needs_credentials());
+    assert!(!RequestClass::Open.needs_credentials());
 }
 
 // ---- trusted discovery, caching and key rotation ----------------------------

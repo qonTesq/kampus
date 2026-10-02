@@ -20,7 +20,7 @@ use serde_json::{Value, json};
 use url::Url;
 
 pub use jwks::{FORCED_REFRESH_INTERVAL, JWKS_TTL, KeyCache, KeySource};
-pub use request::requires_credentials;
+pub use request::{RequestClass, classify};
 
 use crate::config::{AuthMode, SchoolConfig};
 use crate::contracts::{AuthKind, Principal, Role};
@@ -89,12 +89,10 @@ pub struct AuthSettings {
     pub roles_claim: String,
     /// Device client ID -> device ID (from `school.yaml` `devices`).
     pub device_clients: BTreeMap<String, String>,
-    /// Advertised in metadata (the union of registered tool scopes).
-    pub scopes_supported: BTreeSet<String>,
 }
 
 impl AuthSettings {
-    pub fn from_school(school: &SchoolConfig, scopes_supported: BTreeSet<String>) -> Self {
+    pub fn from_school(school: &SchoolConfig) -> Self {
         Self {
             mode: school.auth.mode,
             resource_url: school.server.resource_url.clone(),
@@ -105,7 +103,6 @@ impl AuthSettings {
                 .iter()
                 .map(|d| (d.client_id.clone(), d.device_id.clone()))
                 .collect(),
-            scopes_supported,
         }
     }
 }
@@ -166,13 +163,14 @@ impl Authenticator {
         format!("{origin}{}", self.metadata_path())
     }
 
-    /// RFC 9728 protected-resource metadata document.
+    /// RFC 9728 protected-resource metadata document. It lists no
+    /// `scopes_supported`: tool scopes such as `rooms:book` are requested
+    /// only through a 403 step-up, so a first sign-in asks for none of them.
     pub fn metadata(&self) -> Value {
         json!({
             "resource": self.settings.resource_url.as_str(),
             "authorization_servers": [self.settings.issuer.as_str()],
             "bearer_methods_supported": ["header"],
-            "scopes_supported": self.settings.scopes_supported,
         })
     }
 
@@ -183,6 +181,28 @@ impl Authenticator {
             value.push_str(", error=\"invalid_token\"");
         }
         value
+    }
+
+    /// 401 for a call without a credential that policy refuses for a guest
+    /// (RFC 6750 section 3: no `error`, since no token was presented).
+    pub fn sign_in_challenge(&self, scopes: &BTreeSet<String>) -> String {
+        let base = self.challenge(None);
+        match scope_param(scopes) {
+            Some(scope) => format!("{base}, scope=\"{scope}\""),
+            None => base,
+        }
+    }
+
+    /// 403 for a signed-in call refused only for a missing scope: every
+    /// scope the call needs, in one challenge.
+    pub fn step_up_challenge(&self, scopes: &BTreeSet<String>) -> String {
+        let scope = scope_param(scopes)
+            .map(|scope| format!(", scope=\"{scope}\""))
+            .unwrap_or_default();
+        format!(
+            "Bearer error=\"insufficient_scope\"{scope}, resource_metadata=\"{}\"",
+            self.metadata_url()
+        )
     }
 
     /// Decide a request: verify any presented credential (a present but
@@ -283,6 +303,23 @@ impl Authenticator {
             device_id,
         })
     }
+}
+
+/// Space-separated scope tokens (RFC 6749 section 3.3); values that are not
+/// valid scope tokens are left out rather than quoted into a header.
+fn scope_param(scopes: &BTreeSet<String>) -> Option<String> {
+    let valid = |s: &&String| {
+        !s.is_empty()
+            && s.bytes()
+                .all(|b| b == 0x21 || (0x23..=0x5b).contains(&b) || (0x5d..=0x7e).contains(&b))
+    };
+    let joined = scopes
+        .iter()
+        .filter(valid)
+        .cloned()
+        .collect::<Vec<_>>()
+        .join(" ");
+    (!joined.is_empty()).then_some(joined)
 }
 
 /// The signing key must suit the header's algorithm: key type, curve and

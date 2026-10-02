@@ -9,6 +9,7 @@
 #[cfg(test)]
 mod tests;
 
+use std::collections::BTreeSet;
 use std::sync::{Arc, PoisonError, RwLock};
 
 use crate::config::{ClientRegistration, ClientTrust, Effect, PolicyConfig, Rule};
@@ -148,6 +149,34 @@ impl Authorizer for PolicyEngine {
             operation,
         )
     }
+}
+
+/// Every scope a call to `tool` needs, for a challenge: the descriptor's
+/// scopes plus the `required_scopes` of the enabled allow rules that name
+/// the tool. With a principal, only rules that otherwise match that caller
+/// count; without one (no credential yet), any caller's rules do.
+pub fn challenge_scopes(
+    policy: &PolicyConfig,
+    principal: Option<&Principal>,
+    tool: &ToolDescriptor,
+) -> BTreeSet<String> {
+    let class = effective_class(policy, tool.data_class);
+    let applies = |rule: &&Rule| match principal {
+        Some(p) => matches(rule, p, tool, class, is_approved_client(policy, p)),
+        None => {
+            rule.enabled
+                && (rule.tools.contains("*") || rule.tools.contains(&tool.name))
+                && rule.effective_classes.contains(&class)
+        }
+    };
+    policy
+        .rules
+        .iter()
+        .filter(|r| r.effect == Effect::Allow)
+        .filter(applies)
+        .flat_map(|r| r.required_scopes.iter().cloned())
+        .chain(tool.scopes.iter().cloned())
+        .collect()
 }
 
 /// The school's effective class; an unmapped class fails closed.

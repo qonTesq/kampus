@@ -127,11 +127,7 @@ impl App {
     ) -> Result<Self, AppError> {
         let (init, registry, known_tools) = validate(school, &policy, env)?;
         // Activation starts here.
-        let scopes = registry
-            .tools()
-            .flat_map(|t| t.descriptor.scopes.iter().cloned())
-            .collect();
-        let settings = AuthSettings::from_school(&init.school, scopes);
+        let settings = AuthSettings::from_school(&init.school);
         let keys = match options.keys {
             Some(keys) => keys,
             None => KeySource::Discovery {
@@ -238,8 +234,18 @@ impl App {
         let sessions = Arc::new(LocalSessionManager::default());
         let owners = Arc::new(SessionOwners::new(&school.school.id, Arc::clone(&sessions)));
         let service = StreamableHttpService::new(move || Ok(mcp.clone()), sessions, config);
+        let preflight = crate::auth::PreflightState {
+            auth: Arc::clone(&self.auth),
+            dispatcher: Arc::clone(&self.dispatcher),
+        };
         Router::new()
             .nest_service(mcp_path(school), service)
+            // Lazy authentication: after session ownership, so a foreign
+            // session is refused like an unknown one before any challenge.
+            .layer(middleware::from_fn_with_state(
+                preflight,
+                crate::auth::preflight,
+            ))
             // Runs after authentication: needs the verified principal.
             .layer(middleware::from_fn_with_state(
                 owners,

@@ -671,7 +671,7 @@ async fn pi_and_verified_vendor_credentials_cannot_cross_authentication_paths() 
     let public = key.public_key();
     let jwks = json!({"keys":[{"kty":"RSA", "use":"sig", "alg":"RS256", "kid":"test", "n":b64(public.modulus().big_endian_without_leading_zero()), "e":b64(public.exponent().big_endian_without_leading_zero())}]});
     let auth = Authenticator::new(
-        AuthSettings::from_school(&school(), BTreeSet::new()),
+        AuthSettings::from_school(&school()),
         KeySource::from_jwks_json(&jwks).unwrap(),
     );
     let claims = json!({"iss":school().auth.issuer, "aud":school().server.resource_url, "sub":"synthetic:service", "client_id":"mascot-a", "iat":Utc::now().timestamp(), "exp":Utc::now().timestamp()+300, "scope":"rooms:book"});
