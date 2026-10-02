@@ -55,7 +55,7 @@ flowchart LR
 
 - **MCP is a thin outer layer.** Only the `kampus` binary speaks MCP. Modules and vendor adapters exchange plain Rust types and never see tokens.
 - **Policy on every call, before any data or cache is touched.** It checks role × tool × data class × which assistant is asking. Tools are never hidden: every caller sees the same list, and refusals are explicit and audited.
-- **Login through the school's identity provider.** OAuth 2.1 with PKCE; the server is a resource server only. The demo uses Keycloak as the stand-in. Approved assistants are pre-registered confidential clients; anything that registers itself is unapproved.
+- **Standard sign-in, any compliant issuer.** kampus is an OAuth resource server that verifies RFC 9068 access tokens (audience = its own resource URL) from one configured issuer: the school's own authorization server, or the kampus broker from the upcoming `auth-broker` change. Public tools work without signing in; protected calls answer with a 401 or 403 challenge. Approved assistants are pre-registered confidential clients; anything that registers itself is unapproved.
 - **Adapters per vendor, not per school.** One LibCal adapter serves every LibCal school. Everything school-specific lives in two files: `schools/<id>/school.yaml` and `policy.yaml`.
 - **Real data first.** Tests run against recorded real responses from every public source (`fixtures/`).
 
@@ -84,7 +84,7 @@ export KAMPUS_TEMPLE_AUDIT_SALT=$(openssl rand -hex 32)
 
 kampus now serves MCP at `http://127.0.0.1:8080/mcp`. Try it with the [MCP Inspector](https://modelcontextprotocol.io/docs/tools/inspector), or put a tunnel in front of it and add it as a custom connector in Claude or an app in ChatGPT.
 
-For the full setup, with school login, the synthetic Canvas and booking (`--features sandbox`), and a public domain, see [docs/development](docs/development/README.md) and [deploy/keycloak](deploy/keycloak/README.md).
+For the full setup, with the synthetic Canvas and booking (`--features sandbox`) and a public domain, see [docs/development](docs/development/README.md), [docs/auth](docs/auth/README.md) and [deploy/cloudflare-tunnel](deploy/cloudflare-tunnel/README.md). The repository ships no authorization server until the `auth-broker` change lands; until then, protected calls get a 401.
 
 ## Repository layout
 
@@ -96,7 +96,7 @@ modules/*              one folder per capability: module.yaml + a small crate
 schools/<id>/          school.yaml and policy.yaml per school
 fixtures/              recorded real responses used by tests
 openspec/specs/        the living specification
-deploy/keycloak/       Keycloak + Caddy deployment files
+deploy/                Caddy and Cloudflare Tunnel deployment notes
 docs/                  contracts, auth, transit, device API, demo, research
 ```
 

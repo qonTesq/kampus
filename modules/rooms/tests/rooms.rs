@@ -30,7 +30,7 @@ fn school_yaml(base_url: &str, sandbox: bool, simulate: bool) -> String {
 version: 1
 school: {{ id: {SCHOOL}, display_name: Demo University, timezone: America/New_York }}
 server: {{ resource_url: "http://127.0.0.1:9/mcp", listen: "127.0.0.1:9", admin_listen: "127.0.0.1:10" }}
-auth: {{ issuer: "http://127.0.0.1:11/realms/kampus" }}
+auth: {{ issuer: "http://127.0.0.1:11/auth" }}
 modules: [rooms]
 sandbox: {{ enabled: {sandbox} }}
 libcal:

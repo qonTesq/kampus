@@ -44,9 +44,9 @@ Branch `change/standard-token-profile` from master. Every task is ≤ 2 h, and e
 
 ## 7. Removing the previous bundled IdP (checkpoint: nothing active refers to it) — 3 h
 
-- [ ] 7.1 Code, config and tests: comments in `kampus-core` auth/config, test helpers and names, and `schools/*/school.yaml` issuer and roles defaults (issuer set to the future broker URL, with a comment). Evidence: `cargo test -p kampus-core -p kampus` passes; the inventory list in design §8 is ticked per file. (60 min)
-- [ ] 7.2 Deployment and docs: delete `deploy/keycloak/`; rewrite `deploy/cloudflare-tunnel/README.md`, `deploy/instances/Caddyfile`, `schools/sju/README.md`, `docs/demo/*`, `docs/device-api/README.md`, `docs/vendor/rmcp/README.md`, `README.md` and `.gitignore` to the interim "public tokenless, broker coming" state. Evidence: every link in the touched docs resolves (`rg -o "\]\([^)]+\)"` spot check); no step names a removed file. (75 min)
-- [ ] 7.3 Owner-approved (S7) rewrite of the `openspec/config.yaml` `context`. Evidence: `openspec validate --all --strict` passes. (15 min)
+- [x] 7.1 Code, config and tests: comments in `kampus-core` auth/config, test helpers and names, and `schools/*/school.yaml` issuer and roles defaults (issuer set to the future broker URL, with a comment). Evidence: `cargo test -p kampus-core -p kampus` passes; the inventory list in design §8 is ticked per file. (60 min)
+- [x] 7.2 Deployment and docs: delete `deploy/keycloak/`; rewrite `deploy/cloudflare-tunnel/README.md`, `deploy/instances/Caddyfile`, `schools/sju/README.md`, `docs/demo/*`, `docs/device-api/README.md`, `docs/vendor/rmcp/README.md`, `README.md` and `.gitignore` to the interim "public tokenless, broker coming" state. Evidence: every link in the touched docs resolves (`rg -o "\]\([^)]+\)"` spot check); no step names a removed file. (75 min)
+- [x] 7.3 Owner-approved (S7) rewrite of the `openspec/config.yaml` `context`. Evidence: `openspec validate --all --strict` passes. (15 min)
 - [ ] 7.4 Pre-archive sweep check: `rg -i "keycloak|realm_access|\b8180\b" --hidden -g '!.git' -g '!openspec/changes/**' -g '!docs/research/**'` returns zero hits (active change files are excluded only until archival, see 8.3). Evidence: command output recorded in the merge note. (30 min)
 
 ## 8. Gate, review and integration (checkpoint: merged) — 2 h

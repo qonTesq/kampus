@@ -1,6 +1,6 @@
 # Multi-school evidence (SJU)
 
-Run commands, Keycloak setup and rollback: `schools/sju/README.md`.
+Run commands, sign-in setup and rollback: `schools/sju/README.md`.
 
 ## Gate, 2026-09-26 ~23:00 EDT, branch `change/multi-school`
 
@@ -37,7 +37,7 @@ Live probe at the same time: `GET https://sju.libcal.com/api/1.1/space/items/200
 
 ## Still needs a human
 
-- Add the SJU clients and `kampus-sju-audience` scope to the running Keycloak realm, then decode one token per school and check `aud`.
+- With an authorization server in place (`auth-broker`), decode one token per school and check that `aud` is that school's resource URL.
 - A live authenticated Hawk Hill call through Claude or Inspector against the running SJU instance.
 - Midnight checkpoint and rehearsals (tasks 2.x): all seven tools through the assistants, live policy switch, binding expiry, timings.
 - Deployed HTTPS: include `deploy/instances/Caddyfile` with `SJU_DOMAIN`, set SJU `resource_url` and issuer to HTTPS, `caddy validate` before reload.

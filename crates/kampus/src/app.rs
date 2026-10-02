@@ -43,7 +43,7 @@ pub enum AppError {
     Registry(#[from] RegistryError),
     #[error("school.yaml modules: unknown module {0}")]
     UnknownModule(String),
-    #[error("cannot build the realm key client")]
+    #[error("cannot build the issuer key client")]
     KeyClient,
     #[error("cannot open the audit log {path}")]
     Audit { path: PathBuf },

@@ -115,7 +115,7 @@ mod tests {
 version: 1
 school: {{ id: testu, display_name: Test University, timezone: America/New_York }}
 server: {{ resource_url: "https://kampus.example.edu/mcp", listen: "127.0.0.1:9", admin_listen: "127.0.0.1:10" }}
-auth: {{ issuer: "https://id.example.edu/realms/k" }}
+auth: {{ issuer: "https://id.example.edu/auth" }}
 modules: []
 {extra}
 "#

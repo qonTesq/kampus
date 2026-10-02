@@ -904,7 +904,7 @@ enum Metadata {
 /// A minimal issuer on 127.0.0.1 at `{base}/auth`: metadata + JWKS, counting
 /// key fetches (failed ones too) and recording every requested path.
 /// `certs_status` and `certs_delay` script the key endpoint.
-struct Realm {
+struct TestIssuer {
     issuer: String,
     keys: Arc<Mutex<JwkSet>>,
     jwks_fetches: Arc<Mutex<u32>>,
@@ -913,7 +913,7 @@ struct Realm {
     paths: Arc<Mutex<Vec<String>>>,
 }
 
-async fn realm(initial: JwkSet, jwks_origin_override: Option<&'static str>) -> Realm {
+async fn idp(initial: JwkSet, jwks_origin_override: Option<&'static str>) -> TestIssuer {
     issuer_server(initial, Metadata::Oauth, jwks_origin_override, None).await
 }
 
@@ -922,7 +922,7 @@ async fn issuer_server(
     metadata: Metadata,
     jwks_origin_override: Option<&'static str>,
     claimed_issuer: Option<&'static str>,
-) -> Realm {
+) -> TestIssuer {
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let base = format!("http://{}", listener.local_addr().unwrap());
     let issuer = format!("{base}/auth");
@@ -980,7 +980,7 @@ async fn issuer_server(
             });
         }
     });
-    Realm {
+    TestIssuer {
         issuer,
         keys,
         jwks_fetches,
@@ -990,8 +990,8 @@ async fn issuer_server(
     }
 }
 
-fn fetches(realm: &Realm) -> u32 {
-    *realm.jwks_fetches.lock().unwrap()
+fn fetches(idp: &TestIssuer) -> u32 {
+    *idp.jwks_fetches.lock().unwrap()
 }
 
 #[tokio::test]
@@ -1053,14 +1053,14 @@ async fn mismatched_metadata_trusts_no_keys() {
 #[tokio::test]
 async fn outage_keeps_cached_keys_and_rate_limits_unknown_kids() {
     let old = TestKey::new("k-old");
-    let realm = realm(keyset(&[&old]), None).await;
-    let auth = discovery_auth(&realm);
-    let token = |k: &TestKey| k.token(&with(claims(), "iss", json!(realm.issuer)));
+    let idp = idp(keyset(&[&old]), None).await;
+    let auth = discovery_auth(&idp);
+    let token = |k: &TestKey| k.token(&with(claims(), "iss", json!(idp.issuer)));
     assert!(auth.verify(&token(&old)).await.is_ok());
-    assert_eq!(fetches(&realm), 1);
+    assert_eq!(fetches(&idp), 1);
 
     // The key endpoint goes down; four tokens with unknown kids arrive.
-    *realm.certs_status.lock().unwrap() = 503;
+    *idp.certs_status.lock().unwrap() = 503;
     for i in 0..4 {
         let stranger = TestKey::new(&format!("k-unknown-{i}"));
         assert_eq!(
@@ -1068,18 +1068,18 @@ async fn outage_keeps_cached_keys_and_rate_limits_unknown_kids() {
             Err(AuthError::UnknownKey)
         );
     }
-    assert_eq!(fetches(&realm), 2, "one forced refresh per cooldown");
+    assert_eq!(fetches(&idp), 2, "one forced refresh per cooldown");
     // The still-valid cached key keeps working.
     assert!(auth.verify(&token(&old)).await.is_ok());
-    assert_eq!(fetches(&realm), 2);
+    assert_eq!(fetches(&idp), 2);
 }
 
 #[tokio::test]
 async fn expired_keys_fail_closed_and_back_off_while_the_provider_is_down() {
     let key = TestKey::new("k");
-    let realm = realm(keyset(&[&key]), None).await;
+    let idp = idp(keyset(&[&key]), None).await;
     let mut s = settings(AuthMode::Oauth);
-    s.issuer = realm.issuer.parse().unwrap();
+    s.issuer = idp.issuer.parse().unwrap();
     let issuer = s.issuer.clone();
     let auth = Authenticator {
         settings: s,
@@ -1094,25 +1094,25 @@ async fn expired_keys_fail_closed_and_back_off_while_the_provider_is_down() {
             },
         ),
     };
-    let token = key.token(&with(claims(), "iss", json!(realm.issuer)));
+    let token = key.token(&with(claims(), "iss", json!(idp.issuer)));
     assert!(auth.verify(&token).await.is_ok());
-    *realm.certs_status.lock().unwrap() = 503;
+    *idp.certs_status.lock().unwrap() = 503;
     tokio::time::sleep(std::time::Duration::from_millis(300)).await;
     for _ in 0..4 {
         assert_eq!(auth.verify(&token).await, Err(AuthError::KeysUnavailable));
     }
-    assert_eq!(fetches(&realm), 2, "failed refreshes back off");
+    assert_eq!(fetches(&idp), 2, "failed refreshes back off");
 }
 
 #[tokio::test]
 async fn cached_key_lookups_never_wait_for_a_slow_refresh() {
     let old = TestKey::new("k-old");
-    let realm = realm(keyset(&[&old]), None).await;
-    let auth = Arc::new(discovery_auth(&realm));
-    let token = |k: &TestKey| k.token(&with(claims(), "iss", json!(realm.issuer)));
+    let idp = idp(keyset(&[&old]), None).await;
+    let auth = Arc::new(discovery_auth(&idp));
+    let token = |k: &TestKey| k.token(&with(claims(), "iss", json!(idp.issuer)));
     assert!(auth.verify(&token(&old)).await.is_ok());
 
-    *realm.certs_delay.lock().unwrap() = std::time::Duration::from_secs(3);
+    *idp.certs_delay.lock().unwrap() = std::time::Duration::from_secs(3);
     let stranger = token(&TestKey::new("k-rotated"));
     let refreshing = {
         let auth = Arc::clone(&auth);
@@ -1131,9 +1131,9 @@ async fn cached_key_lookups_never_wait_for_a_slow_refresh() {
     assert_eq!(refreshing.await.unwrap(), Err(AuthError::UnknownKey));
 }
 
-fn discovery_auth(realm: &Realm) -> Authenticator {
+fn discovery_auth(idp: &TestIssuer) -> Authenticator {
     let mut s = settings(AuthMode::Oauth);
-    s.issuer = realm.issuer.parse().unwrap();
+    s.issuer = idp.issuer.parse().unwrap();
     Authenticator::with_discovery(s, reqwest::Client::new())
 }
 
@@ -1141,22 +1141,18 @@ fn discovery_auth(realm: &Realm) -> Authenticator {
 async fn discovery_caches_keys_and_refreshes_once_for_rotation() {
     let old = TestKey::new("k-old");
     let new = TestKey::new("k-new");
-    let realm = realm(keyset(&[&old]), None).await;
-    let auth = discovery_auth(&realm);
-    let token = |k: &TestKey| k.token(&with(claims(), "iss", json!(realm.issuer)));
+    let idp = idp(keyset(&[&old]), None).await;
+    let auth = discovery_auth(&idp);
+    let token = |k: &TestKey| k.token(&with(claims(), "iss", json!(idp.issuer)));
 
     assert!(auth.verify(&token(&old)).await.is_ok());
     assert!(auth.verify(&token(&old)).await.is_ok());
-    assert_eq!(
-        *realm.jwks_fetches.lock().unwrap(),
-        1,
-        "cached for 5 minutes"
-    );
+    assert_eq!(*idp.jwks_fetches.lock().unwrap(), 1, "cached for 5 minutes");
 
     // Rotation: an unknown kid triggers exactly one refresh, which finds it.
-    *realm.keys.lock().unwrap() = keyset(&[&old, &new]);
+    *idp.keys.lock().unwrap() = keyset(&[&old, &new]);
     assert!(auth.verify(&token(&new)).await.is_ok());
-    assert_eq!(*realm.jwks_fetches.lock().unwrap(), 2);
+    assert_eq!(*idp.jwks_fetches.lock().unwrap(), 2);
 
     // A second unknown kid inside the refresh interval fails closed without refetching.
     let stranger = TestKey::new("k-stranger");
@@ -1164,15 +1160,15 @@ async fn discovery_caches_keys_and_refreshes_once_for_rotation() {
         auth.verify(&token(&stranger)).await,
         Err(AuthError::UnknownKey)
     );
-    assert_eq!(*realm.jwks_fetches.lock().unwrap(), 2);
+    assert_eq!(*idp.jwks_fetches.lock().unwrap(), 2);
 }
 
 #[tokio::test]
 async fn discovery_pointing_keys_off_origin_is_refused() {
     let key = TestKey::new("k");
-    let realm = realm(keyset(&[&key]), Some("http://127.0.0.2:9")).await;
-    let auth = discovery_auth(&realm);
-    let token = key.token(&with(claims(), "iss", json!(realm.issuer)));
+    let idp = idp(keyset(&[&key]), Some("http://127.0.0.2:9")).await;
+    let auth = discovery_auth(&idp);
+    let token = key.token(&with(claims(), "iss", json!(idp.issuer)));
     assert_eq!(auth.verify(&token).await, Err(AuthError::KeysUnavailable));
     assert_eq!(
         auth.admit(Some(format!("Bearer {token}").as_bytes()), true)
@@ -1182,7 +1178,7 @@ async fn discovery_pointing_keys_off_origin_is_refused() {
 }
 
 #[tokio::test]
-async fn unreachable_realm_fails_closed() {
+async fn unreachable_issuer_fails_closed() {
     let mut s = settings(AuthMode::NoLogin);
     s.issuer = "http://127.0.0.1:9/auth".parse().unwrap();
     let auth = Authenticator::with_discovery(s, reqwest::Client::new());

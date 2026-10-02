@@ -158,17 +158,17 @@ async fn call(instance: &Instance, token: &str, name: &str, args: Value) -> Valu
 async fn same_binary_processes_reject_foreign_tokens_and_keep_policy_and_audit_separate() {
     let temp = Temp::new();
     let key = std::sync::Arc::new(TestKey::new());
-    let realm = realm(std::sync::Arc::clone(&key)).await;
-    let temple = Instance::start("temple", &realm.base, &temp.path).await;
-    let sju = Instance::start("sju", &realm.base, &temp.path).await;
+    let issuer = issuer(std::sync::Arc::clone(&key)).await;
+    let temple = Instance::start("temple", &issuer.base, &temp.path).await;
+    let sju = Instance::start("sju", &issuer.base, &temp.path).await;
     // Each token names its own instance's resource URL as the audience.
     let temple_token = key.token(
-        &realm.base,
+        &issuer.base,
         &format!("{}/mcp", temple.base),
         "kampus-claude",
     );
     let sju_token = key.token(
-        &realm.base,
+        &issuer.base,
         &format!("{}/mcp", sju.base),
         "kampus-sju-claude",
     );

@@ -104,7 +104,7 @@ fn b64(bytes: &[u8]) -> String {
     }
     out
 }
-pub(super) async fn realm(key: Arc<TestKey>) -> Server {
+pub(super) async fn issuer(key: Arc<TestKey>) -> Server {
     // Discovery derives its URL from the loopback Host supplied by our client.
     let router = axum::Router::new()
         .route(

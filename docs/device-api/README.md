@@ -25,7 +25,7 @@ Pi secrets must be distinct per device, 32–512 bytes, without whitespace or
 dots. Generate a random 32-byte value and encode it as hex. They are loaded
 from `bind_secret_env`, hashed, then compared with the existing aws-lc-rs
 constant-time primitive. Do not give these secrets to the voice vendor.
-The vendor receives only a separately issued, verified Keycloak device JWT.
+The vendor receives only a separately issued device access token, verified like any other token from the configured issuer.
 JWT-shaped values cannot be configured as Pi secrets. Binding supplies no
 new OAuth scopes, tokens, client approval, or university credentials.
 

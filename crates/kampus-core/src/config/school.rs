@@ -397,7 +397,7 @@ pub struct DeviceSticker {
 #[serde(deny_unknown_fields)]
 pub struct DeviceConfig {
     pub device_id: String,
-    /// Keycloak client ID of the device's MCP token.
+    /// Client ID (`client_id`, or `azp`) of the device's MCP token.
     pub client_id: String,
     /// Env var holding the Pi-only bind secret.
     pub bind_secret_env: String,
