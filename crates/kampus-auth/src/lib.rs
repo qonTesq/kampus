@@ -7,8 +7,14 @@
 //! discovery and the JWKS, like any other issuer. The broker stores no
 //! passwords and no user records; all state is in memory.
 
+// `store` and `cimd` are written and unit-tested but not yet used by the
+// endpoints (phase 3 in progress).
+#[allow(dead_code)]
+mod cimd;
 mod clients;
 mod error;
+#[allow(dead_code)]
+mod store;
 mod keys;
 mod metadata;
 mod scopes;
