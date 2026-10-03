@@ -48,6 +48,14 @@ tracing-subscriber.workspace = true
 [dev-dependencies]
 # Locally generated signing keys for the auth tests.
 aws-lc-rs.workspace = true
+# Broker tests: token header inspection and inline broker configuration.
+jsonwebtoken.workspace = true
+serde-saphyr.workspace = true
+
+# The authorization broker end to end (auth-broker change).
+[[test]]
+name = "broker"
+required-features = ["broker"]
 
 # Multi-school instance tests; contents owned by the multi-school change.
 [[test]]

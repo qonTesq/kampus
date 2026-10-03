@@ -1,6 +1,8 @@
 //! `kampus serve --school <school.yaml> --policy <policy.yaml>`
 //! `kampus check --school <school.yaml> --policy <policy.yaml>`
 //! Optional: `--audit <file.jsonl>` (default `data/audit/<school_id>.jsonl`).
+//! `kampus auth rotate-key --school <school.yaml>` (broker builds): new
+//! active signing key, previous key kept; takes effect on restart.
 
 use std::path::PathBuf;
 use std::process::ExitCode;
@@ -62,9 +64,64 @@ fn init_logging() {
         .init();
 }
 
+/// `kampus auth rotate-key --school <school.yaml>`.
+fn rotate_key(mut args: impl Iterator<Item = String>) -> ExitCode {
+    let school = match (args.next().as_deref(), args.next(), args.next()) {
+        (Some("--school"), Some(path), None) => PathBuf::from(path),
+        _ => {
+            tracing::error!("usage: kampus auth rotate-key --school <school.yaml>");
+            return ExitCode::from(2);
+        }
+    };
+    let config = match SchoolConfig::load(&school) {
+        Ok(config) => config,
+        Err(error) => {
+            tracing::error!("{error}");
+            return ExitCode::FAILURE;
+        }
+    };
+    let Some(broker) = &config.auth.broker else {
+        tracing::error!("school.yaml has no auth.broker section");
+        return ExitCode::FAILURE;
+    };
+    #[cfg(feature = "broker")]
+    {
+        match kampus_auth::rotate_key(&broker.key_file) {
+            Ok(()) => {
+                tracing::info!(
+                    file = %broker.key_file.display(),
+                    "signing key rotated; restart kampus to use it"
+                );
+                ExitCode::SUCCESS
+            }
+            Err(error) => {
+                tracing::error!("{error}");
+                ExitCode::FAILURE
+            }
+        }
+    }
+    #[cfg(not(feature = "broker"))]
+    {
+        let _ = broker;
+        tracing::error!("this binary was built without the broker feature");
+        ExitCode::FAILURE
+    }
+}
+
 #[tokio::main]
 async fn main() -> ExitCode {
     init_logging();
+
+    let mut raw = std::env::args().skip(1);
+    if raw.next().as_deref() == Some("auth") {
+        return match raw.next().as_deref() {
+            Some("rotate-key") => rotate_key(raw),
+            _ => {
+                tracing::error!("usage: kampus auth rotate-key --school <school.yaml>");
+                ExitCode::from(2)
+            }
+        };
+    }
 
     let Some(args) = parse_args().filter(|a| matches!(a.command.as_str(), "serve" | "check"))
     else {
@@ -100,6 +157,7 @@ async fn main() -> ExitCode {
         .map_err(kampus::AppError::from)
         .and_then(|(school, policy)| {
             let options = AppOptions {
+                secrets: None,
                 audit_hasher: None,
                 keys: None,
                 audit_path: args.audit.clone(),

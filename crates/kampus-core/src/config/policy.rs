@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use serde::{Deserialize, Serialize};
 
-use super::validate::{Env, Issues};
+use super::validate::{Env, Issues, is_cimd_url, is_loopback_cimd_url};
 use super::{ConfigIssue, SchoolConfig};
 use crate::contracts::{DataClass, Operation, Role};
 
@@ -158,22 +158,6 @@ impl Default for PolicyLimits {
     }
 }
 
-/// A Client ID Metadata Document URL: https, a host, a non-root path, and
-/// no credentials, query or fragment.
-fn is_cimd_url(id: &str) -> bool {
-    id.len() <= 2048
-        && url::Url::parse(id).is_ok_and(|u| {
-            u.scheme() == "https"
-                && u.host_str().is_some()
-                && u.as_str() == id
-                && u.path() != "/"
-                && u.username().is_empty()
-                && u.password().is_none()
-                && u.query().is_none()
-                && u.fragment().is_none()
-        })
-}
-
 pub(super) fn validate(
     p: &PolicyConfig,
     school: &SchoolConfig,
@@ -204,7 +188,7 @@ pub(super) fn validate(
         }
     }
 
-    validate_clients(&mut v, p, school);
+    validate_clients(&mut v, p, school, school.sandbox.enabled && env.sandbox_compiled);
     validate_rules(&mut v, p, known_tools);
 
     if p.audit.retention_hours == 0 || p.audit.retention_hours > 24 * 30 {
@@ -231,7 +215,7 @@ pub(super) fn validate(
     v.0
 }
 
-fn validate_clients(v: &mut Issues, p: &PolicyConfig, school: &SchoolConfig) {
+fn validate_clients(v: &mut Issues, p: &PolicyConfig, school: &SchoolConfig, sandbox_on: bool) {
     v.unique(
         "client_registry",
         p.client_registry.iter().map(|c| c.client_id.as_str()),
@@ -239,7 +223,9 @@ fn validate_clients(v: &mut Issues, p: &PolicyConfig, school: &SchoolConfig) {
     for (i, c) in p.client_registry.iter().enumerate() {
         let field = format!("client_registry[{i}].client_id");
         if c.registration == ClientRegistration::Cimd {
-            if !is_cimd_url(&c.client_id) {
+            // Sandbox-only exception: the broker's loopback test client.
+            let loopback_test_client = sandbox_on && is_loopback_cimd_url(&c.client_id);
+            if !is_cimd_url(&c.client_id) && !loopback_test_client {
                 v.push(
                     field,
                     "a cimd client ID must be an https URL with a path and no credentials, query or fragment",

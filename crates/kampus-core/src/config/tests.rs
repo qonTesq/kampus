@@ -555,3 +555,266 @@ fn new_trust_selectors_parse() {
     let yaml = TEMPLE_POLICY.replacen("client_trust: approved", "client_trust: personal", 1);
     assert!(PolicyConfig::from_yaml(&yaml).is_err());
 }
+
+// ---- auth.broker ------------------------------------------------------------
+
+const BROKER: &str = r"
+listen: 127.0.0.1:8082
+key_file: data/auth/temple-signing-keys.json
+subject_key_env: KAMPUS_TEMPLE_SUBJECT_KEY
+scopes: [rooms:book]
+cimd_clients:
+  - https://claude.ai/oauth/mcp-oauth-client-metadata
+  - https://chatgpt.com/oauth/client.json
+clients:
+  - client_id: kampus-claude
+    label: Claude (Temple workspace)
+    secret_env: KAMPUS_TEMPLE_CLAUDE_SECRET
+    redirect_uris: [https://claude.ai/api/mcp/auth_callback]
+upstream:
+  issuer: https://login.temple.example
+  client_id: kampus-temple
+  client_secret_env: KAMPUS_TEMPLE_OIDC_SECRET
+  role_mapping:
+    - { claim: eduperson_affiliation, value: student, role: student }
+";
+
+fn broker_school(edit: impl FnOnce(&mut BrokerConfig)) -> SchoolConfig {
+    let mut s = school();
+    let mut broker: BrokerConfig = serde_saphyr::from_str(BROKER).unwrap();
+    edit(&mut broker);
+    s.auth.broker = Some(broker);
+    s
+}
+
+fn demo_user(subject: &str, role: Role) -> DemoUser {
+    DemoUser {
+        label: "Student A".to_owned(),
+        subject: subject.to_owned(),
+        roles: [role].into(),
+    }
+}
+
+#[test]
+fn broker_section_is_valid_with_defaults() {
+    let s = broker_school(|_| {});
+    s.validate(&env(false)).unwrap();
+    let b = s.auth.broker.as_ref().unwrap();
+    assert_eq!(b.access_token_ttl_seconds, 900);
+    assert_eq!(b.refresh_family_ttl_hours, 168);
+    assert_eq!(b.upstream.as_ref().unwrap().scopes, ["openid"]);
+}
+
+#[test]
+fn broker_listener_must_be_its_own_and_loopback_without_a_proxy() {
+    for taken in ["127.0.0.1:8080", "127.0.0.1:8081"] {
+        let mut s = broker_school(|b| b.listen = taken.parse().unwrap());
+        s.auth.issuer = "https://mcp.temple.example/auth".parse().unwrap();
+        assert_eq!(school_issues(&s, &env(false)), ["auth.broker.listen"]);
+    }
+    let mut s = broker_school(|b| b.listen = "0.0.0.0:8082".parse().unwrap());
+    // The loopback issuer port still matches; only the proxy rule fires.
+    assert_eq!(school_issues(&s, &env(false)), ["auth.broker.listen"]);
+    s.server.trusted_proxy = Some(proxy(ForwardedHeader::XForwardedFor, &["127.0.0.1"]));
+    s.validate(&env(false)).unwrap();
+}
+
+#[test]
+fn broker_issuer_needs_a_path_and_the_listener_port() {
+    for issuer in [
+        "http://127.0.0.1:8082/",
+        "http://127.0.0.1:8082/auth/",
+        "http://127.0.0.1:8082/auth?x=1",
+    ] {
+        let mut s = broker_school(|_| {});
+        s.auth.issuer = issuer.parse().unwrap();
+        assert_eq!(school_issues(&s, &env(false)), ["auth.issuer"], "{issuer}");
+    }
+    let mut s = broker_school(|_| {});
+    s.auth.issuer = "http://127.0.0.1:9999/auth".parse().unwrap();
+    assert_eq!(school_issues(&s, &env(false)), ["auth.issuer"]);
+    // A public issuer is served through the proxy, on any port.
+    let mut s = broker_school(|_| {});
+    s.auth.issuer = "https://mcp.temple.example/auth".parse().unwrap();
+    s.validate(&env(false)).unwrap();
+}
+
+#[test]
+fn broker_cimd_urls_are_https_except_the_sandbox_loopback_client() {
+    let local = "http://127.0.0.1:9000/client.json";
+    for bad in [
+        "http://claude.ai/oauth/mcp-oauth-client-metadata",
+        "https://claude.ai/",
+        "https://claude.ai/x#frag",
+        local,
+    ] {
+        let s = broker_school(|b| b.cimd_clients = vec![bad.to_owned()]);
+        assert_eq!(
+            school_issues(&s, &env(false)),
+            ["auth.broker.cimd_clients[0]"],
+            "{bad}"
+        );
+    }
+    let mut s = broker_school(|b| b.cimd_clients = vec![local.to_owned()]);
+    s.sandbox.enabled = true;
+    s.validate(&env(true)).unwrap();
+}
+
+#[test]
+fn broker_client_ids_never_collide() {
+    let s = broker_school(|b| {
+        let mut twin = b.clients[0].clone();
+        twin.client_id = "https://chatgpt.com/oauth/client.json".to_owned();
+        b.clients.push(twin);
+    });
+    let issues = school_issues(&s, &env(false));
+    assert!(
+        issues.contains(&"auth.broker client IDs".to_owned()),
+        "{issues:?}"
+    );
+    let s = broker_school(|b| {
+        let twin = b.clients[0].clone();
+        b.clients.push(twin);
+    });
+    assert_eq!(school_issues(&s, &env(false)), ["auth.broker client IDs"]);
+}
+
+#[test]
+fn broker_redirect_uris_are_exact_https() {
+    for bad in [
+        "https://claude.ai/api/*",
+        "https://claude.ai/cb#x",
+        "http://claude.ai/cb",
+        "/relative",
+        "https://user:pw@claude.ai/cb",
+    ] {
+        let s = broker_school(|b| b.clients[0].redirect_uris = vec![bad.to_owned()]);
+        assert_eq!(
+            school_issues(&s, &env(false)),
+            ["auth.broker.clients[0].redirect_uris[0]"],
+            "{bad}"
+        );
+    }
+    let s = broker_school(|b| b.clients[0].redirect_uris = vec!["http://127.0.0.1:7/cb".into()]);
+    s.validate(&env(false)).unwrap();
+}
+
+#[test]
+fn broker_devices_must_be_school_devices() {
+    let s = broker_school(|b| {
+        b.devices.push(BrokerDevice {
+            client_id: "kampus-mascot".to_owned(),
+            secret_env: "KAMPUS_TEMPLE_MASCOT_SECRET".to_owned(),
+            roles: [Role::Guest].into(),
+            scopes: std::collections::BTreeSet::new(),
+        });
+    });
+    assert_eq!(
+        school_issues(&s, &env(false)),
+        ["auth.broker.devices[0].client_id"]
+    );
+}
+
+#[test]
+fn demo_users_need_the_sandbox_and_synthetic_subjects() {
+    let s = broker_school(|b| b.demo_users = vec![demo_user("synthetic:student-a", Role::Student)]);
+    assert_eq!(school_issues(&s, &env(false)), ["auth.broker.demo_users"]);
+    // Compiled in, but not enabled at runtime: still refused.
+    assert_eq!(school_issues(&s, &env(true)), ["auth.broker.demo_users"]);
+    let mut s = broker_school(|b| {
+        b.upstream = None;
+        b.demo_users = vec![
+            demo_user("student-a", Role::Student),
+            demo_user("synthetic:root", Role::Admin),
+        ];
+    });
+    s.sandbox.enabled = true;
+    assert_eq!(
+        school_issues(&s, &env(true)),
+        [
+            "auth.broker.demo_users[0].subject",
+            "auth.broker.demo_users[1].roles"
+        ]
+    );
+}
+
+#[test]
+fn role_mapping_never_grants_admin() {
+    let s = broker_school(|b| {
+        let up = b.upstream.as_mut().unwrap();
+        up.role_mapping[0].role = Role::Admin;
+    });
+    assert_eq!(
+        school_issues(&s, &env(false)),
+        ["auth.broker.upstream.role_mapping[0].role"]
+    );
+    // An unknown role is refused while parsing.
+    let yaml = BROKER.replace("role: student }", "role: wizard }");
+    assert!(serde_saphyr::from_str::<BrokerConfig>(&yaml).is_err());
+}
+
+#[test]
+fn broker_needs_a_login_method_and_https_upstream() {
+    let s = broker_school(|b| b.upstream = None);
+    assert_eq!(school_issues(&s, &env(false)), ["auth.broker"]);
+    let s = broker_school(|b| {
+        b.upstream.as_mut().unwrap().issuer = "http://127.0.0.1:9100".parse().unwrap();
+    });
+    assert_eq!(
+        school_issues(&s, &env(false)),
+        ["auth.broker.upstream.issuer"]
+    );
+    let s = broker_school(|b| b.upstream.as_mut().unwrap().scopes = vec!["profile".into()]);
+    assert_eq!(
+        school_issues(&s, &env(false)),
+        ["auth.broker.upstream.scopes"]
+    );
+}
+
+#[test]
+fn broker_secrets_must_be_set_and_ttls_bounded() {
+    let unset = Env {
+        has_var: &|name| !name.starts_with("KAMPUS_TEMPLE_"),
+        sandbox_compiled: false,
+    };
+    let issues = school_issues(&broker_school(|_| {}), &unset);
+    assert_eq!(
+        issues,
+        [
+            "auth.broker.subject_key_env",
+            "auth.broker.clients[0].secret_env",
+            "auth.broker.upstream.client_secret_env"
+        ]
+    );
+    let s = broker_school(|b| {
+        b.access_token_ttl_seconds = 7201;
+        b.refresh_family_ttl_hours = 0;
+    });
+    assert_eq!(
+        school_issues(&s, &env(false)),
+        [
+            "auth.broker.access_token_ttl_seconds",
+            "auth.broker.refresh_family_ttl_hours"
+        ]
+    );
+}
+
+#[test]
+fn policy_cimd_loopback_client_only_in_the_sandbox() {
+    let mut p = policy();
+    p.client_registry.push(RegisteredClient {
+        client_id: "http://127.0.0.1:9000/client.json".to_owned(),
+        registration: ClientRegistration::Cimd,
+        approved: false,
+        workspace: "e2e".to_owned(),
+    });
+    let field = format!("client_registry[{}].client_id", p.client_registry.len() - 1);
+    assert_eq!(policy_issues(&p, &env(true)), [field]);
+    let mut s = school();
+    s.sandbox.enabled = true;
+    p.validate(&s, &tools(), &env(true)).unwrap();
+    assert!(matches!(
+        p.validate(&s, &tools(), &env(false)),
+        Err(ConfigError::Invalid(_))
+    ));
+}

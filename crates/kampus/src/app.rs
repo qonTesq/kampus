@@ -54,11 +54,34 @@ pub enum AppError {
         addr: SocketAddr,
         source: std::io::Error,
     },
+    #[cfg(feature = "broker")]
+    #[error("authorization broker: {0}")]
+    Broker(#[from] kampus_auth::BrokerError),
+}
+
+/// Reads secret environment variables by name (injected so tests never
+/// mutate the process environment).
+#[derive(Clone)]
+pub struct Secrets(pub Arc<dyn Fn(&str) -> Option<String> + Send + Sync>);
+
+impl Secrets {
+    /// The real process environment.
+    pub fn process() -> Self {
+        Self(Arc::new(|name| std::env::var(name).ok()))
+    }
+}
+
+impl std::fmt::Debug for Secrets {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("Secrets(..)")
+    }
 }
 
 /// Runtime inputs that are not part of `school.yaml`/`policy.yaml`.
 #[derive(Debug, Default)]
 pub struct AppOptions {
+    /// Where broker and device secrets are read; `None` reads the process environment.
+    pub secrets: Option<Secrets>,
     /// Explicit hasher for embedded callers/tests; CLI requires the configured salt.
     pub audit_hasher: Option<SubjectHasher>,
     /// Signing keys; `None` fetches them through the issuer's discovery document.
@@ -88,6 +111,8 @@ pub struct App {
     dispatcher: Arc<Dispatcher>,
     auth: Arc<Authenticator>,
     policy_path: Option<PathBuf>,
+    #[cfg(feature = "broker")]
+    broker: Option<kampus_auth::Broker>,
 }
 
 impl App {
@@ -127,6 +152,14 @@ impl App {
     ) -> Result<Self, AppError> {
         let (init, registry, known_tools) = validate(school, &policy, env)?;
         // Activation starts here.
+        let secrets = options.secrets.clone().unwrap_or_else(Secrets::process);
+        #[cfg(feature = "broker")]
+        let broker = match &init.school.auth.broker {
+            Some(_) => {
+                Some(kampus_auth::Broker::new(&init.school, &*secrets.0)?)
+            }
+            None => None,
+        };
         let settings = AuthSettings::from_school(&init.school);
         let keys = match options.keys {
             Some(keys) => keys,
@@ -168,7 +201,7 @@ impl App {
         let devices = kampus_device::DeviceBindings::new(
             &init.school,
             &security,
-            &|name| std::env::var(name).ok(),
+            &*secrets.0,
             Arc::new(kampus_device::SystemClock::default()),
         )?;
         security.identity = Some(Arc::clone(&devices) as _);
@@ -194,7 +227,36 @@ impl App {
             dispatcher,
             auth,
             policy_path: options.policy_path,
+            #[cfg(feature = "broker")]
+            broker,
         })
+    }
+
+    /// The broker's router (its own listener; never merged into the MCP
+    /// router), wrapped in the trusted-proxy client-address layer. `None`
+    /// when `auth.broker` is not configured.
+    #[cfg(feature = "broker")]
+    pub fn broker_router(&self) -> Option<Router> {
+        let broker = self.broker.as_ref()?;
+        Some(
+            broker
+                .router()
+                .layer(middleware::map_request(
+                    |mut request: Request| async move {
+                        let client = request.extensions().get::<crate::client::ClientAddr>().copied();
+                        if let Some(crate::client::ClientAddr(ip)) = client {
+                            request
+                                .extensions_mut()
+                                .insert(kampus_auth::ClientAddress(ip));
+                        }
+                        request
+                    },
+                ))
+                .layer(middleware::from_fn_with_state(
+                    Arc::new(self.init.school.server.trusted_proxy.clone()),
+                    crate::client::client_addr,
+                )),
+        )
     }
 
     pub fn school(&self) -> &SchoolConfig {
@@ -302,6 +364,10 @@ impl App {
                 }
             }
         });
+        #[cfg(feature = "broker")]
+        let broker = self.serve_broker(cancel.clone()).await?;
+        #[cfg(not(feature = "broker"))]
+        let broker = std::future::ready(Ok::<(), AppError>(()));
         let router = self.router(cancel.child_token());
         let public_cancel = cancel.clone();
         let admin_cancel = cancel.clone();
@@ -323,10 +389,79 @@ impl App {
                     source,
                 })
         };
-        let result = tokio::try_join!(public, local).map(|((), ())| ());
+        let result = tokio::try_join!(public, local, broker).map(|((), (), ())| ());
         cancel.cancel();
         result
     }
+
+    /// Bind the broker listener (when configured) and return its server future.
+    #[cfg(feature = "broker")]
+    async fn serve_broker(
+        &self,
+        cancel: CancellationToken,
+    ) -> Result<impl Future<Output = Result<(), AppError>> + use<>, AppError> {
+        let bound = match (&self.init.school.auth.broker, self.broker_router()) {
+            (Some(config), Some(router)) => {
+                let addr = config.listen;
+                let listener = tokio::net::TcpListener::bind(addr)
+                    .await
+                    .map_err(|source| AppError::Listen { addr, source })?;
+                tracing::info!(%addr, issuer = %self.init.school.auth.issuer, "authorization broker listening");
+                Some((addr, listener, router))
+            }
+            _ => None,
+        };
+        let maintenance = self.broker.clone();
+        Ok(async move {
+            let Some((addr, listener, router)) = bound else {
+                return Ok(());
+            };
+            if let Some(broker) = maintenance {
+                let stop = cancel.clone();
+                tokio::spawn(async move {
+                    tokio::select! {
+                        () = stop.cancelled() => {}
+                        () = broker.maintain() => {}
+                    }
+                });
+            }
+            axum::serve(
+                listener,
+                router.into_make_service_with_connect_info::<SocketAddr>(),
+            )
+            .with_graceful_shutdown(async move { cancel.cancelled().await })
+            .await
+            .map_err(|source| AppError::Listen { addr, source })
+        })
+    }
+}
+
+/// The broker's grantable scopes must be exactly the scopes the registered
+/// tools require (the feature itself is checked before anything else).
+fn validate_broker(school: &SchoolConfig, registry: &ToolRegistry) -> Result<(), ConfigError> {
+    let Some(broker) = &school.auth.broker else {
+        return Ok(());
+    };
+    let issue = |field: &str, message: &str| {
+        ConfigError::Invalid(vec![kampus_core::config::ConfigIssue {
+            field: field.to_owned(),
+            message: message.to_owned(),
+        }])
+    };
+    let tool_scopes: std::collections::BTreeSet<String> = registry
+        .tools()
+        .flat_map(|t| t.descriptor.scopes.iter().cloned())
+        .collect();
+    if broker.scopes != tool_scopes {
+        return Err(issue(
+            "auth.broker.scopes",
+            &format!(
+                "must equal the scopes the registered tools require: [{}]",
+                tool_scopes.into_iter().collect::<Vec<_>>().join(", ")
+            ),
+        ));
+    }
+    Ok(())
 }
 
 /// The shared validation half of [`App::check`] and [`App::build_with`]:
@@ -337,12 +472,21 @@ fn validate(
     policy: &PolicyConfig,
     env: &Env<'_>,
 ) -> Result<(ModuleInit, ToolRegistry, BTreeMap<String, Operation>), AppError> {
+    if school.auth.broker.is_some() && !cfg!(feature = "broker") {
+        return Err(AppError::Config(ConfigError::Invalid(vec![
+            kampus_core::config::ConfigIssue {
+                field: "auth.broker".to_owned(),
+                message: "this binary was built without the broker feature".to_owned(),
+            },
+        ])));
+    }
     school.validate(env)?;
     let init = ModuleInit {
         runtime: Arc::new(SharedRuntime::for_school(&school)),
         school: Arc::new(school),
     };
     let registry = ToolRegistry::new(registry::modules(&init)?)?;
+    validate_broker(&init.school, &registry)?;
     if let Some(unknown) = init
         .school
         .modules

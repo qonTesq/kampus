@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "kind": "recorded",
+  "captured_at": "2026-10-02T21:12:59Z",
+  "source_url": "https://accounts.google.com/.well-known/openid-configuration",
+  "request": {
+    "method": "GET",
+    "headers": {
+      "Accept": "application/json"
+    },
+    "cookies": "omitted"
+  },
+  "http_status": 200,
+  "content_type": "application/json",
+  "cache_control": "public, max-age=3600",
+  "body_file": "body.bin",
+  "byte_length": 1399,
+  "sha256": "f86b185fd428f81d7efaa83ec256693b3abedb57ddfcc6a826f5f396b4827f02",
+  "license_provenance": "Google's public OpenID Connect discovery document, a mainstream real IdP; public, unauthenticated. Recorded as evidence of the document shape; no license is asserted."
+}

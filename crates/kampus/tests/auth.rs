@@ -242,6 +242,7 @@ async fn spawn_with(mode: AuthMode, edit: impl FnOnce(&mut SchoolConfig)) -> Ser
     let policy_path = log_path.with_extension("yaml");
     std::fs::copy(root.join("policy.yaml"), &policy_path).unwrap();
     let options = AppOptions {
+        secrets: None,
         audit_hasher: Some(kampus_core::audit::SubjectHasher::new(
             "temple",
             b"test-salt",

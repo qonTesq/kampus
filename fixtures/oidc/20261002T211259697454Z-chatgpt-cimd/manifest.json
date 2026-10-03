@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "kind": "recorded",
+  "captured_at": "2026-10-02T21:12:59Z",
+  "source_url": "https://chatgpt.com/oauth/client.json",
+  "request": {
+    "method": "GET",
+    "headers": {
+      "Accept": "application/json"
+    },
+    "cookies": "omitted"
+  },
+  "http_status": 200,
+  "content_type": "application/json; charset=utf-8",
+  "cache_control": "public, max-age=300",
+  "body_file": "body.bin",
+  "byte_length": 544,
+  "sha256": "5b62ad00a6d2562dda7b8e373611c41e09967518f5fc0824b243a8e1a29f915e",
+  "license_provenance": "OpenAI's hosted Client ID Metadata Document for ChatGPT; public, unauthenticated. Recorded as evidence of the document shape; no license is asserted."
+}
