@@ -293,7 +293,7 @@ mod production {
             .call(
                 TOOL,
                 json!({}),
-                &ctx(student("5eed0000-0000-4000-8000-00000000000a")),
+                &ctx(student("synthetic:student-a")),
             )
             .await
             .unwrap_err();
@@ -312,8 +312,8 @@ mod sandbox {
 
     use super::*;
 
-    const STUDENT_A: &str = "5eed0000-0000-4000-8000-00000000000a";
-    const STUDENT_B: &str = "5eed0000-0000-4000-8000-00000000000b";
+    const STUDENT_A: &str = "synthetic:student-a";
+    const STUDENT_B: &str = "synthetic:student-b";
 
     fn free_port() -> u16 {
         std::net::TcpListener::bind("127.0.0.1:0")
@@ -483,7 +483,7 @@ mod sandbox {
         for who in [
             Principal::guest(),
             principal(AuthKind::Device, &[Role::Student], STUDENT_A),
-            student("5eed0000-0000-4000-8000-0000000000ff"),
+            student("synthetic:student-unknown"),
             // A synthetic user that exists in the fake but has no kampus subject.
             student("synthetic-student-c"),
         ] {

@@ -11,7 +11,7 @@ Fixture ID: `canvas-synthetic/seed.json`, version 1.
 | `synthetic` | Must be `true`; the loader refuses anything else |
 | `users[].canvas_user_id` | The fake's Canvas user ID |
 | `users[].synthetic_user_id` | kampus-side synthetic ID (`DeadlineQuery.synthetic_user_id`) |
-| `users[].kampus_subjects` | Verified token `sub` values that map to this synthetic user (the demo realm must pin these user IDs during integration). An empty list means no kampus account can reach this user |
+| `users[].kampus_subjects` | Verified token `sub` values that map to this synthetic user: the broker's sandbox demo users carry these subjects (`synthetic:student-a`, `synthetic:student-b`; see `auth.broker.demo_users`). Each subject maps to at most one user. An empty list means no kampus account can reach this user |
 | `courses[]` | `id`, `course_code` (must be in the server-controlled enumeration in `kampus_canvas::COURSE_CODES`), `name` (free text; never projected) |
 | `enrollments[]` | `user_id` → `course_id` |
 | `assignments[]` | `id`, `course_id`, `name`, `description` (free text; never projected), `due_offset_minutes` relative to the fake's start time |

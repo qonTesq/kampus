@@ -6,12 +6,12 @@
     {
       "canvas_user_id": 9001,
       "synthetic_user_id": "synthetic-student-a",
-      "kampus_subjects": ["5eed0000-0000-4000-8000-00000000000a"]
+      "kampus_subjects": ["synthetic:student-a"]
     },
     {
       "canvas_user_id": 9002,
       "synthetic_user_id": "synthetic-student-b",
-      "kampus_subjects": ["5eed0000-0000-4000-8000-00000000000b"]
+      "kampus_subjects": ["synthetic:student-b"]
     },
     {
       "canvas_user_id": 9003,
