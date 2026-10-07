@@ -56,7 +56,7 @@ pub(crate) async fn demo_login(
         return PageError::Internal.into_response();
     };
     tracing::info!(client_id = %pending.client_id, "synthetic demo user signed in");
-    let mut response = inner.approve(pending, &session);
+    let mut response = inner.approve(&pending, &session);
     response.headers_mut().insert(header::SET_COOKIE, cookie);
     response
 }

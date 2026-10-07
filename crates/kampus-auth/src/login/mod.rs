@@ -30,7 +30,7 @@ pub(crate) async fn login(
     };
     if let Some(session) = inner.session(&headers) {
         return match inner.store.take_pending(&id, now) {
-            Some(pending) => inner.approve(pending, &session),
+            Some(pending) => inner.approve(&pending, &session),
             None => PageError::Expired.into_response(),
         };
     }
@@ -45,23 +45,20 @@ pub(crate) async fn login(
         upstream_host,
         action: &action,
         pending: &id,
-        demo_users: inner.demo_labels(),
+        demo_users: demo_labels(&inner),
     };
     let target = Url::parse(&pending.redirect_uri).ok();
     render(&page, target.as_ref())
 }
 
-impl Inner {
-    /// Labels of the demo users offered on the sign-in page (none outside
-    /// a sandbox build with `sandbox.enabled`).
-    fn demo_labels(&self) -> Vec<&str> {
-        #[cfg(feature = "sandbox")]
-        {
-            self.demo_users.iter().map(|u| u.label.as_str()).collect()
-        }
-        #[cfg(not(feature = "sandbox"))]
-        {
-            Vec::new()
-        }
-    }
+/// Labels of the demo users offered on the sign-in page (none outside a
+/// sandbox build with `sandbox.enabled`).
+#[cfg(feature = "sandbox")]
+fn demo_labels(inner: &Inner) -> Vec<&str> {
+    inner.demo_users.iter().map(|u| u.label.as_str()).collect()
+}
+
+#[cfg(not(feature = "sandbox"))]
+fn demo_labels(_: &Inner) -> Vec<&str> {
+    Vec::new()
 }

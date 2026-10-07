@@ -41,7 +41,11 @@ impl Limits {
 }
 
 /// Middleware for the browser-facing routes.
-pub(crate) async fn limit(State(inner): State<Arc<Inner>>, request: Request, next: Next) -> Response {
+pub(crate) async fn limit(
+    State(inner): State<Arc<Inner>>,
+    request: Request,
+    next: Next,
+) -> Response {
     let address = request
         .extensions()
         .get::<ClientAddress>()
@@ -55,6 +59,6 @@ pub(crate) async fn limit(State(inner): State<Arc<Inner>>, request: Request, nex
     if inner.limits.admit(address) {
         next.run(request).await
     } else {
-        PageError::Busy.into_response()
+        PageError::RateLimited.into_response()
     }
 }

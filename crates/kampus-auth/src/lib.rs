@@ -17,7 +17,13 @@ mod login;
 mod metadata;
 mod pages;
 mod scopes;
-#[cfg_attr(not(feature = "sandbox"), allow(dead_code, reason = "without sandbox demo login, sessions are created by upstream login (group 6)"))]
+#[cfg_attr(
+    not(feature = "sandbox"),
+    allow(
+        dead_code,
+        reason = "without sandbox demo login, sessions are created by upstream login (group 6)"
+    )
+)]
 mod session;
 mod store;
 mod token;
@@ -32,9 +38,9 @@ use axum::Router;
 use axum::http::{HeaderValue, header};
 use axum::response::IntoResponse;
 use axum::routing::{get, post};
-use kampus_core::config::SchoolConfig;
 #[cfg(feature = "sandbox")]
 use kampus_core::config::DemoUser;
+use kampus_core::config::SchoolConfig;
 use url::Url;
 
 use cimd::CimdCache;
@@ -154,8 +160,15 @@ impl fmt::Debug for Inner {
 /// Check the broker's secrets without touching the key file or the
 /// network (`kampus check`): every secret is set and the subject key is
 /// at least 32 bytes of hex.
-pub fn check(school: &SchoolConfig, secret: &dyn Fn(&str) -> Option<String>) -> Result<(), BrokerError> {
-    let config = school.auth.broker.as_ref().ok_or(BrokerError::NotConfigured)?;
+pub fn check(
+    school: &SchoolConfig,
+    secret: &dyn Fn(&str) -> Option<String>,
+) -> Result<(), BrokerError> {
+    let config = school
+        .auth
+        .broker
+        .as_ref()
+        .ok_or(BrokerError::NotConfigured)?;
     subject_key(&config.subject_key_env, secret)?;
     Clients::from_config(config, secret)?;
     Ok(())
@@ -197,7 +210,11 @@ impl Broker {
         options: BrokerOptions,
         capacity: Capacity,
     ) -> Result<Self, BrokerError> {
-        let config = school.auth.broker.as_ref().ok_or(BrokerError::NotConfigured)?;
+        let config = school
+            .auth
+            .broker
+            .as_ref()
+            .ok_or(BrokerError::NotConfigured)?;
         let _subject_key = subject_key(&config.subject_key_env, secret)?;
         let sandbox_on = cfg!(feature = "sandbox") && school.sandbox.enabled;
         // Defense in depth behind config validation: demo users only in a

@@ -317,10 +317,17 @@ async fn rs_refuses_tampered_broker_tokens() {
     // `cnf` added and re-signed with the real key: 401.
     let mut bound = claims.clone();
     bound["cnf"] = json!({ "jkt": "0ZcOCORZNYy-DWpqq30jZyJGHTN0d2HglBV3uiguA4I" });
-    assert_eq!(tools_list(&http, &base, &keys.sign(&bound).unwrap()).await, 401);
+    assert_eq!(
+        tools_list(&http, &base, &keys.sign(&bound).unwrap()).await,
+        401
+    );
 
     // alg=none, unsigned: 401.
-    let none = forge(&json!({ "alg": "none", "typ": "at+jwt", "kid": kid }), &claims, None);
+    let none = forge(
+        &json!({ "alg": "none", "typ": "at+jwt", "kid": kid }),
+        &claims,
+        None,
+    );
     assert_eq!(tools_list(&http, &base, &none).await, 401);
 
     // HS256 keyed with the JWKS public key (raw bytes and the encoded x): 401.
@@ -343,7 +350,10 @@ async fn rs_refuses_tampered_broker_tokens() {
     let stranger_file = instance.dir.join("stranger.json");
     let stranger = kampus_auth::SigningKeys::load_or_create(&stranger_file).unwrap();
     assert_ne!(stranger.active_kid(), kid);
-    assert_eq!(tools_list(&http, &base, &stranger.sign(&claims).unwrap()).await, 401);
+    assert_eq!(
+        tools_list(&http, &base, &stranger.sign(&claims).unwrap()).await,
+        401
+    );
 }
 
 #[tokio::test]

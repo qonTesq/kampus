@@ -253,10 +253,7 @@ fn replace(path: &Path, file: &KeyFile) -> Result<(), KeyError> {
     tmp_name.push(".tmp");
     let tmp = path.with_file_name(tmp_name);
     let written = (|| {
-        let mut out = owner_only()
-            .create(true)
-            .truncate(true)
-            .open(&tmp)?;
+        let mut out = owner_only().create(true).truncate(true).open(&tmp)?;
         out.write_all(&bytes)?;
         out.sync_all()?;
         fs::rename(&tmp, path)
@@ -322,7 +319,12 @@ mod tests {
         let dir = temp_dir("public");
         let keys = SigningKeys::load_or_create(&dir.join("k.json")).unwrap();
         let jwk = &keys.jwks()["keys"][0];
-        let mut members: Vec<&str> = jwk.as_object().unwrap().keys().map(String::as_str).collect();
+        let mut members: Vec<&str> = jwk
+            .as_object()
+            .unwrap()
+            .keys()
+            .map(String::as_str)
+            .collect();
         members.sort_unstable();
         assert_eq!(members, ["alg", "crv", "kid", "kty", "use", "x"]);
         assert_eq!(b64_decode(jwk["x"].as_str().unwrap()).unwrap().len(), 32);
@@ -338,7 +340,8 @@ mod tests {
             &SystemRandom::new(),
         )
         .unwrap();
-        let foreign = json!({ "active": { "kid": "x", "created": 0, "pkcs8_b64": b64url(p256.as_ref()) } });
+        let foreign =
+            json!({ "active": { "kid": "x", "created": 0, "pkcs8_b64": b64url(p256.as_ref()) } });
         for body in [
             b"not json".to_vec(),
             br#"{"active":{}}"#.to_vec(),

@@ -66,7 +66,10 @@ impl Inner {
             scope: scope.clone(),
             roles,
         };
-        let token = self.keys.sign(&claims).map_err(|_| OAuthError::server_error())?;
+        let token = self
+            .keys
+            .sign(&claims)
+            .map_err(|_| OAuthError::server_error())?;
         Ok(Minted {
             token,
             expires_in: self.access_ttl,
@@ -111,18 +114,21 @@ pub(crate) async fn token(
     headers: HeaderMap,
     body: Bytes,
 ) -> Response {
-    match handle(&inner, &headers, &body).await {
+    match handle(&inner, &headers, &body) {
         Ok(response) => response,
         Err(error) => error.into_response(),
     }
 }
 
-async fn handle(inner: &Inner, headers: &HeaderMap, body: &[u8]) -> Result<Response, OAuthError> {
+fn handle(inner: &Inner, headers: &HeaderMap, body: &[u8]) -> Result<Response, OAuthError> {
     let form = headers
         .get(header::CONTENT_TYPE)
         .and_then(|v| v.to_str().ok())
         .and_then(|v| v.split(';').next())
-        .is_some_and(|v| v.trim().eq_ignore_ascii_case("application/x-www-form-urlencoded"));
+        .is_some_and(|v| {
+            v.trim()
+                .eq_ignore_ascii_case("application/x-www-form-urlencoded")
+        });
     if !form {
         return Err(OAuthError::invalid_request(
             "the token endpoint accepts application/x-www-form-urlencoded only",
@@ -179,7 +185,10 @@ fn browser_client(client: &Client) -> Result<(), OAuthError> {
 }
 
 /// Start a refresh family for `grant` and return its first token.
-fn new_family(inner: &Inner, family: impl FnOnce(String, String) -> Family) -> Result<(String, Family), OAuthError> {
+fn new_family(
+    inner: &Inner,
+    family: impl FnOnce(String, String) -> Family,
+) -> Result<(String, Family), OAuthError> {
     let token = random_hex(32).ok_or_else(OAuthError::server_error)?;
     let id = random_hex(16).ok_or_else(OAuthError::server_error)?;
     let family = family(id, sha256_hex(&token));
@@ -219,7 +228,7 @@ fn authorization_code(
         || request.param("redirect_uri") != Some(code.redirect_uri.as_str())
         || !request
             .param("code_verifier")
-            .is_some_and(|v| pkce_matches(v, &code.code_challenge))
+            .is_some_and(|v| pkce_matches(v, &code.challenge))
     {
         return Err(OAuthError::invalid_grant());
     }

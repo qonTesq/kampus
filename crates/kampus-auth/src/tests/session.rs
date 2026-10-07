@@ -25,7 +25,10 @@ async fn without_sandbox_there_is_no_demo_route_and_no_demo_users() {
         .await
         .unwrap();
     assert_eq!(reply.status(), 404);
-    let dir = std::env::temp_dir().join(format!("kampus-auth-nodemo-{}", crate::util::random_hex(6).unwrap()));
+    let dir = std::env::temp_dir().join(format!(
+        "kampus-auth-nodemo-{}",
+        crate::util::random_hex(6).unwrap()
+    ));
     let error = crate::Broker::new(&school_with_demo_users(&dir), &super::secret).unwrap_err();
     assert!(matches!(error, crate::BrokerError::DemoUsers), "{error}");
     // Refused before the key file is created.
@@ -71,7 +74,11 @@ mod demo {
         let id = h.pending(&AuthRequest::claude()).await;
         let reply = h.get(&format!("/login?pending={id}"), None, None).await;
         assert_eq!(reply.status, 200);
-        assert!(reply.body.contains("Student A (synthetic demo user)"), "{}", reply.body);
+        assert!(
+            reply.body.contains("Student A (synthetic demo user)"),
+            "{}",
+            reply.body
+        );
         assert!(reply.body.contains("Faculty A (synthetic demo user)"));
         assert!(reply.body.contains("<strong>claude.ai</strong>"));
         assert_eq!(reply.headers["x-frame-options"], "DENY");
@@ -87,7 +94,9 @@ mod demo {
     async fn demo_sign_in_sets_the_host_cookie_and_returns_a_code() {
         let h = Harness::start().await;
         let id = h.pending(&AuthRequest::claude()).await;
-        let reply = h.demo_post(&format!("pending={id}&user=0"), Some(&h.base)).await;
+        let reply = h
+            .demo_post(&format!("pending={id}&user=0"), Some(&h.base))
+            .await;
         let query = reply.redirect_to(CLAUDE_REDIRECT);
         assert_eq!(query["code"].len(), 64);
         assert_eq!(query.get("iss"), Some(&h.issuer));
@@ -98,7 +107,14 @@ mod demo {
         let attrs: BTreeSet<&str> = parts.collect();
         assert_eq!(
             attrs,
-            ["Secure", "HttpOnly", "SameSite=Lax", "Path=/", "Max-Age=28800"].into()
+            [
+                "Secure",
+                "HttpOnly",
+                "SameSite=Lax",
+                "Path=/",
+                "Max-Age=28800"
+            ]
+            .into()
         );
         let (name, value) = pair.split_once('=').unwrap();
         assert_eq!(name, COOKIE);
@@ -126,7 +142,11 @@ mod demo {
         let h = Harness::start().await;
         let id = h.pending(&AuthRequest::claude()).await;
         for (body, origin, status) in [
-            (format!("pending={id}&user=0"), Some("https://evil.example"), 403),
+            (
+                format!("pending={id}&user=0"),
+                Some("https://evil.example"),
+                403,
+            ),
             (format!("pending={id}&user=9"), None, 400),
             (format!("pending={id}&user=x"), None, 400),
             (format!("pending={id}&pending={id}&user=0"), None, 400),
@@ -139,7 +159,10 @@ mod demo {
         }
         // The real pending authorization survived the refused attempts.
         assert!(h.broker.inner.store.pending(&id, h.now()).is_some());
-        assert!(h.broker.inner.store.grants_for("synthetic:student-a").is_empty());
+        assert_eq!(
+            h.broker.inner.store.grants_for("synthetic:student-a").len(),
+            0
+        );
     }
 
     #[test]

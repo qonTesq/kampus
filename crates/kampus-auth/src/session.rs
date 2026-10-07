@@ -103,7 +103,10 @@ mod tests {
         let value = set_cookie(&id).unwrap();
         let text = value.to_str().unwrap();
         let mut parts = text.split("; ");
-        assert_eq!(parts.next(), Some(format!("__Host-kampus_auth={id}").as_str()));
+        assert_eq!(
+            parts.next(),
+            Some(format!("__Host-kampus_auth={id}").as_str())
+        );
         let attrs: BTreeSet<&str> = parts.collect();
         assert_eq!(
             attrs,

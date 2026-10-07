@@ -5,7 +5,9 @@ use super::{CHATGPT, CLAUDE, Harness, decode_parts};
 use crate::util::sha256_hex;
 
 fn token<'a>(body: &'a serde_json::Value, name: &str) -> &'a str {
-    body[name].as_str().unwrap_or_else(|| panic!("no {name}: {body}"))
+    body[name]
+        .as_str()
+        .unwrap_or_else(|| panic!("no {name}: {body}"))
 }
 
 #[tokio::test]
@@ -15,7 +17,13 @@ async fn refresh_rotates_and_the_old_token_dies() {
     let t1 = token(&first, "refresh_token");
     // Only the hash is stored.
     assert!(h.broker.inner.store.family_by_token(t1, h.now()).is_none());
-    assert!(h.broker.inner.store.family_by_token(&sha256_hex(t1), h.now()).is_some());
+    assert!(
+        h.broker
+            .inner
+            .store
+            .family_by_token(&sha256_hex(t1), h.now())
+            .is_some()
+    );
     h.advance(600);
     let (status, second) = h.refresh(CLAUDE, t1, &[]).await;
     assert_eq!(status, 200, "{second}");
@@ -40,11 +48,17 @@ async fn reuse_of_a_rotated_token_revokes_the_family() {
     let t2 = token(&second, "refresh_token").to_owned();
     // The attacker replays t1.
     let (status, body) = h.refresh(CLAUDE, &t1, &[]).await;
-    assert_eq!((status, body["error"].as_str()), (400, Some("invalid_grant")));
+    assert_eq!(
+        (status, body["error"].as_str()),
+        (400, Some("invalid_grant"))
+    );
     assert!(body.get("access_token").is_none());
     // The legitimate client's current token died with the family.
     let (status, body) = h.refresh(CLAUDE, &t2, &[]).await;
-    assert_eq!((status, body["error"].as_str()), (400, Some("invalid_grant")));
+    assert_eq!(
+        (status, body["error"].as_str()),
+        (400, Some("invalid_grant"))
+    );
 }
 
 #[tokio::test]
@@ -54,7 +68,10 @@ async fn scope_may_narrow_but_never_widen() {
     let plain = h.claude_tokens("offline_access").await;
     let t = token(&plain, "refresh_token").to_owned();
     let (status, body) = h.refresh(CLAUDE, &t, &[("scope", "rooms:book")]).await;
-    assert_eq!((status, body["error"].as_str()), (400, Some("invalid_scope")));
+    assert_eq!(
+        (status, body["error"].as_str()),
+        (400, Some("invalid_scope"))
+    );
     assert!(body.get("access_token").is_none());
     // The family stays valid after the refused widening.
     let (status, body) = h.refresh(CLAUDE, &t, &[]).await;
@@ -79,11 +96,17 @@ async fn refresh_is_bound_to_client_and_resource() {
     let first = h.claude_tokens("offline_access").await;
     let t = token(&first, "refresh_token").to_owned();
     let (status, body) = h.refresh(CHATGPT, &t, &[]).await;
-    assert_eq!((status, body["error"].as_str()), (400, Some("invalid_grant")));
+    assert_eq!(
+        (status, body["error"].as_str()),
+        (400, Some("invalid_grant"))
+    );
     let (status, body) = h
         .refresh(CLAUDE, &t, &[("resource", "https://mcp.sju.example/mcp")])
         .await;
-    assert_eq!((status, body["error"].as_str()), (400, Some("invalid_target")));
+    assert_eq!(
+        (status, body["error"].as_str()),
+        (400, Some("invalid_target"))
+    );
     // Neither refusal rotated or revoked the family.
     let (status, body) = h
         .refresh(CLAUDE, &t, &[("resource", super::RESOURCE)])
@@ -105,5 +128,8 @@ async fn families_expire_absolutely() {
     }
     h.advance(18 * 3600);
     let (status, body) = h.refresh(CLAUDE, &t, &[]).await;
-    assert_eq!((status, body["error"].as_str()), (400, Some("invalid_grant")));
+    assert_eq!(
+        (status, body["error"].as_str()),
+        (400, Some("invalid_grant"))
+    );
 }

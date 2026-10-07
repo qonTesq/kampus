@@ -126,10 +126,14 @@ impl Clients {
     /// method.
     pub(crate) fn authenticate(&self, creds: &ClientCredentials) -> Result<Client, OAuthError> {
         let check = |secret: &Secret| match (&creds.method, &creds.secret) {
-            (AuthMethod::Basic | AuthMethod::Post, Some(presented)) if secret.matches(presented) => {
+            (AuthMethod::Basic | AuthMethod::Post, Some(presented))
+                if secret.matches(presented) =>
+            {
                 Ok(())
             }
-            _ => Err(OAuthError::invalid_client(creds.method == AuthMethod::Basic)),
+            _ => Err(OAuthError::invalid_client(
+                creds.method == AuthMethod::Basic,
+            )),
         };
         match self.lookup(&creds.client_id) {
             Lookup::Confidential(c) => check(&c.secret).map(|()| Client::Confidential(c.clone())),
@@ -137,9 +141,9 @@ impl Clients {
             Lookup::Cimd(url) if creds.method == AuthMethod::None => {
                 Ok(Client::Cimd(url.to_owned()))
             }
-            Lookup::Cimd(_) | Lookup::Unknown => {
-                Err(OAuthError::invalid_client(creds.method == AuthMethod::Basic))
-            }
+            Lookup::Cimd(_) | Lookup::Unknown => Err(OAuthError::invalid_client(
+                creds.method == AuthMethod::Basic,
+            )),
         }
     }
 }
@@ -228,7 +232,10 @@ pub(crate) fn parse_token_request(
     }
     let mut params = BTreeMap::new();
     for (key, value) in url::form_urlencoded::parse(body) {
-        if params.insert(key.into_owned(), value.into_owned()).is_some() {
+        if params
+            .insert(key.into_owned(), value.into_owned())
+            .is_some()
+        {
             return Err(OAuthError::invalid_request("repeated parameter"));
         }
     }

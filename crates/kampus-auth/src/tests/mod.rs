@@ -23,7 +23,8 @@ use serde_json::Value;
 use crate::store::Capacity;
 use crate::{Broker, BrokerOptions, ClientAddress};
 
-pub(crate) const SUBJECT_KEY: &str = "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff";
+pub(crate) const SUBJECT_KEY: &str =
+    "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff";
 pub(crate) const CLAUDE: &str = "https://claude.ai/oauth/mcp-oauth-client-metadata";
 pub(crate) const CLAUDE_REDIRECT: &str = "https://claude.ai/api/mcp/auth_callback";
 pub(crate) const CHATGPT: &str = "https://chatgpt.com/oauth/client.json";
@@ -224,7 +225,10 @@ impl Reply {
     }
 
     /// The redirect's query, asserting it goes back to `redirect_uri`.
-    pub(crate) fn redirect_to(&self, redirect_uri: &str) -> std::collections::BTreeMap<String, String> {
+    pub(crate) fn redirect_to(
+        &self,
+        redirect_uri: &str,
+    ) -> std::collections::BTreeMap<String, String> {
         assert_eq!(self.status, 303, "{self:?}");
         let location = self.location.as_deref().unwrap();
         let url = url::Url::parse(location).unwrap();
@@ -238,7 +242,12 @@ impl Reply {
     pub(crate) fn assert_page(&self, status: u16) {
         assert_eq!(self.status, status, "{self:?}");
         assert!(self.location.is_none(), "{self:?}");
-        assert!(self.headers["content-type"].to_str().unwrap().starts_with("text/html"));
+        assert!(
+            self.headers["content-type"]
+                .to_str()
+                .unwrap()
+                .starts_with("text/html")
+        );
         assert_eq!(self.headers["x-frame-options"], "DENY");
     }
 }
@@ -343,11 +352,19 @@ impl Harness {
 
     /// `GET path` under the issuer with an optional cookie, from `address`
     /// (a fresh random one by default, so only rate-limit tests hit limits).
-    pub(crate) async fn get(&self, path_and_query: &str, cookie: Option<&str>, address: Option<&str>) -> Reply {
+    pub(crate) async fn get(
+        &self,
+        path_and_query: &str,
+        cookie: Option<&str>,
+        address: Option<&str>,
+    ) -> Reply {
         let mut request = self
             .http
             .get(format!("{}{path_and_query}", self.issuer))
-            .header(TEST_ADDRESS, address.map_or_else(random_address, str::to_owned));
+            .header(
+                TEST_ADDRESS,
+                address.map_or_else(random_address, str::to_owned),
+            );
         if let Some(cookie) = cookie {
             request = request.header("cookie", cookie);
         }
@@ -377,7 +394,10 @@ impl Harness {
         let redirect = request.get("redirect_uri").unwrap();
         let query = reply.redirect_to(redirect);
         assert_eq!(query.get("iss"), Some(&self.issuer), "{query:?}");
-        query.get("code").cloned().unwrap_or_else(|| panic!("no code: {query:?}"))
+        query
+            .get("code")
+            .cloned()
+            .unwrap_or_else(|| panic!("no code: {query:?}"))
     }
 
     /// Redeem `code` as the public CIMD client of `request`.
@@ -403,7 +423,12 @@ impl Harness {
         body
     }
 
-    pub(crate) async fn refresh(&self, client_id: &str, token: &str, extra: &[(&str, &str)]) -> (u16, Value) {
+    pub(crate) async fn refresh(
+        &self,
+        client_id: &str,
+        token: &str,
+        extra: &[(&str, &str)],
+    ) -> (u16, Value) {
         let mut form = vec![
             ("grant_type", "refresh_token"),
             ("client_id", client_id),

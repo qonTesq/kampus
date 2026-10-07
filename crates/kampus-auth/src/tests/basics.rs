@@ -22,8 +22,14 @@ async fn metadata_is_served_at_the_path_inserted_url_from_config_only() {
         .unwrap();
     assert_eq!(spoofed["issuer"], json!(h.issuer));
     assert!(!spoofed.to_string().contains("evil.example"));
-    assert_eq!(spoofed["jwks_uri"], json!(format!("{}/jwks.json", h.issuer)));
-    assert_eq!(spoofed["client_id_metadata_document_supported"], json!(true));
+    assert_eq!(
+        spoofed["jwks_uri"],
+        json!(format!("{}/jwks.json", h.issuer))
+    );
+    assert_eq!(
+        spoofed["client_id_metadata_document_supported"],
+        json!(true)
+    );
     assert!(spoofed.get("registration_endpoint").is_none());
 }
 
@@ -36,10 +42,7 @@ async fn jwks_lists_the_active_key_with_a_cache_lifetime() {
         .send()
         .await
         .unwrap();
-    assert_eq!(
-        response.headers()["cache-control"],
-        "public, max-age=300"
-    );
+    assert_eq!(response.headers()["cache-control"], "public, max-age=300");
     let jwks: Value = response.json().await.unwrap();
     assert_eq!(jwks["keys"][0]["kid"], json!(h.broker.active_kid()));
     assert!(jwks["keys"][0].get("d").is_none());
@@ -69,11 +72,26 @@ async fn device_token_has_the_profile_shape_and_no_personal_claims() {
     assert_eq!(claims["client_id"], "kampus-mascot");
     assert_eq!(claims["roles"], json!(["guest"]));
     assert_eq!(claims["scope"], "rooms:book");
-    let mut names: Vec<&str> = claims.as_object().unwrap().keys().map(String::as_str).collect();
+    let mut names: Vec<&str> = claims
+        .as_object()
+        .unwrap()
+        .keys()
+        .map(String::as_str)
+        .collect();
     names.sort_unstable();
     assert_eq!(
         names,
-        ["aud", "client_id", "exp", "iat", "iss", "jti", "roles", "scope", "sub"]
+        [
+            "aud",
+            "client_id",
+            "exp",
+            "iat",
+            "iss",
+            "jti",
+            "roles",
+            "scope",
+            "sub"
+        ]
     );
     assert_eq!(
         claims["exp"].as_i64().unwrap() - claims["iat"].as_i64().unwrap(),
@@ -100,5 +118,8 @@ async fn token_endpoint_refuses_json_and_unknown_grants() {
             ("client_secret", "mascot-secret"),
         ])
         .await;
-    assert_eq!((status, body["error"].as_str()), (400, Some("unsupported_grant_type")));
+    assert_eq!(
+        (status, body["error"].as_str()),
+        (400, Some("unsupported_grant_type"))
+    );
 }

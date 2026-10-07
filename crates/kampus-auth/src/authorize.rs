@@ -1,5 +1,5 @@
 //! `GET {issuer}/authorize`: validation in the spec's order (client →
-//! redirect → response_type → PKCE S256 → resource → scopes), then a
+//! redirect → `response_type` → PKCE S256 → resource → scopes), then a
 //! pending authorization (10 min) and sign-in. A bad client or redirect
 //! gets an error page and never a redirect; every other refusal redirects
 //! with `error`, the client's `state` and `iss`.
@@ -118,7 +118,10 @@ pub(crate) fn cimd_label(client_id: &str) -> String {
 
 impl Inner {
     /// Step 1: who the client is. Only an allowlisted CIMD URL is fetched.
-    pub(crate) async fn resolve_client(&self, client_id: &str) -> Result<ResolvedClient, PageError> {
+    pub(crate) async fn resolve_client(
+        &self,
+        client_id: &str,
+    ) -> Result<ResolvedClient, PageError> {
         match self.clients.lookup(client_id) {
             Lookup::Confidential(c) => Ok(ResolvedClient {
                 id: c.id.clone(),
@@ -149,7 +152,10 @@ impl Inner {
             .ok()
             .flatten()
             .ok_or(Refusal::Page(PageError::InvalidClient))?;
-        let client = self.resolve_client(client_id).await.map_err(Refusal::Page)?;
+        let client = self
+            .resolve_client(client_id)
+            .await
+            .map_err(Refusal::Page)?;
         let redirect_uri = query
             .single("redirect_uri")
             .ok()
@@ -203,7 +209,7 @@ impl Inner {
     /// Issue a code for `pending` to the signed-in `session` (temporary
     /// direct approval; consent replaces it in group 5) and redirect back
     /// with `code`, `state` and `iss`.
-    pub(crate) fn approve(&self, pending: Pending, session: &Session) -> Response {
+    pub(crate) fn approve(&self, pending: &Pending, session: &Session) -> Response {
         let now = (self.clock)();
         let busy = || {
             error_redirect(
@@ -232,7 +238,7 @@ impl Inner {
         let stored = Code {
             grant: key,
             redirect_uri: pending.redirect_uri.clone(),
-            code_challenge: pending.code_challenge.clone(),
+            challenge: pending.code_challenge.clone(),
             roles: session.roles.clone(),
             expires_at: now + CODE_SECONDS,
         };
@@ -290,7 +296,7 @@ pub(crate) async fn authorize(
         expires_at: now + PENDING_SECONDS,
     };
     if let Some(session) = inner.session(&headers) {
-        return inner.approve(pending, &session);
+        return inner.approve(&pending, &session);
     }
     if inner.store.insert_pending(id.clone(), pending).is_err() {
         tracing::warn!("pending authorizations at capacity; refusing");

@@ -16,7 +16,13 @@ pub(crate) struct Capacity {
     pub(crate) pending: usize,
     #[allow(dead_code, reason = "upstream OIDC login state arrives in group 6")]
     pub(crate) upstream: usize,
-    #[cfg_attr(not(feature = "sandbox"), allow(dead_code, reason = "without sandbox demo login, sessions are created by upstream login (group 6)"))]
+    #[cfg_attr(
+        not(feature = "sandbox"),
+        allow(
+            dead_code,
+            reason = "without sandbox demo login, sessions are created by upstream login (group 6)"
+        )
+    )]
     pub(crate) sessions: usize,
     pub(crate) codes: usize,
     pub(crate) grants: usize,
@@ -104,7 +110,8 @@ pub(crate) struct Grant {
 pub(crate) struct Code {
     pub(crate) grant: GrantKey,
     pub(crate) redirect_uri: String,
-    pub(crate) code_challenge: String,
+    /// The S256 PKCE challenge.
+    pub(crate) challenge: String,
     pub(crate) roles: BTreeSet<Role>,
     pub(crate) expires_at: i64,
 }
@@ -193,11 +200,15 @@ pub(crate) trait Store: Send + Sync + fmt::Debug {
     fn revoke_if_retired(&self, hash: &str) -> bool;
 
     fn purge(&self, now: i64);
+
+    /// Pending authorizations held (tests check memory stays bounded).
+    #[cfg(test)]
+    fn pending_count(&self) -> usize;
 }
 
 #[derive(Debug, Default)]
 struct Grants {
-    grants: HashMap<String, Grant>,
+    by_id: HashMap<String, Grant>,
     by_key: HashMap<GrantKey, String>,
     families: HashMap<String, Family>,
     /// Current and retired token hashes -> family ID.
@@ -270,11 +281,18 @@ impl Store for MemoryStore {
     }
 
     fn take_pending(&self, id: &str, now: i64) -> Option<Pending> {
-        lock(&self.pending).remove(id).filter(|p| p.expires_at > now)
+        lock(&self.pending)
+            .remove(id)
+            .filter(|p| p.expires_at > now)
     }
 
     fn insert_upstream(&self, state: String, login: UpstreamLogin) -> Result<(), Full> {
-        insert_bounded(&mut lock(&self.upstream), self.capacity.upstream, state, login)
+        insert_bounded(
+            &mut lock(&self.upstream),
+            self.capacity.upstream,
+            state,
+            login,
+        )
     }
 
     fn take_upstream(&self, state: &str, now: i64) -> Option<UpstreamLogin> {
@@ -284,7 +302,12 @@ impl Store for MemoryStore {
     }
 
     fn insert_session(&self, id: String, session: Session) -> Result<(), Full> {
-        insert_bounded(&mut lock(&self.sessions), self.capacity.sessions, id, session)
+        insert_bounded(
+            &mut lock(&self.sessions),
+            self.capacity.sessions,
+            id,
+            session,
+        )
     }
 
     fn session(&self, id: &str, now: i64) -> Option<Session> {
@@ -333,10 +356,10 @@ impl Store for MemoryStore {
 
     fn upsert_grant(&self, key: GrantKey, label: String, now: i64) -> Result<Grant, Full> {
         let mut g = lock(&self.grants);
-        if let Some(existing) = g.by_key.get(&key).and_then(|id| g.grants.get(id)) {
+        if let Some(existing) = g.by_key.get(&key).and_then(|id| g.by_id.get(id)) {
             return Ok(existing.clone());
         }
-        if g.grants.len() >= self.capacity.grants {
+        if g.by_id.len() >= self.capacity.grants {
             return Err(Full);
         }
         let id = crate::util::random_hex(16).ok_or(Full)?;
@@ -347,18 +370,18 @@ impl Store for MemoryStore {
             granted_at: now,
         };
         g.by_key.insert(key, id.clone());
-        g.grants.insert(id, grant.clone());
+        g.by_id.insert(id, grant.clone());
         Ok(grant)
     }
 
     fn grant(&self, key: &GrantKey) -> Option<Grant> {
         let g = lock(&self.grants);
-        g.by_key.get(key).and_then(|id| g.grants.get(id)).cloned()
+        g.by_key.get(key).and_then(|id| g.by_id.get(id)).cloned()
     }
 
     fn grants_for(&self, subject: &str) -> Vec<Grant> {
         let mut grants: Vec<Grant> = lock(&self.grants)
-            .grants
+            .by_id
             .values()
             .filter(|g| g.key.subject == subject)
             .cloned()
@@ -370,14 +393,14 @@ impl Store for MemoryStore {
     fn revoke_grant(&self, subject: &str, grant_id: &str) -> bool {
         let mut g = lock(&self.grants);
         let Some(grant) = g
-            .grants
+            .by_id
             .get(grant_id)
             .filter(|grant| grant.key.subject == subject)
             .cloned()
         else {
             return false;
         };
-        g.grants.remove(grant_id);
+        g.by_id.remove(grant_id);
         g.by_key.remove(&grant.key);
         let families: Vec<String> = g
             .families
@@ -465,6 +488,11 @@ impl Store for MemoryStore {
         }
     }
 
+    #[cfg(test)]
+    fn pending_count(&self) -> usize {
+        lock(&self.pending).len()
+    }
+
     fn purge(&self, now: i64) {
         lock(&self.pending).retain(|_, p| p.expires_at > now);
         lock(&self.upstream).retain(|_, u| u.expires_at > now);
@@ -543,12 +571,12 @@ mod tests {
         store.insert_pending("b".into(), pending(100)).unwrap();
         assert_eq!(store.insert_pending("c".into(), pending(100)), Err(Full));
         let grant = store.upsert_grant(key("s", &[]), "l".into(), 0).unwrap();
-        assert_eq!(
-            store.upsert_grant(key("t", &[]), "l".into(), 0),
-            Err(Full)
-        );
+        assert_eq!(store.upsert_grant(key("t", &[]), "l".into(), 0), Err(Full));
         // The existing grant is untouched and still found.
-        assert_eq!(store.upsert_grant(key("s", &[]), "x".into(), 5).unwrap(), grant);
+        assert_eq!(
+            store.upsert_grant(key("s", &[]), "x".into(), 5).unwrap(),
+            grant
+        );
         assert_eq!(store.grants_for("s"), [grant]);
     }
 
@@ -558,14 +586,17 @@ mod tests {
         let code = Code {
             grant: key("s", &[]),
             redirect_uri: "https://c/cb".into(),
-            code_challenge: "x".into(),
+            challenge: "x".into(),
             roles: BTreeSet::new(),
             expires_at: 60,
         };
         store.insert_code("h".into(), code.clone()).unwrap();
         assert_eq!(store.redeem_code("h", 1), Redemption::Fresh(code));
         store.bind_code_family("h", "f1");
-        assert_eq!(store.redeem_code("h", 2), Redemption::Reused(Some("f1".into())));
+        assert_eq!(
+            store.redeem_code("h", 2),
+            Redemption::Reused(Some("f1".into()))
+        );
         store.purge(60 + TOMBSTONE_SECONDS);
         assert_eq!(store.redeem_code("h", 2), Redemption::Unknown);
     }
@@ -576,7 +607,10 @@ mod tests {
         let k = key("s", &["a"]);
         let grant = store.upsert_grant(k.clone(), "l".into(), 0).unwrap();
         store.insert_family(family("f", k.clone(), "t1")).unwrap();
-        assert!(matches!(store.rotate("t1", "t2".into(), 1), Rotation::Rotated(_)));
+        assert!(matches!(
+            store.rotate("t1", "t2".into(), 1),
+            Rotation::Rotated(_)
+        ));
         assert!(store.family_by_token("t2", 1).is_some());
         assert!(store.family_by_token("t1", 1).is_none());
         // Reusing t1 revokes the family, so t2 dies too.
@@ -588,7 +622,7 @@ mod tests {
         assert!(store.family_by_token("u1", 1).is_some());
         assert!(store.revoke_grant("s", &grant.id));
         assert_eq!(store.rotate("u1", "u2".into(), 1), Rotation::Invalid);
-        assert!(store.grants_for("s").is_empty());
+        assert_eq!(store.grants_for("s"), Vec::<Grant>::new());
     }
 
     #[test]

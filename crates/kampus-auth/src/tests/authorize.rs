@@ -16,10 +16,15 @@ enum Expect {
     Login,
 }
 
-fn case(name: &'static str, request: AuthRequest, expect: Expect) -> (&'static str, AuthRequest, Expect) {
+fn case(
+    name: &'static str,
+    request: AuthRequest,
+    expect: Expect,
+) -> (&'static str, AuthRequest, Expect) {
     (name, request, expect)
 }
 
+#[allow(clippy::too_many_lines, reason = "one table of cases")]
 #[tokio::test]
 async fn every_validation_branch() {
     use Expect::{Error, Login, Page};
@@ -28,40 +33,78 @@ async fn every_validation_branch() {
     let cases = vec![
         // 1. The client.
         case("missing client_id", c().set("client_id", None), Page(400)),
-        case("repeated client_id", c().add("client_id", CLAUDE), Page(400)),
-        case("unknown client", c().set("client_id", Some("someone")), Page(400)),
-        case("device client", c().set("client_id", Some("kampus-mascot")), Page(400)),
+        case(
+            "repeated client_id",
+            c().add("client_id", CLAUDE),
+            Page(400),
+        ),
+        case(
+            "unknown client",
+            c().set("client_id", Some("someone")),
+            Page(400),
+        ),
+        case(
+            "device client",
+            c().set("client_id", Some("kampus-mascot")),
+            Page(400),
+        ),
         case(
             "unlisted CIMD path variant",
-            c().set("client_id", Some("https://claude.ai/oauth/mcp-oauth-client-metadata/")),
+            c().set(
+                "client_id",
+                Some("https://claude.ai/oauth/mcp-oauth-client-metadata/"),
+            ),
             Page(400),
         ),
         case(
             "unlisted CIMD host",
-            c().set("client_id", Some("https://claude.ai.evil.example/oauth/mcp-oauth-client-metadata")),
+            c().set(
+                "client_id",
+                Some("https://claude.ai.evil.example/oauth/mcp-oauth-client-metadata"),
+            ),
             Page(400),
         ),
         // 2. The redirect URI, exact match only.
-        case("missing redirect_uri", c().set("redirect_uri", None), Page(400)),
-        case("repeated redirect_uri", c().add("redirect_uri", CLAUDE_REDIRECT), Page(400)),
+        case(
+            "missing redirect_uri",
+            c().set("redirect_uri", None),
+            Page(400),
+        ),
+        case(
+            "repeated redirect_uri",
+            c().add("redirect_uri", CLAUDE_REDIRECT),
+            Page(400),
+        ),
         case(
             "redirect trailing slash",
-            c().set("redirect_uri", Some("https://claude.ai/api/mcp/auth_callback/")),
+            c().set(
+                "redirect_uri",
+                Some("https://claude.ai/api/mcp/auth_callback/"),
+            ),
             Page(400),
         ),
         case(
             "redirect query",
-            c().set("redirect_uri", Some("https://claude.ai/api/mcp/auth_callback?x=1")),
+            c().set(
+                "redirect_uri",
+                Some("https://claude.ai/api/mcp/auth_callback?x=1"),
+            ),
             Page(400),
         ),
         case(
             "redirect port",
-            c().set("redirect_uri", Some("https://claude.ai:8443/api/mcp/auth_callback")),
+            c().set(
+                "redirect_uri",
+                Some("https://claude.ai:8443/api/mcp/auth_callback"),
+            ),
             Page(400),
         ),
         case(
             "redirect host case",
-            c().set("redirect_uri", Some("https://CLAUDE.ai/api/mcp/auth_callback")),
+            c().set(
+                "redirect_uri",
+                Some("https://CLAUDE.ai/api/mcp/auth_callback"),
+            ),
             Page(400),
         ),
         case(
@@ -75,15 +118,27 @@ async fn every_validation_branch() {
             Page(400),
         ),
         // 3. response_type.
-        case("missing response_type", c().set("response_type", None), Error("invalid_request")),
+        case(
+            "missing response_type",
+            c().set("response_type", None),
+            Error("invalid_request"),
+        ),
         case(
             "token response_type",
             c().set("response_type", Some("token")),
             Error("unsupported_response_type"),
         ),
-        case("repeated state", c().add("state", "other"), Error("invalid_request")),
+        case(
+            "repeated state",
+            c().add("state", "other"),
+            Error("invalid_request"),
+        ),
         // 4. PKCE S256.
-        case("missing code_challenge", c().set("code_challenge", None), Error("invalid_request")),
+        case(
+            "missing code_challenge",
+            c().set("code_challenge", None),
+            Error("invalid_request"),
+        ),
         case(
             "plain method",
             c().set("code_challenge_method", Some("plain")),
@@ -100,7 +155,11 @@ async fn every_validation_branch() {
             Error("invalid_request"),
         ),
         // 5. Exactly one resource equal to the configured one.
-        case("missing resource", c().set("resource", None), Error("invalid_target")),
+        case(
+            "missing resource",
+            c().set("resource", None),
+            Error("invalid_target"),
+        ),
         case(
             "repeated resource",
             c().add("resource", super::RESOURCE),
@@ -122,17 +181,28 @@ async fn every_validation_branch() {
             Error("invalid_target"),
         ),
         // 6. Scopes.
-        case("unknown scope", c().set("scope", Some("admin")), Error("invalid_scope")),
-        case("malformed scope", c().set("scope", Some("a\"b")), Error("invalid_scope")),
+        case(
+            "unknown scope",
+            c().set("scope", Some("admin")),
+            Error("invalid_scope"),
+        ),
+        case(
+            "malformed scope",
+            c().set("scope", Some("a\"b")),
+            Error("invalid_scope"),
+        ),
         // Order: earlier steps win over later ones.
         case(
             "bad client before bad everything",
-            c().set("client_id", Some("someone")).set("code_challenge", None).set("resource", None),
+            c().set("client_id", Some("someone"))
+                .set("code_challenge", None)
+                .set("resource", None),
             Page(400),
         ),
         case(
             "bad redirect before bad PKCE",
-            c().set("redirect_uri", Some("https://evil.example/cb")).set("code_challenge", None),
+            c().set("redirect_uri", Some("https://evil.example/cb"))
+                .set("code_challenge", None),
             Page(400),
         ),
         case(
@@ -153,7 +223,11 @@ async fn every_validation_branch() {
             Login,
         ),
         case("no scope at all", c().set("scope", None), Login),
-        case("tool scope", c().set("scope", Some("rooms:book offline_access")), Login),
+        case(
+            "tool scope",
+            c().set("scope", Some("rooms:book offline_access")),
+            Login,
+        ),
         case(
             "ChatGPT via its plural auth-method list",
             AuthRequest::new(CHATGPT, CHATGPT_REDIRECT),
@@ -199,7 +273,10 @@ async fn every_validation_branch() {
         }
     }
     // No code was issued by any of these requests.
-    assert!(h.broker.inner.store.grants_for("synthetic:student-a").is_empty());
+    assert_eq!(
+        h.broker.inner.store.grants_for("synthetic:student-a").len(),
+        0
+    );
 }
 
 #[tokio::test]

@@ -26,11 +26,26 @@ fn assert_student_token(h: &Harness, body: &Value, client_id: &str) {
     assert_eq!(claims["sub"], "synthetic:student-a");
     assert_eq!(claims["client_id"], client_id);
     assert_eq!(claims["roles"], json!(["student"]));
-    let mut names: Vec<&str> = claims.as_object().unwrap().keys().map(String::as_str).collect();
+    let mut names: Vec<&str> = claims
+        .as_object()
+        .unwrap()
+        .keys()
+        .map(String::as_str)
+        .collect();
     names.sort_unstable();
     assert_eq!(
         names,
-        ["aud", "client_id", "exp", "iat", "iss", "jti", "roles", "scope", "sub"]
+        [
+            "aud",
+            "client_id",
+            "exp",
+            "iat",
+            "iss",
+            "jti",
+            "roles",
+            "scope",
+            "sub"
+        ]
     );
 }
 

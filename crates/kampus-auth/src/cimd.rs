@@ -57,7 +57,9 @@ pub(crate) fn validate_document(url: &str, body: &[u8]) -> Result<CimdDocument, 
     if redirect_uris.is_empty() {
         return Err(CimdError::Invalid);
     }
-    let single = doc.get("token_endpoint_auth_method").and_then(Value::as_str);
+    let single = doc
+        .get("token_endpoint_auth_method")
+        .and_then(Value::as_str);
     let plural = doc
         .get("token_endpoint_auth_methods_supported")
         .and_then(Value::as_array);
@@ -93,7 +95,13 @@ pub(crate) fn freshness(cache_control: Option<&str>) -> i64 {
     cache_control
         .into_iter()
         .flat_map(|v| v.split(','))
-        .find_map(|d| d.trim().strip_prefix("max-age=")?.trim().parse::<i64>().ok())
+        .find_map(|d| {
+            d.trim()
+                .strip_prefix("max-age=")?
+                .trim()
+                .parse::<i64>()
+                .ok()
+        })
         .unwrap_or(DEFAULT_FRESH)
         .clamp(MIN_FRESH, MAX_FRESH)
 }
@@ -248,7 +256,10 @@ mod tests {
     #[test]
     fn recorded_real_documents_validate() {
         let claude = validate_document(CLAUDE, &fixture("claude-cimd")).unwrap();
-        assert_eq!(claude.redirect_uris, ["https://claude.ai/api/mcp/auth_callback"]);
+        assert_eq!(
+            claude.redirect_uris,
+            ["https://claude.ai/api/mcp/auth_callback"]
+        );
         // ChatGPT prefers private_key_jwt but lists none among its methods.
         let chatgpt = validate_document(CHATGPT, &fixture("chatgpt-cimd")).unwrap();
         assert_eq!(
@@ -267,7 +278,10 @@ mod tests {
         };
         assert!(mutate(&|d| d["client_id"] = "https://claude.ai/other".into()).is_err());
         assert!(mutate(&|d| d["redirect_uris"] = serde_json::json!([])).is_err());
-        assert!(mutate(&|d| d["redirect_uris"] = serde_json::json!(["http://evil.example/cb"])).is_err());
+        assert!(
+            mutate(&|d| d["redirect_uris"] = serde_json::json!(["http://evil.example/cb"]))
+                .is_err()
+        );
         assert!(mutate(&|d| d["redirect_uris"] = serde_json::json!(["https://c/cb#f"])).is_err());
         assert!(mutate(&|d| d["token_endpoint_auth_method"] = "private_key_jwt".into()).is_err());
         assert!(mutate(&|d| d["grant_types"] = serde_json::json!(["refresh_token"])).is_err());
@@ -336,17 +350,24 @@ mod tests {
 Content-Type: application/json
 Transfer-Encoding: chunked
 
-".to_vec();
+"
+                .to_vec();
                 for _ in 0..8 {
-                    out.extend_from_slice(b"400
-");
+                    out.extend_from_slice(
+                        b"400
+",
+                    );
                     out.extend_from_slice(&[b'x'; 1024]);
-                    out.extend_from_slice(b"
-");
+                    out.extend_from_slice(
+                        b"
+",
+                    );
                 }
-                out.extend_from_slice(b"0
+                out.extend_from_slice(
+                    b"0
 
-");
+",
+                );
                 let _ = socket.write_all(&out).await;
             }
         });

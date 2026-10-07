@@ -17,7 +17,7 @@ struct ErrorPage<'a> {
     retry: bool,
 }
 
-/// The sign-in page: the upstream IdP (group 6) and, in sandbox builds, the
+/// The sign-in page: the upstream `IdP` (group 6) and, in sandbox builds, the
 /// synthetic demo users.
 #[derive(Template)]
 #[template(path = "login.html")]
@@ -41,10 +41,22 @@ pub(crate) enum PageError {
     Expired,
     /// A malformed form or request to a sign-in page.
     BadRequest,
-    /// A collection is full or a rate limit was hit.
+    /// A collection is full.
+    #[cfg_attr(
+        not(feature = "sandbox"),
+        allow(dead_code, reason = "sessions are created by demo login until group 6")
+    )]
     Busy,
+    /// A rate limit was hit.
+    RateLimited,
     /// The request came from another origin.
-    #[cfg_attr(not(feature = "sandbox"), allow(dead_code, reason = "without sandbox demo login, sessions are created by upstream login (group 6)"))]
+    #[cfg_attr(
+        not(feature = "sandbox"),
+        allow(
+            dead_code,
+            reason = "without sandbox demo login, sessions are created by upstream login (group 6)"
+        )
+    )]
     CrossSite,
     /// Unexpected failure (randomness, rendering).
     Internal,
@@ -81,6 +93,12 @@ impl PageError {
                 StatusCode::SERVICE_UNAVAILABLE,
                 "kampus is busy",
                 "kampus is handling too many sign-in requests right now.",
+                true,
+            ),
+            Self::RateLimited => (
+                StatusCode::TOO_MANY_REQUESTS,
+                "Too many requests",
+                "There were too many sign-in requests from your network.",
                 true,
             ),
             Self::CrossSite => (

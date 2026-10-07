@@ -24,12 +24,16 @@ fn assert_no_code(h: &Harness, reply: &Reply) {
     if let Some(location) = &reply.location {
         assert!(!super::query_of(location).contains_key("code"), "{reply:?}");
     }
-    assert!(h.broker.inner.store.grants_for(STUDENT).is_empty());
+    assert_eq!(h.broker.inner.store.grants_for(STUDENT).len(), 0);
 }
 
 /// A refused token request: this status and error, and no token.
 fn assert_refused(status: u16, body: &Value, want_status: u16, error: &str) {
-    assert_eq!((status, body["error"].as_str()), (want_status, Some(error)), "{body}");
+    assert_eq!(
+        (status, body["error"].as_str()),
+        (want_status, Some(error)),
+        "{body}"
+    );
     assert!(body.get("access_token").is_none(), "{body}");
     assert!(body.get("refresh_token").is_none(), "{body}");
 }
@@ -37,7 +41,11 @@ fn assert_refused(status: u16, body: &Value, want_status: u16, error: &str) {
 /// Expect an error redirect with `error`, the client's `state` and `iss`.
 fn assert_error_redirect(h: &Harness, reply: &Reply, error: &str) {
     let query = reply.redirect_to(CLAUDE_REDIRECT);
-    assert_eq!(query.get("error").map(String::as_str), Some(error), "{query:?}");
+    assert_eq!(
+        query.get("error").map(String::as_str),
+        Some(error),
+        "{query:?}"
+    );
     assert_eq!(query.get("state").map(String::as_str), Some("st-123"));
     assert_eq!(query.get("iss"), Some(&h.issuer));
     assert_no_code(h, reply);
@@ -112,7 +120,10 @@ async fn row_bad_resource_redirects_invalid_target() {
 async fn row_unknown_scope_redirects_invalid_scope() {
     let h = Harness::start().await;
     let reply = h
-        .authorize(&AuthRequest::claude().set("scope", Some("rooms:book admin")), Some(&browser(&h)))
+        .authorize(
+            &AuthRequest::claude().set("scope", Some("rooms:book admin")),
+            Some(&browser(&h)),
+        )
         .await;
     assert_error_redirect(&h, &reply, "invalid_scope");
 }
@@ -185,7 +196,11 @@ async fn row_code_redeemed_by_another_client_or_redirect_is_invalid_grant() {
     let (status, body) = h.redeem(&request, &code).await;
     assert_refused(status, &body, 400, "invalid_grant");
     // The right client with another (or no) redirect_uri.
-    for redirect in [Some(CHATGPT_REDIRECT), Some("https://claude.ai/api/mcp/auth_callback/"), None] {
+    for redirect in [
+        Some(CHATGPT_REDIRECT),
+        Some("https://claude.ai/api/mcp/auth_callback/"),
+        None,
+    ] {
         let code = h.code(&request, &cookie).await;
         let mut form = vec![
             ("grant_type", "authorization_code"),
@@ -230,7 +245,8 @@ async fn row_confidential_client_authentication_failures() {
         ("code_verifier", request.verifier.as_str()),
         ("resource", RESOURCE),
     ];
-    let send = |auth: Option<(&'static str, &'static str)>, extra: &[(&'static str, &'static str)]| {
+    let send = |auth: Option<(&'static str, &'static str)>,
+                extra: &[(&'static str, &'static str)]| {
         let mut form = base.to_vec();
         form.extend_from_slice(extra);
         let body = url::form_urlencoded::Serializer::new(String::new())
@@ -251,7 +267,11 @@ async fn row_confidential_client_authentication_failures() {
         }
     };
     // Wrong secret (post and basic) and a missing one: 401 invalid_client.
-    let (status, body) = send(None, &[("client_id", WORKSPACE), ("client_secret", "wrong")]).await;
+    let (status, body) = send(
+        None,
+        &[("client_id", WORKSPACE), ("client_secret", "wrong")],
+    )
+    .await;
     assert_refused(status, &body, 401, "invalid_client");
     let (status, body) = send(Some((WORKSPACE, "wrong")), &[]).await;
     assert_refused(status, &body, 401, "invalid_client");
@@ -288,7 +308,9 @@ async fn row_refresh_widening_revoked_or_restarted() {
     // Widening: invalid_scope.
     let tokens = h.claude_tokens("offline_access").await;
     let refresh = tokens["refresh_token"].as_str().unwrap().to_owned();
-    let (status, body) = h.refresh(CLAUDE, &refresh, &[("scope", "rooms:book")]).await;
+    let (status, body) = h
+        .refresh(CLAUDE, &refresh, &[("scope", "rooms:book")])
+        .await;
     assert_refused(status, &body, 400, "invalid_scope");
     // After the grant is revoked: invalid_grant.
     let grant = h.broker.inner.store.grants_for(STUDENT).remove(0);
@@ -309,7 +331,10 @@ async fn row_grant_type_restricted_by_client_kind() {
     let h = Harness::start().await;
     // A device client may not use authorization_code (nor reach /authorize).
     let reply = h
-        .authorize(&AuthRequest::new("kampus-mascot", CLAUDE_REDIRECT), Some(&browser(&h)))
+        .authorize(
+            &AuthRequest::new("kampus-mascot", CLAUDE_REDIRECT),
+            Some(&browser(&h)),
+        )
         .await;
     reply.assert_page(400);
     assert_no_code(&h, &reply);
