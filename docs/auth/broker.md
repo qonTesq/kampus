@@ -97,6 +97,112 @@ kampus auth rotate-key --school schools/temple/school.yaml
 
 `rotate-key` generates a new active key, demotes the old active key to previous and drops the older previous key. It writes a temporary file in the same directory and renames it over the original, so a failed write leaves the old file intact. The new key takes effect on restart. Tokens signed with the demoted key keep verifying until their `exp` (at most `access_token_ttl_seconds`), because the JWKS still publishes it. Rotate again only after that, or those tokens fail early. A restart also ends every broker session and refresh token, so assistants ask users to sign in again.
 
+## Walkthrough: sign in with curl (sandbox build)
+
+This runs the whole authorization-code flow by hand against a local demo build: authorize, the synthetic demo-user picker, the client redirect, the token exchange, an MCP call and a refresh. It uses the pre-registered workspace client `kampus-claude`, so nothing is fetched from claude.ai; curl only reads the redirect to `https://claude.ai/api/mcp/auth_callback` and never follows it. Run it from the repository root with `curl` and `openssl` installed. On Windows Git Bash, use `demo=$(cygpath -m "$(mktemp -d)")` so the native binary gets a Windows path.
+
+Build and configure a throwaway school with the broker, one demo user and sandbox on:
+
+```sh
+cargo build -p kampus --features sandbox,broker
+demo=$(mktemp -d)
+cat > "$demo/school.yaml" <<EOF
+version: 1
+school: { id: temple, display_name: Temple University, timezone: America/New_York }
+server:
+  resource_url: http://127.0.0.1:8080/mcp
+  listen: 127.0.0.1:8080
+  admin_listen: 127.0.0.1:8081
+auth:
+  mode: oauth
+  issuer: http://127.0.0.1:8082/auth
+  broker:
+    listen: 127.0.0.1:8082
+    key_file: $demo/keys.json
+    subject_key_env: KAMPUS_TEMPLE_SUBJECT_KEY
+    scopes: ["rooms:book"]
+    clients:
+      - client_id: kampus-claude
+        label: Claude (Temple workspace)
+        secret_env: KAMPUS_TEMPLE_CLAUDE_SECRET
+        redirect_uris: [https://claude.ai/api/mcp/auth_callback]
+    demo_users:
+      - { label: Student A, subject: "synthetic:student-a", roles: [student] }
+modules: [deadlines]
+sandbox: { enabled: true }
+EOF
+export KAMPUS_TEMPLE_SUBJECT_KEY=$(openssl rand -hex 32)
+export KAMPUS_TEMPLE_CLAUDE_SECRET=$(openssl rand -hex 16)
+export KAMPUS_TEMPLE_AUDIT_SALT=$(openssl rand -hex 16)
+kampus=${CARGO_TARGET_DIR:-target}/debug/kampus
+"$kampus" serve --school "$demo/school.yaml" --policy schools/temple/policy.yaml &
+```
+
+In the same shell, once the log says `authorization broker listening`:
+
+```sh
+issuer=http://127.0.0.1:8082/auth
+resource=http://127.0.0.1:8080/mcp
+redirect=https://claude.ai/api/mcp/auth_callback
+
+# 1. A PKCE pair (RFC 7636, S256).
+verifier=$(openssl rand -hex 32)
+challenge=$(printf %s "$verifier" | openssl dgst -sha256 -binary | openssl base64 -A | tr '+/' '-_' | tr -d '=')
+
+# 2. The authorization request. No session yet, so the broker answers 303 to its sign-in page.
+login=$(curl -s -o /dev/null -w '%{redirect_url}' -G "$issuer/authorize" \
+  --data-urlencode response_type=code \
+  --data-urlencode client_id=kampus-claude \
+  --data-urlencode redirect_uri=$redirect \
+  --data-urlencode code_challenge=$challenge \
+  --data-urlencode code_challenge_method=S256 \
+  --data-urlencode resource=$resource \
+  --data-urlencode scope=offline_access \
+  --data-urlencode state=demo-state)
+echo "$login"            # http://127.0.0.1:8082/auth/login?pending=<id>
+pending=${login#*pending=}
+
+# 3. The sign-in page lists the demo users; pick Student A (the browser's form POST).
+curl -s "$issuer/login?pending=$pending" | grep 'synthetic demo user'
+callback=$(curl -s -o /dev/null -w '%{redirect_url}' -c "$demo/cookies.txt" \
+  -d "pending=$pending&user=0" "$issuer/login/demo")
+echo "$callback"         # https://claude.ai/api/mcp/auth_callback?code=<code>&state=demo-state&iss=http%3A%2F%2F127.0.0.1%3A8082%2Fauth
+code=$(printf %s "$callback" | sed -n 's/.*[?&]code=\([0-9a-f]*\).*/\1/p')
+
+# 4. Redeem the code within 60 s (client_secret_basic for the workspace client).
+tokens=$(curl -s -u "kampus-claude:$KAMPUS_TEMPLE_CLAUDE_SECRET" "$issuer/token" \
+  -d grant_type=authorization_code -d code=$code \
+  --data-urlencode redirect_uri=$redirect \
+  -d code_verifier=$verifier \
+  --data-urlencode resource=$resource)
+echo "$tokens"           # {"access_token":"…","expires_in":900,"refresh_token":"…","token_type":"Bearer"}
+access=$(printf %s "$tokens" | sed -n 's/.*"access_token":"\([^"]*\)".*/\1/p')
+refresh=$(printf %s "$tokens" | sed -n 's/.*"refresh_token":"\([^"]*\)".*/\1/p')
+
+# 5. Call my_deadlines (MCP 2026-07-28) without and with the token.
+call() {
+  curl -s -w '\nHTTP %{http_code}\n' "$resource" "$@" \
+    -H 'Content-Type: application/json' \
+    -H 'Accept: application/json, text/event-stream' \
+    -H 'MCP-Protocol-Version: 2026-07-28' \
+    -H 'Mcp-Method: tools/call' -H 'Mcp-Name: my_deadlines' \
+    -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"my_deadlines","arguments":{},"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientInfo":{"name":"curl","version":"1"},"io.modelcontextprotocol/clientCapabilities":{}}}}'
+}
+call                                   # HTTP 401: a Sensitive tool needs sign-in
+call -H "Authorization: Bearer $access" # HTTP 200: token verified; the policy decides
+
+# 6. Refresh: a new access token and a rotated refresh token.
+curl -s -u "kampus-claude:$KAMPUS_TEMPLE_CLAUDE_SECRET" "$issuer/token" \
+  -d grant_type=refresh_token -d refresh_token=$refresh
+# Presenting the rotated-out token again is reuse: invalid_grant, and the family is revoked.
+curl -s -u "kampus-claude:$KAMPUS_TEMPLE_CLAUDE_SECRET" "$issuer/token" \
+  -d grant_type=refresh_token -d refresh_token=$refresh
+
+kill %1
+```
+
+With the shipped Temple policy (`sensitive_enabled: false`), the authenticated `my_deadlines` call returns HTTP 200 with a `permission_denied` envelope: the resource server accepted the broker's token, and school policy refused the Sensitive tool. Turn the switches on in a copy of the policy to see deadlines. Until the consent page lands, signing in issues the code directly; the session cookie in `$demo/cookies.txt` skips the picker on the next authorization for 8 hours.
+
 ## Subject key
 
 `sub` for an upstream user is `k1.` plus the first 16 bytes, as hex, of HMAC-SHA-256 over the upstream issuer and subject, keyed with `subject_key_env`. Tokens never carry the upstream subject, an email or a name. Rotating the subject key changes every user's `sub`: audit subject hashes change and every grant is lost. Treat it as permanent. Each school has its own key, so the same person gets different subjects at different schools.
