@@ -116,6 +116,7 @@ pub(crate) struct Harness {
     pub(crate) http: reqwest::Client,
     pub(crate) now: Arc<AtomicI64>,
     dir: PathBuf,
+    owns_dir: bool,
 }
 
 /// A random private IPv4 address for one test request.
@@ -244,21 +245,25 @@ impl Reply {
 
 impl Harness {
     pub(crate) async fn start() -> Self {
-        Self::start_full("", Capacity::DEFAULT).await
+        Self::start_full(Capacity::DEFAULT, None).await
     }
 
-    pub(crate) async fn start_with(broker_extra: &str) -> Self {
-        Self::start_full(broker_extra, Capacity::DEFAULT).await
+    /// A restarted broker: the same key file, fresh in-memory state.
+    pub(crate) async fn restart(&self) -> Self {
+        Self::start_full(Capacity::DEFAULT, Some(self.dir.clone())).await
     }
 
-    pub(crate) async fn start_full(broker_extra: &str, capacity: Capacity) -> Self {
+    pub(crate) async fn start_full(capacity: Capacity, keys_dir: Option<PathBuf>) -> Self {
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
         let port = listener.local_addr().unwrap().port();
-        let dir = std::env::temp_dir().join(format!(
-            "kampus-auth-test-{}",
-            crate::util::random_hex(8).unwrap()
-        ));
-        let school = school(port, &dir.join("keys.json"), broker_extra);
+        let owns_dir = keys_dir.is_none();
+        let dir = keys_dir.unwrap_or_else(|| {
+            std::env::temp_dir().join(format!(
+                "kampus-auth-test-{}",
+                crate::util::random_hex(8).unwrap()
+            ))
+        });
+        let school = school(port, &dir.join("keys.json"), "");
         let now = Arc::new(AtomicI64::new(crate::util::unix_now()));
         let clock = Arc::clone(&now);
         let broker = Broker::build(
@@ -308,6 +313,7 @@ impl Harness {
                 .unwrap(),
             now,
             dir,
+            owns_dir,
         }
     }
 
@@ -410,7 +416,9 @@ impl Harness {
 
 impl Drop for Harness {
     fn drop(&mut self) {
-        let _ = std::fs::remove_dir_all(&self.dir);
+        if self.owns_dir {
+            let _ = std::fs::remove_dir_all(&self.dir);
+        }
     }
 }
 

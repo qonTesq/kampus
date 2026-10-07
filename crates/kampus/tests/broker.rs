@@ -242,3 +242,142 @@ async fn discovery_verifies_broker_tokens_across_rotation_and_restart() {
     assert_eq!(tools_list(&http, &instance.mcp_base(), &old).await, 200);
     assert_eq!(tools_list(&http, &instance.mcp_base(), &new).await, 200);
 }
+
+// RS rows of the design §14 negative matrix (task 3.11): broker tokens
+// tampered with after issuance must not verify.
+
+const B64: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+
+fn b64url(bytes: &[u8]) -> String {
+    let mut out = String::new();
+    for chunk in bytes.chunks(3) {
+        let n = chunk
+            .iter()
+            .enumerate()
+            .fold(0u32, |acc, (i, b)| acc | u32::from(*b) << (16 - 8 * i));
+        for i in 0..=chunk.len() {
+            out.push(char::from(B64[(n >> (18 - 6 * i) & 63) as usize]));
+        }
+    }
+    out
+}
+
+fn b64url_decode(text: &str) -> Vec<u8> {
+    let mut bits = 0u32;
+    let mut count = 0;
+    let mut out = Vec::new();
+    for c in text.bytes() {
+        let v = B64.iter().position(|b| *b == c).unwrap();
+        bits = bits << 6 | u32::try_from(v).unwrap();
+        count += 6;
+        if count >= 8 {
+            count -= 8;
+            out.push(u8::try_from(bits >> count & 0xff).unwrap());
+        }
+    }
+    out
+}
+
+/// The claims of a broker token, decoded without verification.
+fn claims_of(token: &str) -> Value {
+    serde_json::from_slice(&b64url_decode(token.split('.').nth(1).unwrap())).unwrap()
+}
+
+/// A compact JWS with an arbitrary header and an HMAC-SHA-256 or empty signature.
+fn forge(header: &Value, claims: &Value, hmac_key: Option<&[u8]>) -> String {
+    let input = format!(
+        "{}.{}",
+        b64url(header.to_string().as_bytes()),
+        b64url(claims.to_string().as_bytes())
+    );
+    let signature = hmac_key.map_or_else(String::new, |key| {
+        let key = aws_lc_rs::hmac::Key::new(aws_lc_rs::hmac::HMAC_SHA256, key);
+        b64url(aws_lc_rs::hmac::sign(&key, input.as_bytes()).as_ref())
+    });
+    format!("{input}.{signature}")
+}
+
+#[tokio::test]
+async fn rs_refuses_tampered_broker_tokens() {
+    let instance = Instance::new();
+    let http = client();
+    let issuer = instance.issuer();
+    let base = instance.mcp_base();
+    let _running = instance.start();
+    let genuine = device_token(&http, &issuer).await;
+    assert_eq!(tools_list(&http, &base, &genuine).await, 200);
+    let claims = claims_of(&genuine);
+    let keys = kampus_auth::SigningKeys::load(&instance.key_file()).unwrap();
+    let kid = kid(&genuine);
+
+    // Control: the same claims re-signed with the broker's key verify.
+    let resigned = keys.sign(&claims).unwrap();
+    assert_eq!(tools_list(&http, &base, &resigned).await, 200);
+
+    // `cnf` added and re-signed with the real key: 401.
+    let mut bound = claims.clone();
+    bound["cnf"] = json!({ "jkt": "0ZcOCORZNYy-DWpqq30jZyJGHTN0d2HglBV3uiguA4I" });
+    assert_eq!(tools_list(&http, &base, &keys.sign(&bound).unwrap()).await, 401);
+
+    // alg=none, unsigned: 401.
+    let none = forge(&json!({ "alg": "none", "typ": "at+jwt", "kid": kid }), &claims, None);
+    assert_eq!(tools_list(&http, &base, &none).await, 401);
+
+    // HS256 keyed with the JWKS public key (raw bytes and the encoded x): 401.
+    let jwks: Value = http
+        .get(format!("{issuer}/jwks.json"))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    let x = jwks["keys"][0]["x"].as_str().unwrap().to_owned();
+    let header = json!({ "alg": "HS256", "typ": "at+jwt", "kid": kid });
+    for key in [b64url_decode(&x), x.into_bytes()] {
+        let token = forge(&header, &claims, Some(&key));
+        assert_eq!(tools_list(&http, &base, &token).await, 401);
+    }
+
+    // An Ed25519 key the broker never published (unknown kid): 401.
+    let stranger_file = instance.dir.join("stranger.json");
+    let stranger = kampus_auth::SigningKeys::load_or_create(&stranger_file).unwrap();
+    assert_ne!(stranger.active_kid(), kid);
+    assert_eq!(tools_list(&http, &base, &stranger.sign(&claims).unwrap()).await, 401);
+}
+
+#[tokio::test]
+async fn rs_refuses_a_dropped_kid_after_two_rotations() {
+    let instance = Instance::new();
+    let http = client();
+    let issuer = instance.issuer();
+    let base = instance.mcp_base();
+    let running = instance.start();
+    let old = device_token(&http, &issuer).await;
+    assert_eq!(tools_list(&http, &base, &old).await, 200);
+    // Two rotations drop the key that signed `old`.
+    kampus_auth::rotate_key(&instance.key_file()).unwrap();
+    kampus_auth::rotate_key(&instance.key_file()).unwrap();
+    running.cancel();
+    tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+    let _running = instance.start();
+    let http = client();
+    let jwks: Value = http
+        .get(format!("{issuer}/jwks.json"))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    let published: Vec<&str> = jwks["keys"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|k| k["kid"].as_str().unwrap())
+        .collect();
+    assert!(!published.contains(&kid(&old).as_str()));
+    assert_eq!(tools_list(&http, &base, &old).await, 401);
+    let new = device_token(&http, &issuer).await;
+    assert_eq!(tools_list(&http, &base, &new).await, 200);
+}
