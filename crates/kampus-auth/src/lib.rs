@@ -7,17 +7,19 @@
 //! discovery and the JWKS, like any other issuer. The broker stores no
 //! passwords and no user records; all state is in memory.
 
-// `store` and `cimd` are written and unit-tested but not yet used by the
-// endpoints (phase 3 in progress).
-#[allow(dead_code)]
+mod authorize;
 mod cimd;
 mod clients;
 mod error;
-#[allow(dead_code)]
-mod store;
 mod keys;
+mod limits;
+mod login;
 mod metadata;
+mod pages;
 mod scopes;
+#[cfg_attr(not(feature = "sandbox"), allow(dead_code, reason = "without sandbox demo login, sessions are created by upstream login (group 6)"))]
+mod session;
+mod store;
 mod token;
 mod util;
 
@@ -31,7 +33,13 @@ use axum::http::{HeaderValue, header};
 use axum::response::IntoResponse;
 use axum::routing::{get, post};
 use kampus_core::config::SchoolConfig;
+#[cfg(feature = "sandbox")]
+use kampus_core::config::DemoUser;
 use url::Url;
+
+use cimd::CimdCache;
+use limits::Limits;
+use store::{Capacity, MemoryStore, Store};
 
 pub use clients::MissingSecret;
 pub use error::OAuthError;
@@ -43,6 +51,20 @@ pub mod fuzzing {
     /// Parse a token request body and `Authorization` header.
     pub fn token_form(body: &[u8], authorization: Option<&str>) -> bool {
         crate::clients::parse_token_request(body, authorization).is_ok()
+    }
+
+    /// Parse an authorization query and read its single-valued parameters.
+    pub fn authorize_query(query: &str) -> bool {
+        crate::authorize::AuthorizeQuery::parse(query).is_some_and(|q| {
+            ["client_id", "redirect_uri", "state", "scope", "resource"]
+                .iter()
+                .all(|name| q.single(name).is_ok())
+        })
+    }
+
+    /// Validate a client ID metadata document fetched from `url`.
+    pub fn cimd_document(url: &str, body: &[u8]) -> bool {
+        crate::cimd::validate_document(url, body).is_ok()
     }
 }
 
@@ -67,6 +89,10 @@ pub enum BrokerError {
     SubjectKey,
     #[error(transparent)]
     Keys(#[from] KeyError),
+    #[error("auth.broker.demo_users requires a sandbox build with sandbox.enabled: true")]
+    DemoUsers,
+    #[error("the client metadata HTTP client could not be built")]
+    Http,
 }
 
 /// Optional runtime inputs (tests inject a clock).
@@ -94,8 +120,17 @@ pub(crate) struct Inner {
     pub(crate) resource: Url,
     pub(crate) access_ttl: i64,
     pub(crate) scopes: BTreeSet<String>,
+    pub(crate) family_ttl: i64,
     pub(crate) keys: SigningKeys,
     pub(crate) clients: Clients,
+    pub(crate) cimd: CimdCache,
+    pub(crate) store: Box<dyn Store>,
+    pub(crate) limits: Limits,
+    pub(crate) school_name: String,
+    pub(crate) upstream_issuer: Option<Url>,
+    /// Synthetic demo users; empty unless `sandbox.enabled`.
+    #[cfg(feature = "sandbox")]
+    pub(crate) demo_users: Vec<DemoUser>,
     pub(crate) clock: Clock,
 }
 
@@ -103,7 +138,9 @@ pub(crate) struct Inner {
 const PURGE_INTERVAL: std::time::Duration = std::time::Duration::from_mins(1);
 
 impl Inner {
-    fn purge(&self) {}
+    fn purge(&self) {
+        self.store.purge((self.clock)());
+    }
 }
 
 impl fmt::Debug for Inner {
@@ -151,17 +188,42 @@ impl Broker {
         secret: &dyn Fn(&str) -> Option<String>,
         options: BrokerOptions,
     ) -> Result<Self, BrokerError> {
+        Self::build(school, secret, options, Capacity::DEFAULT)
+    }
+
+    pub(crate) fn build(
+        school: &SchoolConfig,
+        secret: &dyn Fn(&str) -> Option<String>,
+        options: BrokerOptions,
+        capacity: Capacity,
+    ) -> Result<Self, BrokerError> {
         let config = school.auth.broker.as_ref().ok_or(BrokerError::NotConfigured)?;
         let _subject_key = subject_key(&config.subject_key_env, secret)?;
+        let sandbox_on = cfg!(feature = "sandbox") && school.sandbox.enabled;
+        // Defense in depth behind config validation: demo users only in a
+        // sandbox build with sandbox.enabled.
+        if !config.demo_users.is_empty() && !sandbox_on {
+            return Err(BrokerError::DemoUsers);
+        }
         let clients = Clients::from_config(config, secret)?;
+        let cimd = CimdCache::new(config.cimd_clients.iter().cloned().collect(), sandbox_on)
+            .ok_or(BrokerError::Http)?;
         let keys = SigningKeys::load_or_create(&config.key_file)?;
         let inner = Inner {
             issuer: school.auth.issuer.clone(),
             resource: school.server.resource_url.clone(),
             access_ttl: i64::from(config.access_token_ttl_seconds),
             scopes: config.scopes.clone(),
+            family_ttl: i64::from(config.refresh_family_ttl_hours) * 3600,
             keys,
             clients,
+            cimd,
+            store: Box::new(MemoryStore::new(capacity)),
+            limits: Limits::new(),
+            school_name: school.school.display_name.clone(),
+            upstream_issuer: config.upstream.as_ref().map(|u| u.issuer.clone()),
+            #[cfg(feature = "sandbox")]
+            demo_users: config.demo_users.clone(),
             clock: options.clock.unwrap_or_else(|| Arc::new(util::unix_now)),
         };
         Ok(Self {
@@ -196,7 +258,17 @@ impl Broker {
         let base = issuer.path().trim_end_matches('/').to_owned();
         let document = metadata::document(issuer, &self.inner.scopes);
         let jwks = self.inner.keys.jwks();
+        let browser = Router::new()
+            .route(&format!("{base}/authorize"), get(authorize::authorize))
+            .route(&format!("{base}/login"), get(login::login));
+        #[cfg(feature = "sandbox")]
+        let browser = browser.route(&format!("{base}/login/demo"), post(login::demo::demo_login));
+        let browser = browser.route_layer(axum::middleware::from_fn_with_state(
+            Arc::clone(&self.inner),
+            limits::limit,
+        ));
         Router::new()
+            .merge(browser)
             .route(
                 &metadata::well_known_path(issuer),
                 get(move || {

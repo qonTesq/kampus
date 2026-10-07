@@ -137,6 +137,22 @@ impl CimdCache {
         })
     }
 
+    /// Seed the cache with a validated document (tests use the recorded
+    /// real documents instead of fetching from the vendor).
+    #[cfg(test)]
+    pub(crate) fn preload(&self, url: &str, doc: CimdDocument, fresh_until: i64) {
+        self.entries
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .insert(
+                url.to_owned(),
+                Entry {
+                    doc: Arc::new(doc),
+                    fresh_until,
+                },
+            );
+    }
+
     fn cached(&self, url: &str) -> Option<Entry> {
         self.entries
             .lock()
@@ -227,13 +243,7 @@ mod tests {
     const CLAUDE: &str = "https://claude.ai/oauth/mcp-oauth-client-metadata";
     const CHATGPT: &str = "https://chatgpt.com/oauth/client.json";
 
-    fn fixture(label: &str) -> Vec<u8> {
-        std::fs::read(format!(
-            "{}/../../fixtures/oidc/20261002T211259697454Z-{label}/body.bin",
-            env!("CARGO_MANIFEST_DIR")
-        ))
-        .unwrap()
-    }
+    use crate::tests::fixture;
 
     #[test]
     fn recorded_real_documents_validate() {

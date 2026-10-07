@@ -14,7 +14,9 @@ use kampus_core::contracts::Role;
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct Capacity {
     pub(crate) pending: usize,
+    #[allow(dead_code, reason = "upstream OIDC login state arrives in group 6")]
     pub(crate) upstream: usize,
+    #[cfg_attr(not(feature = "sandbox"), allow(dead_code, reason = "without sandbox demo login, sessions are created by upstream login (group 6)"))]
     pub(crate) sessions: usize,
     pub(crate) codes: usize,
     pub(crate) grants: usize,
@@ -53,6 +55,7 @@ pub(crate) struct Pending {
 }
 
 /// Upstream OIDC login state, keyed by its own `state`.
+#[allow(dead_code, reason = "upstream OIDC login arrives in group 6")]
 #[derive(Clone)]
 pub(crate) struct UpstreamLogin {
     pub(crate) pending: String,
@@ -156,7 +159,9 @@ pub(crate) trait Store: Send + Sync + fmt::Debug {
     fn pending(&self, id: &str, now: i64) -> Option<Pending>;
     fn take_pending(&self, id: &str, now: i64) -> Option<Pending>;
 
+    #[allow(dead_code, reason = "upstream OIDC login arrives in group 6")]
     fn insert_upstream(&self, state: String, login: UpstreamLogin) -> Result<(), Full>;
+    #[allow(dead_code, reason = "upstream OIDC login arrives in group 6")]
     fn take_upstream(&self, state: &str, now: i64) -> Option<UpstreamLogin>;
 
     fn insert_session(&self, id: String, session: Session) -> Result<(), Full>;
@@ -170,9 +175,12 @@ pub(crate) trait Store: Send + Sync + fmt::Debug {
 
     /// Insert the grant for `key`, or return the existing one.
     fn upsert_grant(&self, key: GrantKey, label: String, now: i64) -> Result<Grant, Full>;
+    #[allow(dead_code, reason = "consent skipping arrives in group 5")]
     fn grant(&self, key: &GrantKey) -> Option<Grant>;
+    #[allow(dead_code, reason = "the connected-assistants page arrives in group 5")]
     fn grants_for(&self, subject: &str) -> Vec<Grant>;
     /// Delete a grant of `subject` and all its families; false on a miss.
+    #[allow(dead_code, reason = "revocation arrives in group 5")]
     fn revoke_grant(&self, subject: &str, grant_id: &str) -> bool;
 
     fn insert_family(&self, family: Family) -> Result<(), Full>;
@@ -181,6 +189,8 @@ pub(crate) trait Store: Send + Sync + fmt::Debug {
     /// Rotate `presented` to `next`; a retired token revokes the family.
     fn rotate(&self, presented: &str, next: String, now: i64) -> Rotation;
     fn revoke_family(&self, family_id: &str);
+    /// If `hash` is a retired token, revoke its family and return true.
+    fn revoke_if_retired(&self, hash: &str) -> bool;
 
     fn purge(&self, now: i64);
 }
@@ -442,6 +452,17 @@ impl Store for MemoryStore {
 
     fn revoke_family(&self, family_id: &str) {
         lock(&self.grants).drop_family(family_id);
+    }
+
+    fn revoke_if_retired(&self, hash: &str) -> bool {
+        let mut g = lock(&self.grants);
+        match g.tokens.get(hash).cloned() {
+            Some((id, false)) => {
+                g.drop_family(&id);
+                true
+            }
+            _ => false,
+        }
     }
 
     fn purge(&self, now: i64) {

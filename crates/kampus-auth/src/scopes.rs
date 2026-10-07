@@ -17,11 +17,6 @@ pub(crate) fn parse(scope: &str) -> Option<BTreeSet<String>> {
         .collect()
 }
 
-/// The canonical string form: sorted, single spaces.
-pub(crate) fn format(scopes: &BTreeSet<String>) -> String {
-    scopes.iter().map(String::as_str).collect::<Vec<_>>().join(" ")
-}
-
 /// Requested scopes minus `offline_access`, if every one is grantable.
 pub(crate) fn grantable(
     requested: &BTreeSet<String>,

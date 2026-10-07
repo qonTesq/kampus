@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}kampus: sign in{% endblock %}
+{% block content %}
+<h1>Sign in to {{ school }}</h1>
+<p><strong>{{ client }}</strong> is asking to use kampus for you.</p>
+{% if upstream_host.is_some() || demo_users.is_empty() %}
+<p>Sign-in through {% match upstream_host %}{% when Some with (host) %}{{ host }}{% when None %}your school{% endmatch %} is not available yet.</p>
+{% endif %}
+{% if !demo_users.is_empty() %}
+<h2>Synthetic demo users</h2>
+<p>These are not real people. They exist only in this sandbox build and see synthetic data.</p>
+<form method="post" action="{{ action }}">
+<input type="hidden" name="pending" value="{{ pending }}">
+{% for user in demo_users %}
+<p><button type="submit" name="user" value="{{ loop.index0 }}">{{ user }} (synthetic demo user)</button></p>
+{% endfor %}
+</form>
+{% endif %}
+{% endblock %}

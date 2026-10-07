@@ -1,5 +1,6 @@
-//! `POST {issuer}/token`: the `client_credentials` grant for device clients,
-//! plus RFC 9068 access-token minting.
+//! `POST {issuer}/token`: the `authorization_code` and `refresh_token`
+//! grants for CIMD and confidential clients, `client_credentials` for device
+//! clients, and RFC 9068 access-token minting.
 
 use std::collections::BTreeSet;
 
@@ -12,10 +13,14 @@ use kampus_core::contracts::Role;
 use serde::Serialize;
 use serde_json::json;
 
+use openidconnect::{PkceCodeChallenge, PkceCodeVerifier};
+use url::Url;
+
 use crate::Inner;
-use crate::clients::{Client, parse_token_request};
+use crate::clients::{Client, TokenRequest, parse_token_request};
 use crate::error::OAuthError;
-use crate::util::random_hex;
+use crate::store::{Family, Redemption, Rotation};
+use crate::util::{random_hex, secret_eq, sha256_hex};
 
 /// RFC 9068 access-token claims. There is deliberately no field for an
 /// email, a name or any upstream claim: assistant vendors can read tokens.
@@ -132,9 +137,166 @@ async fn handle(inner: &Inner, headers: &HeaderMap, body: &[u8]) -> Result<Respo
     let request = parse_token_request(body, authorization)?;
     let client = inner.clients.authenticate(&request.client)?;
     match request.grant_type.as_str() {
+        "authorization_code" => authorization_code(inner, &client, &request),
+        "refresh_token" => refresh_token(inner, &client, &request),
         "client_credentials" => client_credentials(inner, &client, request.param("scope")),
         _ => Err(OAuthError::unsupported_grant_type()),
     }
+}
+
+/// RFC 7636 section 4.1: 43-128 unreserved characters.
+fn is_code_verifier(verifier: &str) -> bool {
+    (43..=128).contains(&verifier.len())
+        && verifier
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'-' | b'.' | b'_' | b'~'))
+}
+
+/// The verifier hashes to the stored S256 challenge.
+fn pkce_matches(verifier: &str, challenge: &str) -> bool {
+    // Checked first: the openidconnect helper asserts on the length.
+    if !is_code_verifier(verifier) {
+        return false;
+    }
+    let computed =
+        PkceCodeChallenge::from_code_verifier_sha256(&PkceCodeVerifier::new(verifier.to_owned()));
+    secret_eq(computed.as_str(), challenge)
+}
+
+/// `resource` equals the configured resource URL (after URL normalization).
+fn resource_matches(inner: &Inner, resource: &str) -> bool {
+    Url::parse(resource).is_ok_and(|u| u == inner.resource)
+}
+
+/// Only CIMD and confidential clients use the browser grants.
+fn browser_client(client: &Client) -> Result<(), OAuthError> {
+    match client {
+        Client::Device(_) => Err(OAuthError::unauthorized_client()),
+        Client::Cimd(_) | Client::Confidential(_) => Ok(()),
+    }
+}
+
+/// Start a refresh family for `grant` and return its first token.
+fn new_family(inner: &Inner, family: impl FnOnce(String, String) -> Family) -> Result<(String, Family), OAuthError> {
+    let token = random_hex(32).ok_or_else(OAuthError::server_error)?;
+    let id = random_hex(16).ok_or_else(OAuthError::server_error)?;
+    let family = family(id, sha256_hex(&token));
+    inner
+        .store
+        .insert_family(family.clone())
+        .map_err(|_| OAuthError::temporarily_unavailable())?;
+    Ok((token, family))
+}
+
+/// `grant_type=authorization_code`. The code is consumed by the first
+/// presentation, whatever the outcome; a second presentation revokes the
+/// family the first one created.
+fn authorization_code(
+    inner: &Inner,
+    client: &Client,
+    request: &TokenRequest,
+) -> Result<Response, OAuthError> {
+    browser_client(client)?;
+    let code = request
+        .param("code")
+        .ok_or_else(|| OAuthError::invalid_request("code is required"))?;
+    let now = (inner.clock)();
+    let hash = sha256_hex(code);
+    let code = match inner.store.redeem_code(&hash, now) {
+        Redemption::Fresh(code) => code,
+        Redemption::Reused(family) => {
+            if let Some(family) = family {
+                inner.store.revoke_family(&family);
+            }
+            tracing::warn!(client_id = %client.id(), "authorization code reused; family revoked");
+            return Err(OAuthError::invalid_grant());
+        }
+        Redemption::Unknown => return Err(OAuthError::invalid_grant()),
+    };
+    if code.grant.client_id != client.id()
+        || request.param("redirect_uri") != Some(code.redirect_uri.as_str())
+        || !request
+            .param("code_verifier")
+            .is_some_and(|v| pkce_matches(v, &code.code_challenge))
+    {
+        return Err(OAuthError::invalid_grant());
+    }
+    if !request
+        .param("resource")
+        .is_some_and(|r| resource_matches(inner, r))
+    {
+        return Err(OAuthError::invalid_target());
+    }
+    let family_ttl = inner.family_ttl;
+    let (refresh, family) = new_family(inner, |id, current| Family {
+        id,
+        grant: code.grant.clone(),
+        roles: code.roles.clone(),
+        current,
+        expires_at: now + family_ttl,
+    })?;
+    inner.store.bind_code_family(&hash, &family.id);
+    let minted = inner.mint(
+        &code.grant.subject,
+        &code.grant.client_id,
+        &code.grant.scopes,
+        &code.roles,
+    )?;
+    tracing::info!(client_id = %client.id(), "authorization code redeemed");
+    Ok(token_response(&minted, Some(&refresh)))
+}
+
+/// `grant_type=refresh_token`: rotate the presented token. A rotated
+/// (retired) token revokes its whole family (RFC 9700 section 4.14.2). The
+/// scope may only narrow, and the family's grant must still exist.
+fn refresh_token(
+    inner: &Inner,
+    client: &Client,
+    request: &TokenRequest,
+) -> Result<Response, OAuthError> {
+    browser_client(client)?;
+    let presented = request
+        .param("refresh_token")
+        .ok_or_else(|| OAuthError::invalid_request("refresh_token is required"))?;
+    let now = (inner.clock)();
+    let hash = sha256_hex(presented);
+    let Some(family) = inner.store.family_by_token(&hash, now) else {
+        // Not a live current token: a retired one revokes its family here.
+        if inner.store.revoke_if_retired(&hash) {
+            tracing::warn!(client_id = %client.id(), "refresh token reused; family revoked");
+        }
+        return Err(OAuthError::invalid_grant());
+    };
+    if family.grant.client_id != client.id() {
+        return Err(OAuthError::invalid_grant());
+    }
+    let scopes = match request.param("scope") {
+        Some(scope) => {
+            let asked = crate::scopes::parse(scope).ok_or_else(OAuthError::invalid_scope)?;
+            crate::scopes::grantable(&asked, &family.grant.scopes)
+                .ok_or_else(OAuthError::invalid_scope)?
+        }
+        None => family.grant.scopes.clone(),
+    };
+    if request
+        .param("resource")
+        .is_some_and(|r| !resource_matches(inner, r))
+    {
+        return Err(OAuthError::invalid_target());
+    }
+    let next = random_hex(32).ok_or_else(OAuthError::server_error)?;
+    let family = match inner.store.rotate(&hash, sha256_hex(&next), now) {
+        Rotation::Rotated(family) => family,
+        Rotation::Reused | Rotation::Invalid => return Err(OAuthError::invalid_grant()),
+    };
+    let minted = inner.mint(
+        &family.grant.subject,
+        &family.grant.client_id,
+        &scopes,
+        &family.roles,
+    )?;
+    tracing::info!(client_id = %client.id(), "refresh token rotated");
+    Ok(token_response(&minted, Some(&next)))
 }
 
 /// Device clients only: their configured roles and scopes, `sub` the
