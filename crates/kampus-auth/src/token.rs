@@ -91,8 +91,10 @@ pub(crate) fn token_response(minted: &Minted, refresh_token: Option<&str>) -> Re
         "access_token": minted.token,
         "token_type": "Bearer",
         "expires_in": minted.expires_in,
-        "scope": minted.scope,
     });
+    if !minted.scope.is_empty() {
+        body["scope"] = json!(minted.scope);
+    }
     if let Some(refresh) = refresh_token {
         body["refresh_token"] = json!(refresh);
     }
