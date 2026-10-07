@@ -664,7 +664,10 @@ fn validate_broker(v: &mut Issues, c: &SchoolConfig, env: &Env<'_>, sandbox_on: 
         );
     }
     if !(1..=720).contains(&b.refresh_family_ttl_hours) {
-        v.push(format!("{f}.refresh_family_ttl_hours"), "must be within 1..=720");
+        v.push(
+            format!("{f}.refresh_family_ttl_hours"),
+            "must be within 1..=720",
+        );
     }
     for scope in &b.scopes {
         if !is_scope_token(scope) || scope == "offline_access" {
@@ -728,10 +731,16 @@ fn validate_broker_clients(
         }
         v.secret_env(&format!("{df}.secret_env"), &device.secret_env, env);
         if device.roles.is_empty() || device.roles.contains(&Role::Admin) {
-            v.push(format!("{df}.roles"), "must be non-empty and cannot grant admin");
+            v.push(
+                format!("{df}.roles"),
+                "must be non-empty and cannot grant admin",
+            );
         }
         if !device.scopes.is_subset(&b.scopes) {
-            v.push(format!("{df}.scopes"), "must be a subset of auth.broker.scopes");
+            v.push(
+                format!("{df}.scopes"),
+                "must be a subset of auth.broker.scopes",
+            );
         }
     }
 }
@@ -760,7 +769,10 @@ fn validate_broker_login(v: &mut Issues, b: &BrokerConfig, env: &Env<'_>, sandbo
             v.push(format!("{uf}.label"), "must be 1-80 characters");
         }
         if user.roles.is_empty() || user.roles.contains(&Role::Admin) {
-            v.push(format!("{uf}.roles"), "must be non-empty and cannot grant admin");
+            v.push(
+                format!("{uf}.roles"),
+                "must be non-empty and cannot grant admin",
+            );
         }
     }
     let Some(up) = &b.upstream else {
@@ -785,7 +797,11 @@ fn validate_broker_login(v: &mut Issues, b: &BrokerConfig, env: &Env<'_>, sandbo
     if up.client_id.trim().is_empty() || up.client_id.len() > 256 {
         v.push(format!("{uf}.client_id"), "must be 1-256 characters");
     }
-    v.secret_env(&format!("{uf}.client_secret_env"), &up.client_secret_env, env);
+    v.secret_env(
+        &format!("{uf}.client_secret_env"),
+        &up.client_secret_env,
+        env,
+    );
     if !up.scopes.iter().any(|s| s == "openid") || !up.scopes.iter().all(|s| is_scope_token(s)) {
         v.push(
             format!("{uf}.scopes"),

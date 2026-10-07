@@ -277,12 +277,7 @@ async fn injected_fixture_prose_never_reaches_output() {
 #[tokio::test]
 async fn unvaulted_user_is_denied_before_any_request() {
     let canvas = start();
-    for user in [
-        "synthetic-nobody",
-        "",
-        "9001",
-        "synthetic:student-a",
-    ] {
+    for user in ["synthetic-nobody", "", "9001", "synthetic:student-a"] {
         let err = list(
             &canvas.provider,
             &query(user, "2026-09-21T00:00:00Z", "2026-09-28T00:00:00Z", 10),

@@ -290,11 +290,7 @@ mod production {
         // Even if validation were bypassed, a production build has no source.
         let m = module(&init(canvas_school())).unwrap();
         let err = m
-            .call(
-                TOOL,
-                json!({}),
-                &ctx(student("synthetic:student-a")),
-            )
+            .call(TOOL, json!({}), &ctx(student("synthetic:student-a")))
             .await
             .unwrap_err();
         assert_eq!(err.code, ErrorCode::UnsupportedSource);

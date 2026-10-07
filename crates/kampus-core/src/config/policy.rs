@@ -188,7 +188,12 @@ pub(super) fn validate(
         }
     }
 
-    validate_clients(&mut v, p, school, school.sandbox.enabled && env.sandbox_compiled);
+    validate_clients(
+        &mut v,
+        p,
+        school,
+        school.sandbox.enabled && env.sandbox_compiled,
+    );
     validate_rules(&mut v, p, known_tools);
 
     if p.audit.retention_hours == 0 || p.audit.retention_hours > 24 * 30 {

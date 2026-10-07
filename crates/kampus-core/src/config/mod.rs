@@ -18,10 +18,10 @@ pub use policy::{
 pub use school::{
     AuthConfig, AuthMode, BannerConfig, BrokerClient, BrokerConfig, BrokerDevice, CanvasConfig,
     DemoUser, DeviceConfig, DeviceSticker, ForwardedHeader, GtfsValidity, HoursConfig,
-    LibCalConfig, LibCalLocation, Library, MascotConfig, ParserProfile, RoleMapping,
-    SandboxConfig, SchoolConfig, SchoolInfo, ServerConfig, ServiceWindow, TransitConfig,
-    TransitProvider, TransitRoute, TransitStop, TrustedProxy, UpstreamIdp, UpstreamLimits,
-    is_scope_token, parse_range,
+    LibCalConfig, LibCalLocation, Library, MascotConfig, ParserProfile, RoleMapping, SandboxConfig,
+    SchoolConfig, SchoolInfo, ServerConfig, ServiceWindow, TransitConfig, TransitProvider,
+    TransitRoute, TransitStop, TrustedProxy, UpstreamIdp, UpstreamLimits, is_scope_token,
+    parse_range,
 };
 pub use validate::{ConfigIssue, Env};
 

@@ -66,13 +66,12 @@ fn init_logging() {
 
 /// `kampus auth rotate-key --school <school.yaml>`.
 fn rotate_key(mut args: impl Iterator<Item = String>) -> ExitCode {
-    let school = match (args.next().as_deref(), args.next(), args.next()) {
-        (Some("--school"), Some(path), None) => PathBuf::from(path),
-        _ => {
-            tracing::error!("usage: kampus auth rotate-key --school <school.yaml>");
-            return ExitCode::from(2);
-        }
+    let (Some("--school"), Some(path), None) = (args.next().as_deref(), args.next(), args.next())
+    else {
+        tracing::error!("usage: kampus auth rotate-key --school <school.yaml>");
+        return ExitCode::from(2);
     };
+    let school = PathBuf::from(path);
     let config = match SchoolConfig::load(&school) {
         Ok(config) => config,
         Err(error) => {
@@ -114,13 +113,11 @@ async fn main() -> ExitCode {
 
     let mut raw = std::env::args().skip(1);
     if raw.next().as_deref() == Some("auth") {
-        return match raw.next().as_deref() {
-            Some("rotate-key") => rotate_key(raw),
-            _ => {
-                tracing::error!("usage: kampus auth rotate-key --school <school.yaml>");
-                ExitCode::from(2)
-            }
-        };
+        if raw.next().as_deref() == Some("rotate-key") {
+            return rotate_key(raw);
+        }
+        tracing::error!("usage: kampus auth rotate-key --school <school.yaml>");
+        return ExitCode::from(2);
     }
 
     let Some(args) = parse_args().filter(|a| matches!(a.command.as_str(), "serve" | "check"))

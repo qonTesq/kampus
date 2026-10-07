@@ -61,8 +61,10 @@ pub enum AppError {
 
 /// Reads secret environment variables by name (injected so tests never
 /// mutate the process environment).
+type SecretLookup = dyn Fn(&str) -> Option<String> + Send + Sync;
+
 #[derive(Clone)]
-pub struct Secrets(pub Arc<dyn Fn(&str) -> Option<String> + Send + Sync>);
+pub struct Secrets(pub Arc<SecretLookup>);
 
 impl Secrets {
     /// The real process environment.
@@ -155,9 +157,7 @@ impl App {
         let secrets = options.secrets.clone().unwrap_or_else(Secrets::process);
         #[cfg(feature = "broker")]
         let broker = match &init.school.auth.broker {
-            Some(_) => {
-                Some(kampus_auth::Broker::new(&init.school, &*secrets.0)?)
-            }
+            Some(_) => Some(kampus_auth::Broker::new(&init.school, &*secrets.0)?),
             None => None,
         };
         let settings = AuthSettings::from_school(&init.school);
@@ -241,17 +241,18 @@ impl App {
         Some(
             broker
                 .router()
-                .layer(middleware::map_request(
-                    |mut request: Request| async move {
-                        let client = request.extensions().get::<crate::client::ClientAddr>().copied();
-                        if let Some(crate::client::ClientAddr(ip)) = client {
-                            request
-                                .extensions_mut()
-                                .insert(kampus_auth::ClientAddress(ip));
-                        }
+                .layer(middleware::map_request(|mut request: Request| async move {
+                    let client = request
+                        .extensions()
+                        .get::<crate::client::ClientAddr>()
+                        .copied();
+                    if let Some(crate::client::ClientAddr(ip)) = client {
                         request
-                    },
-                ))
+                            .extensions_mut()
+                            .insert(kampus_auth::ClientAddress(ip));
+                    }
+                    request
+                }))
                 .layer(middleware::from_fn_with_state(
                     Arc::new(self.init.school.server.trusted_proxy.clone()),
                     crate::client::client_addr,
