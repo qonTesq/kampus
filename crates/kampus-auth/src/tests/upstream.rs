@@ -3,6 +3,7 @@
 //! in-test provider in `idp.rs` and the recorded Google discovery document.
 
 use std::sync::atomic::Ordering;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use axum::Router;
@@ -658,4 +659,186 @@ async fn the_subject_is_a_stable_pseudonym() {
     idp.set_user(user);
     let sju = Harness::start_with(Capacity::DEFAULT, None, &idp.config(), "SJU_SUBJECT_KEY").await;
     assert_ne!(subject(&sign_in_and_redeem(&sju, &claude).await), sub);
+}
+
+// --- 6.5: sentinel logging ------------------------------------------------
+
+/// Every log line, in memory.
+#[derive(Clone, Default)]
+struct Capture(Arc<Mutex<Vec<u8>>>);
+
+impl std::io::Write for Capture {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        self.0.lock().unwrap().extend_from_slice(buf);
+        Ok(buf.len())
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
+    }
+}
+
+impl<'a> tracing_subscriber::fmt::MakeWriter<'a> for Capture {
+    type Writer = Self;
+
+    fn make_writer(&'a self) -> Self {
+        self.clone()
+    }
+}
+
+/// Set in the child process that runs [`sentinel_flow`].
+const SENTINEL_CHILD: &str = "KAMPUS_AUTH_SENTINEL_CHILD";
+
+/// Runs [`sentinel_flow`] alone in a child test process: a process-wide
+/// trace subscriber there sees every event, which a thread-local one
+/// beside parallel tests cannot guarantee (tracing caches callsite
+/// interest per process).
+#[test]
+fn no_sentinel_reaches_the_logs_at_trace() {
+    let output = std::process::Command::new(std::env::current_exe().unwrap())
+        .args([
+            "--exact",
+            "tests::upstream::sentinel_flow",
+            "--include-ignored",
+            "--nocapture",
+            "--test-threads=1",
+        ])
+        .env(SENTINEL_CHILD, "1")
+        .env("RUST_LOG", "trace")
+        .output()
+        .unwrap();
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        output.status.success() && stdout.contains("1 passed"),
+        "{stdout}
+{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+/// Install a process-wide subscriber at `RUST_LOG` (trace here), with
+/// `log` records bridged in, writing into the returned buffer.
+fn capture_trace() -> Capture {
+    use tracing_subscriber::util::SubscriberInitExt as _;
+    let capture = Capture::default();
+    tracing_subscriber::fmt()
+        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
+        .with_writer(capture.clone())
+        .with_ansi(false)
+        .finish()
+        .try_init()
+        .unwrap();
+    capture
+}
+
+#[tokio::test]
+#[ignore = "run in its own process by no_sentinel_reaches_the_logs_at_trace"]
+async fn sentinel_flow() {
+    if std::env::var_os(SENTINEL_CHILD).is_none() {
+        return;
+    }
+    let capture = capture_trace();
+    assert!(tracing::enabled!(target: "hyper", tracing::Level::TRACE));
+
+    let idp = Idp::start().await;
+    let user = User {
+        sub: "sentinel-sub-5e1f0a".to_owned(),
+        email: "sentinel.mail.7c2d@students.example.edu".to_owned(),
+        name: "Sentinel Name Qx9".to_owned(),
+        extra: json!({ "eduperson_affiliation": "student" }),
+    };
+    idp.set_user(user.clone());
+    let h = broker(&idp).await;
+    let request = AuthRequest::claude().set("scope", Some("rooms:book offline_access"));
+    let mut secrets = vec![
+        user.sub.clone(),
+        user.email.clone(),
+        user.name.clone(),
+        super::idp::IDP_SECRET.to_owned(),
+        super::SUBJECT_KEY.to_owned(),
+        super::WORKSPACE_SECRET.to_owned(),
+        request.verifier.clone(),
+    ];
+
+    // Login, consent, code exchange.
+    let started = begin(&h, &request).await;
+    let url = at_idp(&h, &started).await;
+    let upstream = query_of(url.as_str());
+    secrets.push(upstream["code"].clone());
+    secrets.push(query_of(started.authorize.as_str())["nonce"].clone());
+    secrets.push(started.cookie.split_once('=').unwrap().1.to_owned());
+    let reply = callback(&h, &url, Some(&started.cookie)).await;
+    let session = set_cookie(&reply, COOKIE).unwrap();
+    secrets.push(session.split_once('=').unwrap().1.to_owned());
+    let code = h.code(&request, &session).await;
+    secrets.push(code.clone());
+    let (status, tokens) = h.redeem(&request, &code).await;
+    assert_eq!(status, 200, "{tokens}");
+    // A refresh, a refresh-token reuse and a refused replay of the code.
+    let first = tokens["refresh_token"].as_str().unwrap().to_owned();
+    let (status, refreshed) = h.refresh(super::CLAUDE, &first, &[]).await;
+    assert_eq!(status, 200, "{refreshed}");
+    // A confidential client's secret presented with another client's token.
+    let (status, _) = h
+        .post_token(&[
+            ("grant_type", "refresh_token"),
+            ("client_id", super::WORKSPACE),
+            ("client_secret", super::WORKSPACE_SECRET),
+            ("refresh_token", &first),
+        ])
+        .await;
+    assert_eq!(status, 400);
+    assert_eq!(h.refresh(super::CLAUDE, &first, &[]).await.0, 400);
+    assert_eq!(h.redeem(&request, &code).await.0, 400);
+    for body in [&tokens, &refreshed] {
+        for name in ["access_token", "refresh_token"] {
+            secrets.push(body[name].as_str().unwrap().to_owned());
+        }
+    }
+
+    // Revocation from the connected-assistants page.
+    let list = h.get("/connections", Some(&session), None).await;
+    let csrf = super::hidden(&list.body, "csrf");
+    secrets.push(csrf.clone());
+    let grant = super::hidden(&list.body, "grant");
+    let reply = h
+        .post_form(
+            "/connections/revoke",
+            Some(&session),
+            &[("grant", &grant), ("csrf", &csrf)],
+        )
+        .await;
+    assert_eq!(reply.status, 303);
+
+    // Two refused logins (a wrong nonce, a role-less account).
+    assert_eq!(
+        tampered(&h, &idp, |c| c["nonce"] = json!("bad"))
+            .await
+            .status,
+        400
+    );
+    idp.tamper(|c| c["eduperson_affiliation"] = json!("alum"));
+    let started = begin(&h, &request).await;
+    let url = at_idp(&h, &started).await;
+    assert_eq!(callback(&h, &url, Some(&started.cookie)).await.status, 403);
+    secrets.extend(idp.knobs.id_tokens.lock().unwrap().iter().cloned());
+
+    let logs = String::from_utf8(capture.0.lock().unwrap().clone()).unwrap();
+    // The capture saw the flow (so an empty log cannot pass).
+    for expected in [
+        "upstream user signed in",
+        "consent approved",
+        "grant revoked",
+        "upstream ID token refused",
+        "no mapped kampus role",
+    ] {
+        assert!(logs.contains(expected), "missing {expected:?} in:\n{logs}");
+    }
+    for secret in &secrets {
+        assert!(secret.len() > 8, "{secret:?} is too short to be a sentinel");
+        assert!(
+            !logs.contains(secret.as_str()),
+            "{secret:?} logged:\n{logs}"
+        );
+    }
 }
