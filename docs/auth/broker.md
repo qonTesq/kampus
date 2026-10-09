@@ -84,6 +84,10 @@ The resource server fetches the broker's metadata through the public issuer URL,
 
 Locally, without a proxy, the issuer is `http://127.0.0.1:8082/auth` and the broker listens on `127.0.0.1:8082`; loopback `http` is allowed.
 
+## Upstream sign-in
+
+With `upstream` set, the sign-in page offers "Sign in with <IdP host>". `GET /auth/login/upstream` sends the browser to the IdP with the broker's own `state`, `nonce` and S256 PKCE challenge, and sets a 10-minute `__Host-kampus_login` cookie (`Secure; HttpOnly; SameSite=Lax; Path=/`) that binds the login to that browser. `GET /auth/callback` accepts the IdP's answer once: the `state` must be known, unused and from the same browser, an RFC 9207 `iss` parameter must equal the IdP's issuer (and must be present when the IdP advertises it), and the ID token's signature, `iss`, `aud`, `exp` and `nonce` must validate. Then the broker maps roles, derives the subject (below), starts the 8-hour session, clears the login cookie and continues to consent. Any failure shows an error page and creates no session; an IdP timeout or outage (5 s per request) shows a retryable page. Registration and role-mapping checklist: [school-idp.md](school-idp.md).
+
 ## Signing keys and rotation
 
 `key_file` holds an active Ed25519 key and at most one previous key, as JSON. Each key's `kid` is its RFC 7638 thumbprint. `kampus serve` creates the file when it's absent, with owner-only permissions on Unix; on Windows, restrict the file's ACL to the service account yourself. A file that is unreadable, malformed or holds a non-Ed25519 key stops startup and is never overwritten. Back the file up like any secret: it's plaintext at rest.

@@ -60,7 +60,7 @@ Branch `change/auth-broker`, created after `standard-token-profile` is merged an
 - [x] 6.3 Role mapping (design §7): claim path, string or array, union of rules, no role → explanatory page and no code, admin never mappable. Evidence: tests including an injected `roles` request parameter having no effect. (60 min)
 - [x] 6.4 Pseudonymous subject: the length-prefixed HMAC, the `k1.` prefix, the key from the environment. Evidence: stability across two logins and two clients; different users and schools give different values; the upstream `sub` is absent from tokens. (45 min)
 - [x] 6.5 Sentinel logging test over the full flow at `RUST_LOG=trace` (sentinel email and name in the ID token; codes, tokens and secrets). Evidence: no sentinel in captured logs. (60 min)
-- [ ] 6.6 Write `docs/auth/school-idp.md`, the "Point kampus at your school's OIDC IdP" checklist: client registration with redirect `{issuer}/callback`, scopes, the claim to map, role mapping examples, the subject-key warning, and pointing the RS at a school's own AS instead. Evidence: the checklist is used verbatim in 6.7. (45 min)
+- [x] 6.6 Write `docs/auth/school-idp.md`, the "Point kampus at your school's OIDC IdP" checklist: client registration with redirect `{issuer}/callback`, scopes, the claim to map, role mapping examples, the subject-key warning, and pointing the RS at a school's own AS instead. Evidence: the checklist is used verbatim in 6.7. (45 min)
 - [ ] 6.7 Live upstream run against a real OIDC IdP (design Open Questions) through a tunnel. Evidence: a dated secret-free record in `docs/auth/qualification.md` (IdP, scopes, mapped role, outcome). (90 min)
 
 ## 7. Tunnel, live assistants and the one-command trial (checkpoint: a university can reproduce it) — 9.75 h
