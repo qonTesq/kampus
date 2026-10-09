@@ -619,6 +619,22 @@ mod tests {
         assert_eq!(store.grants_for("s"), Vec::<Grant>::new());
     }
 
+    /// Regression from the proptest shrink (task 5.5): revoking a stale
+    /// grant ID never touches a newer grant for the same key.
+    #[test]
+    fn revoking_a_stale_grant_id_spares_the_regranted_key() {
+        let store = MemoryStore::new(Capacity::DEFAULT);
+        let k = key("s", &["a"]);
+        let old = store.upsert_grant(k.clone(), "l".into(), 0).unwrap();
+        assert!(store.revoke_grant("s", &old.id).is_some());
+        let new = store.upsert_grant(k.clone(), "l".into(), 1).unwrap();
+        assert_ne!(old.id, new.id);
+        store.insert_family(family("f", k, "t1")).unwrap();
+        assert_eq!(store.revoke_grant("s", &old.id), None);
+        assert!(store.family_by_token("t1", 1).is_some());
+        assert_eq!(store.grants_for("s"), [new]);
+    }
+
     #[test]
     fn concurrent_access_is_consistent() {
         let store = std::sync::Arc::new(MemoryStore::new(Capacity::DEFAULT));

@@ -285,14 +285,7 @@ fn refresh_token(
     if family.grant.client_id != client.id() {
         return Err(OAuthError::invalid_grant());
     }
-    let scopes = match request.param("scope") {
-        Some(scope) => {
-            let asked = crate::scopes::parse(scope).ok_or_else(OAuthError::invalid_scope)?;
-            crate::scopes::grantable(&asked, &family.grant.scopes)
-                .ok_or_else(OAuthError::invalid_scope)?
-        }
-        None => family.grant.scopes.clone(),
-    };
+    let scopes = refresh_scopes(request.param("scope"), &family.grant.scopes)?;
     if request
         .param("resource")
         .is_some_and(|r| !resource_matches(inner, r))
@@ -312,6 +305,21 @@ fn refresh_token(
     )?;
     tracing::info!(client_id = %client.id(), "refresh token rotated");
     Ok(token_response(&minted, Some(&next)))
+}
+
+/// The scopes a refresh may carry: the grant's, or a requested subset
+/// (`offline_access` aside). Never wider than the grant.
+pub(crate) fn refresh_scopes(
+    requested: Option<&str>,
+    grant: &BTreeSet<String>,
+) -> Result<BTreeSet<String>, OAuthError> {
+    match requested {
+        Some(scope) => {
+            let asked = crate::scopes::parse(scope).ok_or_else(OAuthError::invalid_scope)?;
+            crate::scopes::grantable(&asked, grant).ok_or_else(OAuthError::invalid_scope)
+        }
+        None => Ok(grant.clone()),
+    }
 }
 
 /// Device clients only: their configured roles and scopes, `sub` the

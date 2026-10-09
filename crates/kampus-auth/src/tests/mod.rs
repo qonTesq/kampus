@@ -8,6 +8,7 @@ mod consent;
 mod flow;
 mod limits;
 mod negative;
+mod proptests;
 mod refresh;
 mod session;
 

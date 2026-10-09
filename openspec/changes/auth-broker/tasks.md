@@ -50,7 +50,7 @@ Branch `change/auth-broker`, created after `standard-token-profile` is merged an
 - [x] 5.2 The consent page (askama): the client host or configured label only, scopes, resource, signed-in label; Approve/Deny; per-pending CSRF token; `Origin` check; `X-Frame-Options`/CSP/`Referrer-Policy` headers; replaces 3.7's direct approval. Evidence: tests for a cross-site POST, a CSRF token from another pending request, a framing header, a self-asserted `client_name` absent from the HTML, and deny → `access_denied` with `iss`. (120 min)
 - [x] 5.3 The connected-assistants page and revoke POST (subject-scoped lookup, same response on a miss). Evidence: tests for revoking one of two clients, another user's grant ID, and CSRF. (90 min)
 - [x] 5.4 Revocation effects in the e2e test: after revoke, the rmcp client's refresh fails with `invalid_grant`, the access token keeps working until `exp`, and the other client is unaffected. Evidence: an e2e assertion. (60 min)
-- [ ] 5.5 `proptest` invariants (a)–(e) from design §14. Evidence: `cargo test -p kampus-auth --features sandbox proptest` passes with the default case count; any shrunk failure gets a regression test. (120 min)
+- [x] 5.5 `proptest` invariants (a)–(e) from design §14. Evidence: `cargo test -p kampus-auth --features sandbox proptest` passes with the default case count; any shrunk failure gets a regression test. (120 min)
 - [ ] 5.6 Accessibility pass on both pages (labels, keyboard order, focus, status text) and a short student-facing section in `docs/auth/broker.md`. Evidence: keyboard-only walkthrough notes. (60 min)
 
 ## 6. Upstream OIDC login (checkpoint: real users sign in through an IdP) — 8.5 h
