@@ -108,6 +108,8 @@ impl Instance {
         let mut policy = PolicyConfig::load(&temple_dir().join("policy.yaml")).unwrap();
         policy.sensitive_enabled = true;
         policy.allow_self_registered_sensitive = personal;
+        // The step-up test confirms three times within a minute.
+        policy.limits.booking_confirms_per_minute = 10;
         policy.client_registry.push(RegisteredClient {
             client_id: assistant.client_id.clone(),
             registration: ClientRegistration::Cimd,
@@ -462,4 +464,111 @@ async fn personal_switch_on_allows_my_deadlines_after_sign_in() {
 #[tokio::test]
 async fn personal_switch_off_denies_my_deadlines_after_sign_in() {
     personal_switch_scenario(false).await;
+}
+
+fn scopes(access_token: &str) -> Vec<String> {
+    claims_of(access_token)["scope"]
+        .as_str()
+        .unwrap_or_default()
+        .split(' ')
+        .map(str::to_owned)
+        .collect()
+}
+
+/// Task 4.4: `confirm_booking` 403 → `request_scope_upgrade` → a new grant →
+/// allowed; then a forced refresh through rmcp rotates the refresh token.
+#[tokio::test]
+async fn confirm_booking_steps_up_then_rmcp_refresh_rotates() {
+    let instance = Instance::new();
+    let assistant = Assistant::start().await;
+    let _running = instance.start_e2e(&assistant, true);
+    let issuer = instance.issuer();
+    let browser = browser();
+    let mut oauth = signed_in(&instance, &assistant, &browser).await;
+    let first = tokens(&oauth).await;
+    let first_access = first["access_token"].as_str().unwrap();
+    assert!(!scopes(first_access).contains(&"rooms:book".to_owned()));
+
+    // No proposal exists, so an admitted call can only end in the module.
+    let confirm = json!({ "confirmation_id": "cnf_e2e_unknown" });
+    let mut required = None;
+    for version in &VERSIONS {
+        let client = connect(&instance, version, Some(first_access)).await;
+        let (refused, row) =
+            audited(&instance, call(&client, "confirm_booking", confirm.clone())).await;
+        let (status, header, scope) = challenge(&refused.unwrap_err());
+        assert_eq!(status, 403, "{version:?}");
+        assert!(header.contains("error=\"insufficient_scope\""), "{header}");
+        assert_eq!(scope.as_deref(), Some("rooms:book"));
+        assert_eq!(row["tool"], "confirm_booking");
+        assert_eq!(row["decision"], "deny");
+        client.cancel().await.unwrap();
+        required = scope;
+    }
+
+    let auth_url = oauth
+        .request_scope_upgrade(&required.unwrap(), &assistant.redirect_uri)
+        .await
+        .unwrap();
+    let requested = reqwest::Url::parse(&auth_url)
+        .unwrap()
+        .query_pairs()
+        .find(|(k, _)| k == "scope")
+        .map(|(_, v)| v.into_owned())
+        .unwrap();
+    let requested: Vec<&str> = requested.split(' ').collect();
+    assert!(requested.contains(&"rooms:book") && requested.contains(&"offline_access"));
+    // The broker session from the first sign-in skips the picker.
+    let (callback, picked) = sign_in(&browser, &issuer, &auth_url).await;
+    assert!(!picked, "the session cookie should carry the sign-in");
+    oauth.handle_callback_url(&callback).await.unwrap();
+
+    let upgraded = tokens(&oauth).await;
+    let upgraded_access = upgraded["access_token"].as_str().unwrap();
+    assert!(scopes(upgraded_access).contains(&"rooms:book".to_owned()));
+    // A new grant: a new refresh family, not a rotation of the first one.
+    assert_ne!(upgraded["refresh_token"], first["refresh_token"]);
+    for version in &VERSIONS {
+        let client = connect(&instance, version, Some(upgraded_access)).await;
+        let (result, row) =
+            audited(&instance, call(&client, "confirm_booking", confirm.clone())).await;
+        let result = result.unwrap_or_else(|e| panic!("{version:?}: {e}"));
+        assert_eq!(row["decision"], "allow", "{version:?}");
+        assert_eq!(row["rule"], "booking-confirm");
+        // Past both scope checks (policy and the module's own) into the
+        // proposal store, which knows no such confirmation.
+        assert_eq!(envelope(&result)["error"]["code"], "confirmation_invalid");
+        client.cancel().await.unwrap();
+    }
+
+    // A forced refresh through rmcp: new access token, rotated refresh token.
+    oauth.refresh_token().await.unwrap();
+    let refreshed = tokens(&oauth).await;
+    assert_ne!(refreshed["access_token"], upgraded["access_token"]);
+    assert_ne!(refreshed["refresh_token"], upgraded["refresh_token"]);
+    let refreshed_access = refreshed["access_token"].as_str().unwrap();
+    assert!(scopes(refreshed_access).contains(&"rooms:book".to_owned()));
+    let mcp = connect(&instance, &VERSIONS[0], Some(refreshed_access)).await;
+    let (result, row) = audited(&instance, call(&mcp, "confirm_booking", confirm)).await;
+    assert!(result.is_ok());
+    assert_eq!(row["decision"], "allow", "{row}");
+    mcp.cancel().await.unwrap();
+
+    // The rotated-out token is now reuse: refused, and the family revoked,
+    // so rmcp's next refresh fails too.
+    let reuse = client()
+        .post(format!("{issuer}/token"))
+        .header("content-type", "application/x-www-form-urlencoded")
+        .body(format!(
+            "grant_type=refresh_token&client_id={}&refresh_token={}",
+            assistant.client_id.replace(':', "%3A").replace('/', "%2F"),
+            upgraded["refresh_token"].as_str().unwrap()
+        ))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(reuse.status(), 400);
+    let body: Value = reuse.json().await.unwrap();
+    assert_eq!(body["error"], "invalid_grant");
+    assert!(oauth.refresh_token().await.is_err());
 }
