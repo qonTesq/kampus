@@ -1,9 +1,9 @@
 {% extends "base.html" %}
-{% block title %}kampus: connected assistants{% endblock %}
+{% block title %}kampus: {% if revoked %}assistant disconnected{% else %}connected assistants{% endif %}{% endblock %}
 {% block content %}
 <h1>Connected assistants</h1>
+{% if revoked %}<p role="status"><strong>Done.</strong> That assistant can no longer renew its access to kampus.</p>{% endif %}
 <p>Signed in as <strong>{{ user }}</strong>.</p>
-{% if revoked %}<p role="status">Done. That assistant can no longer renew its access to kampus.</p>{% endif %}
 <p>Disconnecting stops an assistant from renewing its access. An access token it already holds keeps working until it expires, at most {{ minutes }} minutes.</p>
 {% if grants.is_empty() %}
 <p>No assistants are connected.</p>

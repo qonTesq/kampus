@@ -99,7 +99,7 @@ kampus auth rotate-key --school schools/temple/school.yaml
 
 ## Walkthrough: sign in with curl (sandbox build)
 
-This runs the whole authorization-code flow by hand against a local demo build: authorize, the synthetic demo-user picker, the client redirect, the token exchange, an MCP call and a refresh. It uses the pre-registered workspace client `kampus-claude`, so nothing is fetched from claude.ai; curl only reads the redirect to `https://claude.ai/api/mcp/auth_callback` and never follows it. Run it from the repository root with `curl` and `openssl` installed. On Windows Git Bash, use `demo=$(cygpath -m "$(mktemp -d)")` so the native binary gets a Windows path.
+This runs the whole authorization-code flow by hand against a local demo build: authorize, the synthetic demo-user picker, consent, the client redirect, the token exchange, an MCP call, a refresh and a disconnect. It uses the pre-registered workspace client `kampus-claude`, so nothing is fetched from claude.ai; curl only reads the redirect to `https://claude.ai/api/mcp/auth_callback` and never follows it. Run it from the repository root with `curl` and `openssl` installed. On Windows Git Bash, use `demo=$(cygpath -m "$(mktemp -d)")` so the native binary gets a Windows path.
 
 Build and configure a throwaway school with the broker, one demo user and sandbox on:
 
@@ -164,12 +164,20 @@ pending=${login#*pending=}
 
 # 3. The sign-in page lists the demo users; pick Student A (the browser's form POST).
 curl -s "$issuer/login?pending=$pending" | grep 'synthetic demo user'
-callback=$(curl -s -o /dev/null -w '%{redirect_url}' -c "$demo/cookies.txt" \
-  -d "pending=$pending&user=0" "$issuer/login/demo")
+curl -s -o /dev/null -w '%{redirect_url}\n' -c "$demo/cookies.txt" \
+  -d "pending=$pending&user=0" "$issuer/login/demo"
+                         # http://127.0.0.1:8082/auth/consent?pending=<id>
+
+# 4. Consent: the page names the client, the resource and the scopes. Approve it.
+consent=$(curl -s -b "$demo/cookies.txt" "$issuer/consent?pending=$pending")
+printf %s "$consent" | grep '<h1>'   # <h1>Allow Claude (Temple workspace) to use kampus?</h1>
+csrf=$(printf %s "$consent" | sed -n 's/.*name="csrf" value="\([0-9a-f]*\)".*/\1/p')
+callback=$(curl -s -o /dev/null -w '%{redirect_url}' -b "$demo/cookies.txt" \
+  -d "pending=$pending&csrf=$csrf&decision=approve" "$issuer/consent")
 echo "$callback"         # https://claude.ai/api/mcp/auth_callback?code=<code>&state=demo-state&iss=http%3A%2F%2F127.0.0.1%3A8082%2Fauth
 code=$(printf %s "$callback" | sed -n 's/.*[?&]code=\([0-9a-f]*\).*/\1/p')
 
-# 4. Redeem the code within 60 s (client_secret_basic for the workspace client).
+# 5. Redeem the code within 60 s (client_secret_basic for the workspace client).
 tokens=$(curl -s -u "kampus-claude:$KAMPUS_TEMPLE_CLAUDE_SECRET" "$issuer/token" \
   -d grant_type=authorization_code -d code=$code \
   --data-urlencode redirect_uri=$redirect \
@@ -179,7 +187,7 @@ echo "$tokens"           # {"access_token":"…","expires_in":900,"refresh_token
 access=$(printf %s "$tokens" | sed -n 's/.*"access_token":"\([^"]*\)".*/\1/p')
 refresh=$(printf %s "$tokens" | sed -n 's/.*"refresh_token":"\([^"]*\)".*/\1/p')
 
-# 5. Call my_deadlines (MCP 2026-07-28) without and with the token.
+# 6. Call my_deadlines (MCP 2026-07-28) without and with the token.
 call() {
   curl -s -w '\nHTTP %{http_code}\n' "$resource" "$@" \
     -H 'Content-Type: application/json' \
@@ -191,17 +199,41 @@ call() {
 call                                   # HTTP 401: a Sensitive tool needs sign-in
 call -H "Authorization: Bearer $access" # HTTP 200: token verified; the policy decides
 
-# 6. Refresh: a new access token and a rotated refresh token.
+# 7. Refresh: a new access token and a rotated refresh token.
 curl -s -u "kampus-claude:$KAMPUS_TEMPLE_CLAUDE_SECRET" "$issuer/token" \
   -d grant_type=refresh_token -d refresh_token=$refresh
 # Presenting the rotated-out token again is reuse: invalid_grant, and the family is revoked.
 curl -s -u "kampus-claude:$KAMPUS_TEMPLE_CLAUDE_SECRET" "$issuer/token" \
   -d grant_type=refresh_token -d refresh_token=$refresh
 
+# 8. Connected assistants: the session lists its grant; disconnect it.
+page=$(curl -s -b "$demo/cookies.txt" "$issuer/connections")
+printf %s "$page" | grep '>Disconnect '   # <p><button type="submit">Disconnect Claude (Temple workspace)</button></p>
+grant=$(printf %s "$page" | sed -n 's/.*name="grant" value="\([0-9a-f]*\)".*/\1/p')
+csrf=$(printf %s "$page" | sed -n 's/.*name="csrf" value="\([0-9a-f]*\)".*/\1/p')
+curl -s -o /dev/null -w '%{http_code} %{redirect_url}\n' -b "$demo/cookies.txt" \
+  -d "grant=$grant&csrf=$csrf" "$issuer/connections/revoke"
+                         # 303 http://127.0.0.1:8082/auth/connections?revoked=1
+curl -s -b "$demo/cookies.txt" "$issuer/connections" | grep 'No assistants'
+
 kill %1
 ```
 
-With the shipped Temple policy (`sensitive_enabled: false`), the authenticated `my_deadlines` call returns HTTP 200 with a `permission_denied` envelope: the resource server accepted the broker's token, and school policy refused the Sensitive tool. Turn the switches on in a copy of the policy to see deadlines. Until the consent page lands, signing in issues the code directly; the session cookie in `$demo/cookies.txt` skips the picker on the next authorization for 8 hours.
+With the shipped Temple policy (`sensitive_enabled: false`), the authenticated `my_deadlines` call returns HTTP 200 with a `permission_denied` envelope: the resource server accepted the broker's token, and school policy refused the Sensitive tool. Turn the switches on in a copy of the policy to see deadlines. The session cookie in `$demo/cookies.txt` skips the picker on the next authorization for 8 hours, and an authorization for the same client and scopes skips consent while the grant exists. The form POSTs work from curl because it sends no `Origin`; a browser's cross-site POST is refused.
+
+## For students: connecting and disconnecting an assistant
+
+When you add kampus to Claude, ChatGPT or another assistant, it sends you to your school's kampus sign-in page. After you sign in, kampus asks whether to allow that assistant. The page names the assistant by its web address (for example `claude.ai`) or by the name your school gave it, never by a name the assistant chose for itself. It also shows the kampus address it will use and any extra permission it asks for, such as `rooms:book` for booking study rooms. Choose **Allow** or **Deny**. Deny sends you back to the assistant with nothing shared.
+
+You are asked once per assistant and permission set. If an assistant later asks for more (for example booking rooms), kampus asks you again, and you'll see two entries for it.
+
+To disconnect an assistant, open `/auth/connections` on your school's kampus address while you are still signed in (a sign-in lasts 8 hours; to sign in again, connect from your assistant). Each connected assistant has a **Disconnect** button. After you disconnect, the assistant can no longer renew its access. A token it already holds keeps working until it expires, at most `access_token_ttl_seconds` (15 minutes by default). Your school's policy still decides every request in the meantime.
+
+### Accessibility
+
+The sign-in, consent, connected-assistants and error pages are plain HTML with no scripts or styles (the CSP allows none): one `h1` per page, buttons whose text names the action and the assistant ("Allow claude.ai", "Disconnect claude.ai"), tab order equal to reading order and the browser's own focus ring. Nothing takes focus automatically, so Allow is never one keypress away on arrival. Errors are announced with `role="alert"`; after a disconnect the page title changes to "kampus: assistant disconnected" and a `role="status"` message comes right after the heading.
+
+Keyboard-only walkthrough (2026-10-09, the desktop app's Chromium pane, a local sandbox build with a loopback redirect): on the sign-in page, Tab focused "Student A (synthetic demo user)" and Enter signed in. On the consent page, Tab went to the "connected assistants" link, then "Allow Claude (Temple workspace)", then "Deny Claude (Temple workspace)", with a visible focus ring; Enter on Allow returned to the client with `code`, `state` and `iss`. On `/auth/connections`, the first Tab reached "Disconnect Claude (Temple workspace)"; Enter removed it, and the new page's title and status text said so. Not tested: a screen reader, or browser zoom.
 
 ## Subject key
 
