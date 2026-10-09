@@ -657,3 +657,115 @@ async fn confirm_booking_steps_up_then_rmcp_refresh_rotates() {
     assert_eq!(body["error"], "invalid_grant");
     assert!(oauth.refresh_token().await.is_err());
 }
+
+/// Task 5.4: two assistants for one student; revoking the first on the
+/// connected-assistants page makes rmcp's refresh fail with `invalid_grant`,
+/// leaves its current access token working until `exp`, and leaves the
+/// second assistant untouched.
+#[tokio::test]
+async fn revoking_one_assistant_stops_only_its_refresh() {
+    let instance = Instance::new();
+    let first = Assistant::start().await;
+    let second = Assistant::start_as("localhost").await;
+    let mut school = instance.e2e_school(&first);
+    school
+        .auth
+        .broker
+        .as_mut()
+        .unwrap()
+        .cimd_clients
+        .push(second.client_id.clone());
+    let mut policy = Instance::e2e_policy(&first, true);
+    policy.client_registry.push(RegisteredClient {
+        client_id: second.client_id.clone(),
+        registration: ClientRegistration::Cimd,
+        approved: false,
+        workspace: "second e2e assistant (CIMD)".to_owned(),
+    });
+    let _running = instance.start_with(school, policy);
+    let issuer = instance.issuer();
+    let browser = browser();
+
+    let one = signed_in(&instance, &first, &browser).await;
+    let mut two = oauth(&instance).await;
+    two.start_authorization(request(&second)).await.unwrap();
+    let auth_url = two.get_authorization_url().await.unwrap();
+    let signed = sign_in(&browser, &issuer, &auth_url).await;
+    assert!(!signed.picked && signed.consented);
+    two.handle_callback_url(&signed.callback).await.unwrap();
+    let one_access = access_token(&one).await;
+
+    // The student disconnects the first assistant (label: its client ID host).
+    let page = browser
+        .get(format!("{issuer}/connections"))
+        .send()
+        .await
+        .unwrap()
+        .text()
+        .await
+        .unwrap();
+    assert!(page.contains("Disconnect localhost"), "{page}");
+    let item = page
+        .split("<li>")
+        .find(|item| item.contains("Disconnect 127.0.0.1"))
+        .unwrap_or_else(|| panic!("{page}"));
+    let response = submit(
+        &browser,
+        format!("{issuer}/connections/revoke"),
+        &[
+            ("grant", &field(item, "grant")),
+            ("csrf", &field(item, "csrf")),
+        ],
+    )
+    .await;
+    assert_eq!(
+        location(&response),
+        format!("{issuer}/connections?revoked=1")
+    );
+    let page = browser
+        .get(format!("{issuer}/connections?revoked=1"))
+        .send()
+        .await
+        .unwrap()
+        .text()
+        .await
+        .unwrap();
+    assert!(!page.contains("Disconnect 127.0.0.1") && page.contains("Disconnect localhost"));
+
+    // rmcp's refresh is rejected with invalid_grant.
+    let refused = one.refresh_token().await;
+    assert!(
+        matches!(refused, Err(AuthError::TokenRefreshRejected(ref m)) if m.contains("invalid_grant")),
+        "{refused:?}"
+    );
+    // The access token it already holds keeps working until `exp`.
+    let exp = claims_of(&one_access)["exp"].as_i64().unwrap();
+    assert!(exp > unix_now(), "the token is still within its lifetime");
+    let mcp = connect(&instance, &VERSIONS[0], Some(&one_access)).await;
+    let (result, row) = audited(&instance, call(&mcp, "my_deadlines", json!({}))).await;
+    assert!(result.is_ok());
+    assert_eq!(row["client_id"], first.client_id.as_str());
+    assert_eq!(row["decision"], "allow", "{row}");
+    mcp.cancel().await.unwrap();
+
+    // The second assistant is unaffected: it refreshes and calls.
+    let before = access_token(&two).await;
+    two.refresh_token().await.unwrap();
+    let after = access_token(&two).await;
+    assert_ne!(before, after);
+    let mcp = connect(&instance, &VERSIONS[1], Some(&after)).await;
+    let (result, row) = audited(&instance, call(&mcp, "my_deadlines", json!({}))).await;
+    assert!(result.is_ok());
+    assert_eq!(row["client_id"], second.client_id.as_str());
+    assert_eq!(row["decision"], "allow", "{row}");
+    mcp.cancel().await.unwrap();
+}
+
+fn unix_now() -> i64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs()
+        .try_into()
+        .unwrap()
+}
