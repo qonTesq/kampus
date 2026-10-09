@@ -48,14 +48,17 @@ struct Instance {
 
 impl Instance {
     fn new() -> Self {
+        // A counter, not just the clock: Windows timestamps collide across parallel tests.
+        static NEXT: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
         let bind = || {
             let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
             listener.set_nonblocking(true).unwrap();
             listener
         };
         let dir = std::env::temp_dir().join(format!(
-            "kampus-broker-test-{}-{}",
+            "kampus-broker-test-{}-{}-{}",
             std::process::id(),
+            NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed),
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap()
