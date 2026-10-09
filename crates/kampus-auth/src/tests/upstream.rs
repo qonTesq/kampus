@@ -13,8 +13,10 @@ use kampus_core::runtime::UpstreamError;
 use serde_json::{Value, json};
 use url::Url;
 
-use super::idp::{IDP_CLIENT_ID, Idp, Signing};
-use super::{AuthRequest, Harness, Reply, decode_parts, fixture, query_of};
+use super::idp::{IDP_CLIENT_ID, Idp, Signing, User};
+use super::{
+    AuthRequest, CHATGPT, CHATGPT_REDIRECT, Harness, Reply, decode_parts, fixture, query_of,
+};
 use crate::login::upstream::{
     DISCOVERY_SECONDS, Http, LOGIN_COOKIE, MAX_RESPONSE_BYTES, Metadata, Upstream,
 };
@@ -529,4 +531,131 @@ async fn an_unknown_pending_request_cannot_start_a_login() {
         .await;
     reply.assert_page(400);
     assert_eq!(idp.knobs.discovery_hits.load(Ordering::SeqCst), 0);
+}
+
+// --- 6.3: role mapping ----------------------------------------------------
+
+/// The access-token claims after an upstream sign-in through `request`.
+async fn token_claims(h: &Harness, request: &AuthRequest) -> Value {
+    let body = sign_in_and_redeem(h, request).await;
+    decode_parts(body["access_token"].as_str().unwrap()).1
+}
+
+#[tokio::test]
+async fn an_account_without_a_mapped_role_gets_no_code() {
+    let idp = Idp::start().await;
+    let h = broker(&idp).await;
+    let mut user = User::student("u-alum");
+    user.extra = json!({ "eduperson_affiliation": ["member", "alum"], "roles": ["student"] });
+    idp.set_user(user);
+    let request = AuthRequest::claude();
+    let started = begin(&h, &request).await;
+    let url = at_idp(&h, &started).await;
+    let reply = callback(&h, &url, Some(&started.cookie)).await;
+    assert_refused(&reply, 403);
+    assert!(reply.body.contains("no kampus role"), "{}", reply.body);
+    assert!(
+        reply.body.contains("map your affiliation"),
+        "{}",
+        reply.body
+    );
+    // The pending request never reached consent or a code.
+    assert!(
+        h.broker
+            .inner
+            .store
+            .pending(&started.pending, h.now())
+            .is_some()
+    );
+}
+
+#[tokio::test]
+async fn roles_are_the_union_of_matching_rules() {
+    let idp = Idp::start().await;
+    let h = broker(&idp).await;
+    let mut user = User::student("u-ta");
+    user.extra = json!({
+        "eduperson_affiliation": "student",
+        "org": { "kampus": { "groups": ["faculty", "it"] } },
+    });
+    idp.set_user(user);
+    let claims = token_claims(&h, &AuthRequest::claude()).await;
+    let mut roles: Vec<&str> = claims["roles"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|r| r.as_str().unwrap())
+        .collect();
+    roles.sort_unstable();
+    assert_eq!(roles, ["faculty", "student"]);
+}
+
+#[tokio::test]
+async fn injected_roles_have_no_effect() {
+    let idp = Idp::start().await;
+    let h = broker(&idp).await;
+    let mut user = User::student("u-1001");
+    // Unmapped claims that look like roles.
+    user.extra = json!({
+        "eduperson_affiliation": ["student"],
+        "roles": ["admin", "faculty"],
+        "role": "admin",
+    });
+    idp.set_user(user);
+    let request = AuthRequest::claude()
+        .add("roles", "admin")
+        .add("roles", "faculty")
+        .add("role", "admin");
+    let claims = token_claims(&h, &request).await;
+    assert_eq!(claims["roles"], json!(["student"]));
+}
+
+// --- 6.4: pseudonymous subject --------------------------------------------
+
+#[tokio::test]
+async fn the_subject_is_a_stable_pseudonym() {
+    let idp = Idp::start().await;
+    let user = User::student("u-sentinel-sub-4242");
+    idp.set_user(user.clone());
+    let h = broker(&idp).await;
+    let claude = AuthRequest::claude();
+    let chatgpt = AuthRequest::new(CHATGPT, CHATGPT_REDIRECT);
+    let first = sign_in_and_redeem(&h, &claude).await;
+    let second = sign_in_and_redeem(&h, &chatgpt).await;
+    let subject = |body: &Value| {
+        decode_parts(body["access_token"].as_str().unwrap()).1["sub"]
+            .as_str()
+            .unwrap()
+            .to_owned()
+    };
+    // Two logins, two clients, one subject.
+    let sub = subject(&first);
+    assert_eq!(sub, subject(&second));
+    assert!(sub.starts_with("k1.") && sub.len() == 35, "{sub}");
+    assert_eq!(
+        sub,
+        crate::subject::pseudonym(
+            &crate::util::hex_decode(super::SUBJECT_KEY).unwrap(),
+            &idp.issuer,
+            &user.sub
+        )
+    );
+    // No upstream subject, email or name anywhere in either token.
+    for body in [&first, &second] {
+        let token = body["access_token"].as_str().unwrap();
+        let (header, claims) = decode_parts(token);
+        let text = format!("{header}{claims}{body}");
+        for upstream in [&user.sub, &user.email, &user.name] {
+            assert!(!text.contains(upstream.as_str()), "{upstream} in {text}");
+        }
+    }
+
+    // Another user at the same school.
+    idp.set_user(User::student("u-1002"));
+    assert_ne!(subject(&sign_in_and_redeem(&h, &claude).await), sub);
+
+    // The same user at another school (its own subject key).
+    idp.set_user(user);
+    let sju = Harness::start_with(Capacity::DEFAULT, None, &idp.config(), "SJU_SUBJECT_KEY").await;
+    assert_ne!(subject(&sign_in_and_redeem(&sju, &claude).await), sub);
 }

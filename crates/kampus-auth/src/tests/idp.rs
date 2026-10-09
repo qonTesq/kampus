@@ -199,6 +199,10 @@ impl Idp {
         *self.shared.key.lock().unwrap() = Key::generate();
     }
 
+    pub(crate) fn set_user(&self, user: User) {
+        *self.knobs.user.lock().unwrap() = user;
+    }
+
     pub(crate) fn tamper(&self, f: impl Fn(&mut Value) + Send + Sync + 'static) {
         *self.knobs.tamper.lock().unwrap() = Some(Box::new(f));
     }
