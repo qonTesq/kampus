@@ -17,16 +17,11 @@ mod limits;
 mod login;
 mod metadata;
 mod pages;
+mod roles;
 mod scopes;
-#[cfg_attr(
-    not(feature = "sandbox"),
-    allow(
-        dead_code,
-        reason = "without sandbox demo login, sessions are created by upstream login (group 6)"
-    )
-)]
 mod session;
 mod store;
+mod subject;
 mod token;
 mod util;
 
@@ -41,7 +36,7 @@ use axum::response::IntoResponse;
 use axum::routing::{get, post};
 #[cfg(feature = "sandbox")]
 use kampus_core::config::DemoUser;
-use kampus_core::config::SchoolConfig;
+use kampus_core::config::{BrokerConfig, SchoolConfig};
 use url::Url;
 
 use cimd::CimdCache;
@@ -98,7 +93,7 @@ pub enum BrokerError {
     Keys(#[from] KeyError),
     #[error("auth.broker.demo_users requires a sandbox build with sandbox.enabled: true")]
     DemoUsers,
-    #[error("the client metadata HTTP client could not be built")]
+    #[error("the broker's HTTP client could not be built")]
     Http,
 }
 
@@ -134,7 +129,10 @@ pub(crate) struct Inner {
     pub(crate) store: Box<dyn Store>,
     pub(crate) limits: Limits,
     pub(crate) school_name: String,
-    pub(crate) upstream_issuer: Option<Url>,
+    /// The school's OIDC `IdP`, when configured.
+    pub(crate) upstream: Option<login::upstream::Upstream>,
+    /// The pseudonymous-subject HMAC key.
+    pub(crate) subject_key: Vec<u8>,
     /// Synthetic demo users; empty unless `sandbox.enabled`.
     #[cfg(feature = "sandbox")]
     pub(crate) demo_users: Vec<DemoUser>,
@@ -172,7 +170,44 @@ pub fn check(
         .ok_or(BrokerError::NotConfigured)?;
     subject_key(&config.subject_key_env, secret)?;
     Clients::from_config(config, secret)?;
+    upstream_secret(config, secret)?;
     Ok(())
+}
+
+fn upstream_secret(
+    config: &BrokerConfig,
+    secret: &dyn Fn(&str) -> Option<String>,
+) -> Result<Option<String>, MissingSecret> {
+    config
+        .upstream
+        .as_ref()
+        .map(|up| {
+            secret(&up.client_secret_env)
+                .filter(|v| !v.is_empty())
+                .ok_or_else(|| MissingSecret(up.client_secret_env.clone()))
+        })
+        .transpose()
+}
+
+/// The upstream `IdP` client. Loopback http is the sandbox (and unit-test)
+/// exception for a local test provider.
+fn upstream(
+    config: &BrokerConfig,
+    secret: &dyn Fn(&str) -> Option<String>,
+    sandbox_on: bool,
+) -> Result<Option<login::upstream::Upstream>, BrokerError> {
+    let Some(client_secret) = upstream_secret(config, secret)? else {
+        return Ok(None);
+    };
+    let Some(up) = config.upstream.clone() else {
+        return Ok(None);
+    };
+    let http = login::upstream::Http::new(sandbox_on || cfg!(test)).ok_or(BrokerError::Http)?;
+    Ok(Some(login::upstream::Upstream::new(
+        up,
+        client_secret,
+        http,
+    )))
 }
 
 fn subject_key(
@@ -216,7 +251,7 @@ impl Broker {
             .broker
             .as_ref()
             .ok_or(BrokerError::NotConfigured)?;
-        let _subject_key = subject_key(&config.subject_key_env, secret)?;
+        let subject_key = subject_key(&config.subject_key_env, secret)?;
         let sandbox_on = cfg!(feature = "sandbox") && school.sandbox.enabled;
         // Defense in depth behind config validation: demo users only in a
         // sandbox build with sandbox.enabled.
@@ -226,6 +261,7 @@ impl Broker {
         let clients = Clients::from_config(config, secret)?;
         let cimd = CimdCache::new(config.cimd_clients.iter().cloned().collect(), sandbox_on)
             .ok_or(BrokerError::Http)?;
+        let upstream = upstream(config, secret, sandbox_on)?;
         let keys = SigningKeys::load_or_create(&config.key_file)?;
         let inner = Inner {
             issuer: school.auth.issuer.clone(),
@@ -239,7 +275,8 @@ impl Broker {
             store: Box::new(MemoryStore::new(capacity)),
             limits: Limits::new(),
             school_name: school.school.display_name.clone(),
-            upstream_issuer: config.upstream.as_ref().map(|u| u.issuer.clone()),
+            upstream,
+            subject_key,
             #[cfg(feature = "sandbox")]
             demo_users: config.demo_users.clone(),
             clock: options.clock.unwrap_or_else(|| Arc::new(util::unix_now)),
@@ -279,6 +316,11 @@ impl Broker {
         let browser = Router::new()
             .route(&format!("{base}/authorize"), get(authorize::authorize))
             .route(&format!("{base}/login"), get(login::login))
+            .route(
+                &format!("{base}/login/upstream"),
+                get(login::upstream::start),
+            )
+            .route(&format!("{base}/callback"), get(login::upstream::callback))
             .route(
                 &format!("{base}/consent"),
                 get(consent::show).post(consent::decide),

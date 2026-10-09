@@ -1,9 +1,10 @@
 //! `GET {issuer}/login?pending=…`: the sign-in page for a pending
-//! authorization. Upstream OIDC login arrives in group 6; sandbox builds
-//! with `sandbox.enabled` also offer the synthetic demo users.
+//! authorization: "Sign in with <school IdP>" (`upstream.rs`) and, in
+//! sandbox builds with `sandbox.enabled`, the synthetic demo users.
 
 #[cfg(feature = "sandbox")]
 pub(crate) mod demo;
+pub(crate) mod upstream;
 
 use std::sync::Arc;
 
@@ -35,11 +36,13 @@ pub(crate) async fn login(
         return PageError::Expired.into_response();
     };
     let action = format!("{}/login/demo", inner.issuer.as_str().trim_end_matches('/'));
-    let upstream_host = inner.upstream_issuer.as_ref().and_then(Url::host_str);
+    let upstream_host = inner.upstream.as_ref().and_then(|u| u.issuer.host_str());
+    let upstream_action = inner.url(&format!("/login/upstream?pending={id}"));
     let page = LoginPage {
         school: &inner.school_name,
         client: &pending.client_label,
         upstream_host,
+        upstream_action: &upstream_action,
         action: &action,
         pending: &id,
         demo_users: demo_labels(&inner),

@@ -6,11 +6,13 @@ mod authorize;
 mod basics;
 mod consent;
 mod flow;
+mod idp;
 mod limits;
 mod negative;
 mod proptests;
 mod refresh;
 mod session;
+mod upstream;
 
 use std::collections::BTreeSet;
 use std::path::PathBuf;
@@ -51,6 +53,8 @@ pub(crate) fn fixture(label: &str) -> Vec<u8> {
 pub(crate) fn secret(name: &str) -> Option<String> {
     match name {
         "SUBJECT_KEY" => Some(SUBJECT_KEY.to_owned()),
+        // Another school's subject key.
+        "SJU_SUBJECT_KEY" => Some("ff".repeat(32)),
         "CLAUDE_SECRET" => Some(WORKSPACE_SECRET.to_owned()),
         "MASCOT_SECRET" => Some("mascot-secret".to_owned()),
         "OIDC_SECRET" => Some("upstream-secret".to_owned()),
@@ -265,6 +269,17 @@ impl Harness {
     }
 
     pub(crate) async fn start_full(capacity: Capacity, keys_dir: Option<PathBuf>) -> Self {
+        Self::start_with(capacity, keys_dir, "", "SUBJECT_KEY").await
+    }
+
+    /// A broker with extra `auth.broker` YAML (indented four spaces) and
+    /// the named subject-key variable.
+    pub(crate) async fn start_with(
+        capacity: Capacity,
+        keys_dir: Option<PathBuf>,
+        broker_extra: &str,
+        subject_key_env: &str,
+    ) -> Self {
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
         let port = listener.local_addr().unwrap().port();
         let owns_dir = keys_dir.is_none();
@@ -274,7 +289,10 @@ impl Harness {
                 crate::util::random_hex(8).unwrap()
             ))
         });
-        let school = school(port, &dir.join("keys.json"), "");
+        let mut school = school(port, &dir.join("keys.json"), broker_extra);
+        if let Some(broker) = school.auth.broker.as_mut() {
+            subject_key_env.clone_into(&mut broker.subject_key_env);
+        }
         let now = Arc::new(AtomicI64::new(crate::util::unix_now()));
         let clock = Arc::clone(&now);
         let broker = Broker::build(

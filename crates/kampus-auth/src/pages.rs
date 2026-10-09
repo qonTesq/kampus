@@ -17,7 +17,7 @@ struct ErrorPage<'a> {
     retry: bool,
 }
 
-/// The sign-in page: the upstream `IdP` (group 6) and, in sandbox builds, the
+/// The sign-in page: the upstream `IdP` and, in sandbox builds, the
 /// synthetic demo users.
 #[derive(Template)]
 #[template(path = "login.html")]
@@ -25,6 +25,7 @@ pub(crate) struct LoginPage<'a> {
     pub(crate) school: &'a str,
     pub(crate) client: &'a str,
     pub(crate) upstream_host: Option<&'a str>,
+    pub(crate) upstream_action: &'a str,
     pub(crate) action: &'a str,
     pub(crate) pending: &'a str,
     pub(crate) demo_users: Vec<&'a str>,
@@ -42,11 +43,14 @@ pub(crate) enum PageError {
     /// A malformed form or request to a sign-in page.
     BadRequest,
     /// A collection is full.
-    #[cfg_attr(
-        not(feature = "sandbox"),
-        allow(dead_code, reason = "sessions are created by demo login until group 6")
-    )]
     Busy,
+    /// The school's `IdP` timed out or failed (retryable).
+    Upstream,
+    /// The upstream callback failed validation (state, browser, `iss`,
+    /// code or ID token).
+    LoginFailed,
+    /// The validated account maps to no kampus role.
+    NoRole,
     /// A rate limit was hit.
     RateLimited,
     /// The request came from another origin, or its CSRF token is wrong.
@@ -89,6 +93,24 @@ impl PageError {
                 "kampus is busy",
                 "kampus is handling too many sign-in requests right now.",
                 true,
+            ),
+            Self::Upstream => (
+                StatusCode::BAD_GATEWAY,
+                "School sign-in unavailable",
+                "kampus could not reach your school's sign-in service.",
+                true,
+            ),
+            Self::LoginFailed => (
+                StatusCode::BAD_REQUEST,
+                "Sign-in failed",
+                "kampus could not confirm this sign-in with your school, so it stopped here. Start again from your assistant.",
+                false,
+            ),
+            Self::NoRole => (
+                StatusCode::FORBIDDEN,
+                "No kampus access for this account",
+                "You signed in, but your school account has no kampus role. Ask your school's IT team to map your affiliation to a kampus role, then try again.",
+                false,
             ),
             Self::RateLimited => (
                 StatusCode::TOO_MANY_REQUESTS,

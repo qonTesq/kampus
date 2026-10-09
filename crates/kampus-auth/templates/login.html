@@ -3,9 +3,10 @@
 {% block content %}
 <h1>Sign in to {{ school }}</h1>
 <p><strong>{{ client }}</strong> is asking to use kampus for you.</p>
-{% if upstream_host.is_some() || demo_users.is_empty() %}
-<p>Sign-in through {% match upstream_host %}{% when Some with (host) %}{{ host }}{% when None %}your school{% endmatch %} is not available yet.</p>
-{% endif %}
+{% match upstream_host %}{% when Some with (host) %}
+<p><a href="{{ upstream_action }}">Sign in with {{ host }}</a></p>
+<p>kampus never sees your password and keeps no name or email address.</p>
+{% when None %}{% endmatch %}
 {% if !demo_users.is_empty() %}
 <h2>Synthetic demo users</h2>
 <p>These are not real people. They exist only in this sandbox build and see synthetic data.</p>

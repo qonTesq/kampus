@@ -14,15 +14,7 @@ use kampus_core::contracts::Role;
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct Capacity {
     pub(crate) pending: usize,
-    #[allow(dead_code, reason = "upstream OIDC login state arrives in group 6")]
     pub(crate) upstream: usize,
-    #[cfg_attr(
-        not(feature = "sandbox"),
-        allow(
-            dead_code,
-            reason = "without sandbox demo login, sessions are created by upstream login (group 6)"
-        )
-    )]
     pub(crate) sessions: usize,
     pub(crate) codes: usize,
     pub(crate) grants: usize,
@@ -61,12 +53,13 @@ pub(crate) struct Pending {
 }
 
 /// Upstream OIDC login state, keyed by its own `state`.
-#[allow(dead_code, reason = "upstream OIDC login arrives in group 6")]
 #[derive(Clone)]
 pub(crate) struct UpstreamLogin {
     pub(crate) pending: String,
     pub(crate) nonce: String,
     pub(crate) pkce_verifier: String,
+    /// SHA-256 of the login cookie set on the browser that started it.
+    pub(crate) browser: String,
     pub(crate) expires_at: i64,
 }
 
@@ -166,9 +159,7 @@ pub(crate) trait Store: Send + Sync + fmt::Debug {
     fn pending(&self, id: &str, now: i64) -> Option<Pending>;
     fn take_pending(&self, id: &str, now: i64) -> Option<Pending>;
 
-    #[allow(dead_code, reason = "upstream OIDC login arrives in group 6")]
     fn insert_upstream(&self, state: String, login: UpstreamLogin) -> Result<(), Full>;
-    #[allow(dead_code, reason = "upstream OIDC login arrives in group 6")]
     fn take_upstream(&self, state: &str, now: i64) -> Option<UpstreamLogin>;
 
     fn insert_session(&self, id: String, session: Session) -> Result<(), Full>;
