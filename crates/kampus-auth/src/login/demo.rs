@@ -10,7 +10,7 @@ use axum::http::{HeaderMap, header};
 use axum::response::{IntoResponse, Response};
 
 use crate::Inner;
-use crate::pages::PageError;
+use crate::pages::{PageError, see_other};
 use crate::session::{SessionError, set_cookie};
 
 /// The label suffix on every page and session of a demo user.
@@ -43,11 +43,11 @@ pub(crate) async fn demo_login(
     let (Some(pending_id), Some(user)) = (pending_id, user) else {
         return PageError::BadRequest.into_response();
     };
-    let Some(pending) = inner.store.take_pending(&pending_id, (inner.clock)()) else {
+    let Some(pending) = inner.store.pending(&pending_id, (inner.clock)()) else {
         return PageError::Expired.into_response();
     };
     let label = format!("{} ({SYNTHETIC})", user.label);
-    let (id, session) = match inner.start_session(user.subject.clone(), user.roles.clone(), label) {
+    let (id, _) = match inner.start_session(user.subject.clone(), user.roles.clone(), label) {
         Ok(started) => started,
         Err(SessionError::Full) => return PageError::Busy.into_response(),
         Err(SessionError::Random) => return PageError::Internal.into_response(),
@@ -56,7 +56,8 @@ pub(crate) async fn demo_login(
         return PageError::Internal.into_response();
     };
     tracing::info!(client_id = %pending.client_id, "synthetic demo user signed in");
-    let mut response = inner.approve(&pending, &session);
+    // Post/redirect/get to consent, which skips itself for a held grant.
+    let mut response = see_other(&inner.url(&format!("/consent?pending={pending_id}")));
     response.headers_mut().insert(header::SET_COOKIE, cookie);
     response
 }

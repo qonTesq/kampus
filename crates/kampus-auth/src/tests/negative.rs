@@ -144,8 +144,23 @@ async fn row_iss_is_on_success_and_every_error_redirect() {
         assert_eq!(query.get("iss"), Some(&h.issuer), "{query:?}");
         assert!(query.contains_key("error"));
     }
-    let reply = h.authorize(&AuthRequest::claude(), Some(&cookie)).await;
-    let query = reply.redirect_to(CLAUDE_REDIRECT);
+    // Consent denied: access_denied, with iss.
+    let page = h.authorize(&AuthRequest::claude(), Some(&cookie)).await;
+    let query = h
+        .decide(&page, &cookie, "deny")
+        .await
+        .redirect_to(CLAUDE_REDIRECT);
+    assert_eq!(query.get("iss"), Some(&h.issuer));
+    assert_eq!(
+        query.get("error").map(String::as_str),
+        Some("access_denied")
+    );
+    // Success.
+    let page = h.authorize(&AuthRequest::claude(), Some(&cookie)).await;
+    let query = h
+        .decide(&page, &cookie, "approve")
+        .await
+        .redirect_to(CLAUDE_REDIRECT);
     assert_eq!(query.get("iss"), Some(&h.issuer));
     assert!(query.contains_key("code"));
 }
@@ -314,7 +329,13 @@ async fn row_refresh_widening_revoked_or_restarted() {
     assert_refused(status, &body, 400, "invalid_scope");
     // After the grant is revoked: invalid_grant.
     let grant = h.broker.inner.store.grants_for(STUDENT).remove(0);
-    assert!(h.broker.inner.store.revoke_grant(STUDENT, &grant.id));
+    assert!(
+        h.broker
+            .inner
+            .store
+            .revoke_grant(STUDENT, &grant.id)
+            .is_some()
+    );
     let (status, body) = h.refresh(CLAUDE, &refresh, &[]).await;
     assert_refused(status, &body, 400, "invalid_grant");
     // After a restart (same key file, empty memory): invalid_grant.

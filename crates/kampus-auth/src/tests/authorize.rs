@@ -298,15 +298,19 @@ async fn pending_authorization_lives_ten_minutes() {
 }
 
 #[tokio::test]
-async fn a_signed_in_browser_gets_a_code_with_state_and_iss() {
+async fn a_signed_in_browser_gets_a_code_with_state_and_iss_after_consent() {
     let h = Harness::start().await;
     let cookie = h.sign_in("synthetic:student-a", &[Role::Student]);
-    let reply = h.authorize(&AuthRequest::claude(), Some(&cookie)).await;
-    let query = reply.redirect_to(CLAUDE_REDIRECT);
+    let page = h.authorize(&AuthRequest::claude(), Some(&cookie)).await;
+    let query = h
+        .decide(&page, &cookie, "approve")
+        .await
+        .redirect_to(CLAUDE_REDIRECT);
     assert_eq!(query.get("state").map(String::as_str), Some("st-123"));
     assert_eq!(query.get("iss"), Some(&h.issuer));
     assert_eq!(query["code"].len(), 64);
-    // A state-less request gets no state back.
+    // A state-less request gets no state back (the grant is held now, so
+    // the code comes without a consent page).
     let reply = h
         .authorize(&AuthRequest::claude().set("state", None), Some(&cookie))
         .await;

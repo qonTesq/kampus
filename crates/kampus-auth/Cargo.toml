@@ -19,6 +19,7 @@ kampus-core.workspace = true
 askama.workspace = true
 aws-lc-rs.workspace = true
 axum.workspace = true
+chrono.workspace = true
 http.workspace = true
 jsonwebtoken.workspace = true
 openidconnect.workspace = true

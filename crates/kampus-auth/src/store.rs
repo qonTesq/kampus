@@ -182,13 +182,10 @@ pub(crate) trait Store: Send + Sync + fmt::Debug {
 
     /// Insert the grant for `key`, or return the existing one.
     fn upsert_grant(&self, key: GrantKey, label: String, now: i64) -> Result<Grant, Full>;
-    #[allow(dead_code, reason = "consent skipping arrives in group 5")]
     fn grant(&self, key: &GrantKey) -> Option<Grant>;
-    #[allow(dead_code, reason = "the connected-assistants page arrives in group 5")]
     fn grants_for(&self, subject: &str) -> Vec<Grant>;
-    /// Delete a grant of `subject` and all its families; false on a miss.
-    #[allow(dead_code, reason = "revocation arrives in group 5")]
-    fn revoke_grant(&self, subject: &str, grant_id: &str) -> bool;
+    /// Delete a grant of `subject` and all its families; `None` on a miss.
+    fn revoke_grant(&self, subject: &str, grant_id: &str) -> Option<Grant>;
 
     fn insert_family(&self, family: Family) -> Result<(), Full>;
     /// The live family whose current token hash is `hash`.
@@ -390,16 +387,13 @@ impl Store for MemoryStore {
         grants
     }
 
-    fn revoke_grant(&self, subject: &str, grant_id: &str) -> bool {
+    fn revoke_grant(&self, subject: &str, grant_id: &str) -> Option<Grant> {
         let mut g = lock(&self.grants);
-        let Some(grant) = g
+        let grant = g
             .by_id
             .get(grant_id)
             .filter(|grant| grant.key.subject == subject)
-            .cloned()
-        else {
-            return false;
-        };
+            .cloned()?;
         g.by_id.remove(grant_id);
         g.by_key.remove(&grant.key);
         let families: Vec<String> = g
@@ -411,7 +405,7 @@ impl Store for MemoryStore {
         for id in families {
             g.drop_family(&id);
         }
-        true
+        Some(grant)
     }
 
     fn insert_family(&self, family: Family) -> Result<(), Full> {
@@ -618,9 +612,9 @@ mod tests {
         assert_eq!(store.rotate("t2", "t4".into(), 1), Rotation::Invalid);
         // Revoking a grant drops its families; other subjects can't revoke it.
         store.insert_family(family("g", k, "u1")).unwrap();
-        assert!(!store.revoke_grant("intruder", &grant.id));
+        assert_eq!(store.revoke_grant("intruder", &grant.id), None);
         assert!(store.family_by_token("u1", 1).is_some());
-        assert!(store.revoke_grant("s", &grant.id));
+        assert_eq!(store.revoke_grant("s", &grant.id), Some(grant));
         assert_eq!(store.rotate("u1", "u2".into(), 1), Rotation::Invalid);
         assert_eq!(store.grants_for("s"), Vec::<Grant>::new());
     }

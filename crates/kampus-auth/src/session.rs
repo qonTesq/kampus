@@ -62,14 +62,22 @@ impl Inner {
     /// A browser form POST from the broker's own origin. A request with no
     /// `Origin` (curl, older clients) passes; a browser always sends it on
     /// a form POST, and a cross-site `Sec-Fetch-Site` is refused too.
+    ///
+    /// Our pages send `Referrer-Policy: no-referrer`, under which the Fetch
+    /// standard makes browsers send `Origin: null` on a same-origin POST, so
+    /// `null` passes only together with `Sec-Fetch-Site: same-origin`.
     pub(crate) fn same_origin(&self, headers: &HeaderMap) -> bool {
         let issuer_origin = self.issuer.origin().ascii_serialization();
-        let origin_ok = headers
-            .get(header::ORIGIN)
-            .is_none_or(|o| o.to_str().is_ok_and(|o| o == issuer_origin));
-        let fetch_site_ok = headers
-            .get("sec-fetch-site")
-            .is_none_or(|v| v.to_str().is_ok_and(|v| v == "same-origin" || v == "none"));
+        let fetch_site = headers.get("sec-fetch-site").map(HeaderValue::to_str);
+        let same_site = matches!(fetch_site, Some(Ok("same-origin")));
+        let origin_ok = headers.get(header::ORIGIN).is_none_or(|o| {
+            o.to_str()
+                .is_ok_and(|o| o == issuer_origin || (o == "null" && same_site))
+        });
+        let fetch_site_ok = match fetch_site {
+            None => true,
+            Some(v) => v.is_ok_and(|v| v == "same-origin" || v == "none"),
+        };
         origin_ok && fetch_site_ok
     }
 

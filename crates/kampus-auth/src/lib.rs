@@ -10,6 +10,7 @@
 mod authorize;
 mod cimd;
 mod clients;
+mod consent;
 mod error;
 mod keys;
 mod limits;
@@ -277,7 +278,13 @@ impl Broker {
         let jwks = self.inner.keys.jwks();
         let browser = Router::new()
             .route(&format!("{base}/authorize"), get(authorize::authorize))
-            .route(&format!("{base}/login"), get(login::login));
+            .route(&format!("{base}/login"), get(login::login))
+            .route(
+                &format!("{base}/consent"),
+                get(consent::show).post(consent::decide),
+            )
+            .route(&format!("{base}/connections"), get(consent::connections))
+            .route(&format!("{base}/connections/revoke"), post(consent::revoke));
         #[cfg(feature = "sandbox")]
         let browser = browser.route(&format!("{base}/login/demo"), post(login::demo::demo_login));
         let browser = browser.route_layer(axum::middleware::from_fn_with_state(

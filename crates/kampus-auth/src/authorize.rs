@@ -3,9 +3,8 @@
 //! pending authorization (10 min) and sign-in. A bad client or redirect
 //! gets an error page and never a redirect; every other refusal redirects
 //! with `error`, the client's `state` and `iss`.
-//!
-//! Code issuance after sign-in is the temporary direct approval of task 3.7;
-//! group 5 puts the consent page in front of it.
+//! A signed-in browser goes on to consent (`consent.rs`), which issues the
+//! code.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
@@ -206,9 +205,18 @@ impl Inner {
         })
     }
 
-    /// Issue a code for `pending` to the signed-in `session` (temporary
-    /// direct approval; consent replaces it in group 5) and redirect back
-    /// with `code`, `state` and `iss`.
+    /// The grant key `pending` asks `session`'s user for.
+    pub(crate) fn grant_key(&self, pending: &Pending, session: &Session) -> GrantKey {
+        GrantKey {
+            subject: session.subject.clone(),
+            client_id: pending.client_id.clone(),
+            resource: self.resource.as_str().to_owned(),
+            scopes: pending.scopes.clone(),
+        }
+    }
+
+    /// Record the grant for `pending` (consented, or already held) and
+    /// redirect back with a fresh code, `state` and `iss`.
     pub(crate) fn approve(&self, pending: &Pending, session: &Session) -> Response {
         let now = (self.clock)();
         let busy = || {
@@ -219,12 +227,7 @@ impl Inner {
                 &self.issuer,
             )
         };
-        let key = GrantKey {
-            subject: session.subject.clone(),
-            client_id: pending.client_id.clone(),
-            resource: self.resource.as_str().to_owned(),
-            scopes: pending.scopes.clone(),
-        };
+        let key = self.grant_key(pending, session);
         if self
             .store
             .upsert_grant(key.clone(), pending.client_label.clone(), now)
@@ -295,12 +298,12 @@ pub(crate) async fn authorize(
         csrf,
         expires_at: now + PENDING_SECONDS,
     };
-    if let Some(session) = inner.session(&headers) {
-        return inner.approve(&pending, &session);
-    }
     if inner.store.insert_pending(id.clone(), pending).is_err() {
         tracing::warn!("pending authorizations at capacity; refusing");
         return busy();
+    }
+    if let Some(session) = inner.session(&headers) {
+        return inner.consent_or_code(&id, &session);
     }
     see_other(&format!(
         "{}/login?pending={id}",

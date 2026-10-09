@@ -238,6 +238,10 @@ fn authorization_code(
     {
         return Err(OAuthError::invalid_target());
     }
+    // Revoked between consent and redemption.
+    if inner.store.grant(&code.grant).is_none() {
+        return Err(OAuthError::invalid_grant());
+    }
     let family_ttl = inner.family_ttl;
     let (refresh, family) = new_family(inner, |id, current| Family {
         id,

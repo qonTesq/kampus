@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}kampus: allow {{ client }}?{% endblock %}
+{% block content %}
+<h1>Allow {{ client }} to use kampus?</h1>
+<p>Signed in to {{ school }} as <strong>{{ user }}</strong>.</p>
+<p><strong>{{ client }}</strong> is asking to act for you at <code>{{ resource }}</code>.</p>
+<h2>What it may do</h2>
+<ul>
+<li>Ask kampus the questions your school's policy allows you to ask, as you.</li>
+{% for scope in scopes %}<li>Extra permission: <code>{{ scope }}</code></li>
+{% endfor %}</ul>
+<p>Your school's policy still decides every request. You can disconnect this assistant at any time on the <a href="{{ connections }}">connected assistants</a> page.</p>
+<form method="post" action="{{ action }}">
+<input type="hidden" name="pending" value="{{ pending }}">
+<input type="hidden" name="csrf" value="{{ csrf }}">
+<p><button type="submit" name="decision" value="approve">Allow {{ client }}</button>
+<button type="submit" name="decision" value="deny">Deny</button></p>
+</form>
+{% endblock %}

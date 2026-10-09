@@ -4,6 +4,7 @@
 
 mod authorize;
 mod basics;
+mod consent;
 mod flow;
 mod limits;
 mod negative;
@@ -388,9 +389,73 @@ impl Harness {
         format!("{}={id}", crate::session::COOKIE)
     }
 
-    /// Authorize with a signed-in browser and return the issued code.
+    /// A form POST under the issuer from the broker's own origin (as a
+    /// browser sends it under `Referrer-Policy: no-referrer`).
+    pub(crate) async fn post_form(
+        &self,
+        path: &str,
+        cookie: Option<&str>,
+        form: &[(&str, &str)],
+    ) -> Reply {
+        self.post_form_from(
+            path,
+            cookie,
+            form,
+            &[("origin", "null"), ("sec-fetch-site", "same-origin")],
+        )
+        .await
+    }
+
+    /// A form POST with the given extra headers.
+    pub(crate) async fn post_form_from(
+        &self,
+        path: &str,
+        cookie: Option<&str>,
+        form: &[(&str, &str)],
+        headers: &[(&str, &str)],
+    ) -> Reply {
+        let body = url::form_urlencoded::Serializer::new(String::new())
+            .extend_pairs(form)
+            .finish();
+        let mut request = self
+            .http
+            .post(format!("{}{path}", self.issuer))
+            .header(TEST_ADDRESS, random_address())
+            .header("content-type", "application/x-www-form-urlencoded")
+            .body(body);
+        for (name, value) in headers {
+            request = request.header(*name, *value);
+        }
+        if let Some(cookie) = cookie {
+            request = request.header("cookie", cookie);
+        }
+        Reply::from(request.send().await.unwrap()).await
+    }
+
+    /// Answer the consent page in `page` with `decision`.
+    pub(crate) async fn decide(&self, page: &Reply, cookie: &str, decision: &str) -> Reply {
+        assert_eq!(page.status, 200, "not a consent page: {page:?}");
+        let pending = hidden(&page.body, "pending");
+        let csrf = hidden(&page.body, "csrf");
+        self.post_form(
+            "/consent",
+            Some(cookie),
+            &[
+                ("pending", &pending),
+                ("csrf", &csrf),
+                ("decision", decision),
+            ],
+        )
+        .await
+    }
+
+    /// Authorize with a signed-in browser, approving consent if asked, and
+    /// return the issued code.
     pub(crate) async fn code(&self, request: &AuthRequest, cookie: &str) -> String {
-        let reply = self.authorize(request, Some(cookie)).await;
+        let mut reply = self.authorize(request, Some(cookie)).await;
+        if reply.status == 200 {
+            reply = self.decide(&reply, cookie, "approve").await;
+        }
         let redirect = request.get("redirect_uri").unwrap();
         let query = reply.redirect_to(redirect);
         assert_eq!(query.get("iss"), Some(&self.issuer), "{query:?}");
@@ -445,6 +510,16 @@ impl Drop for Harness {
             let _ = std::fs::remove_dir_all(&self.dir);
         }
     }
+}
+
+/// The value of the hidden form field `name` in a page.
+pub(crate) fn hidden(page: &str, name: &str) -> String {
+    let marker = format!("name=\"{name}\" value=\"");
+    let start = page
+        .find(&marker)
+        .unwrap_or_else(|| panic!("no {name} field: {page}"))
+        + marker.len();
+    page[start..].split('"').next().unwrap().to_owned()
 }
 
 /// Decode a JWT's header and claims without verifying (shape assertions).

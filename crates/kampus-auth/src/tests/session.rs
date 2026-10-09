@@ -91,16 +91,19 @@ mod demo {
     }
 
     #[tokio::test]
-    async fn demo_sign_in_sets_the_host_cookie_and_returns_a_code() {
+    async fn demo_sign_in_sets_the_host_cookie_then_consent_returns_a_code() {
         let h = Harness::start().await;
         let id = h.pending(&AuthRequest::claude()).await;
         let reply = h
             .demo_post(&format!("pending={id}&user=0"), Some(&h.base))
             .await;
-        let query = reply.redirect_to(CLAUDE_REDIRECT);
-        assert_eq!(query["code"].len(), 64);
-        assert_eq!(query.get("iss"), Some(&h.issuer));
-        assert_eq!(query.get("state").map(String::as_str), Some("st-123"));
+        // Post/redirect/get to consent; no code before the user approves.
+        assert_eq!(reply.status, 303, "{reply:?}");
+        let consent_path = format!("/consent?pending={id}");
+        assert_eq!(
+            reply.location.as_deref(),
+            Some(format!("{}{consent_path}", h.issuer).as_str())
+        );
         let set_cookie = reply.headers["set-cookie"].to_str().unwrap();
         let mut parts = set_cookie.split("; ");
         let pair = parts.next().unwrap();
@@ -124,11 +127,23 @@ mod demo {
         assert_eq!(session.subject, "synthetic:student-a");
         assert_eq!(session.label, "Student A (synthetic demo user)");
         assert_eq!(session.expires_at, h.now() + 8 * 3600);
+        let page = h.get(&consent_path, Some(pair), None).await;
+        assert!(
+            page.body.contains("Student A (synthetic demo user)"),
+            "{page:?}"
+        );
+        let query = h
+            .decide(&page, pair, "approve")
+            .await
+            .redirect_to(CLAUDE_REDIRECT);
+        assert_eq!(query["code"].len(), 64);
+        assert_eq!(query.get("iss"), Some(&h.issuer));
+        assert_eq!(query.get("state").map(String::as_str), Some("st-123"));
         // The pending authorization was single use.
         h.demo_post(&format!("pending={id}&user=0"), None)
             .await
             .assert_page(400);
-        // The session skips sign-in on the next authorization.
+        // The session skips sign-in, and the held grant skips consent.
         let next = h.authorize(&AuthRequest::claude(), Some(pair)).await;
         assert!(next.redirect_to(CLAUDE_REDIRECT).contains_key("code"));
         // And expires after 8 hours.

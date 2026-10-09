@@ -1,7 +1,8 @@
 //! End to end with rmcp's own OAuth client (auth-broker tasks 4.2-4.4):
 //! kampus (MCP + broker) on ephemeral loopback ports, a Client ID Metadata
 //! Document served on loopback (the sandbox exception), and a cookie-enabled
-//! `reqwest` "browser" that drives the synthetic demo picker. rmcp discovers
+//! `reqwest` "browser" that drives the synthetic demo picker and the
+//! consent page, and later revokes an assistant. rmcp discovers
 //! the broker through RFC 9728 and RFC 8414, runs PKCE, exchanges the code,
 //! checks the RFC 9207 `iss` itself, refreshes and upgrades scopes.
 //!
@@ -49,8 +50,15 @@ struct Assistant {
 
 impl Assistant {
     async fn start() -> Self {
+        Self::start_as("127.0.0.1").await
+    }
+
+    /// An assistant whose client ID names `host` (a loopback name), so two
+    /// assistants get different consent labels.
+    async fn start_as(host: &str) -> Self {
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
-        let origin = format!("http://{}", listener.local_addr().unwrap());
+        let port = listener.local_addr().unwrap().port();
+        let origin = format!("http://{host}:{port}");
         let client_id = format!("{origin}/oauth/client.json");
         // Never served: the browser reads the redirect and hands it to rmcp.
         let redirect_uri = format!("{origin}/callback");
@@ -155,33 +163,96 @@ fn location(response: &reqwest::Response) -> String {
     response.headers()["location"].to_str().unwrap().to_owned()
 }
 
-/// Open the authorization URL like a browser; pick the demo user if the
-/// broker asks. Returns the client callback URL and whether the picker showed.
-async fn sign_in(browser: &reqwest::Client, issuer: &str, auth_url: &str) -> (String, bool) {
-    let next = location(&browser.get(auth_url).send().await.unwrap());
-    let Some(pending) = next
-        .strip_prefix(&format!("{issuer}/login?pending="))
-        .map(str::to_owned)
-    else {
-        return (next, false);
-    };
-    let page = browser
-        .get(&next)
+/// A same-origin form POST as a browser sends it from a broker page
+/// (`Referrer-Policy: no-referrer` makes the `Origin` header `null`).
+async fn submit(
+    browser: &reqwest::Client,
+    url: String,
+    form: &[(&str, &str)],
+) -> reqwest::Response {
+    browser
+        .post(url)
+        .header("origin", "null")
+        .header("sec-fetch-site", "same-origin")
+        .header("content-type", "application/x-www-form-urlencoded")
+        // Every value here is hex or a fixed word: nothing to escape.
+        .body(
+            form.iter()
+                .map(|(k, v)| format!("{k}={v}"))
+                .collect::<Vec<_>>()
+                .join("&"),
+        )
         .send()
         .await
         .unwrap()
-        .text()
-        .await
-        .unwrap();
-    assert!(page.contains("synthetic demo user"), "{page}");
-    let response = browser
-        .post(format!("{issuer}/login/demo"))
-        .header("content-type", "application/x-www-form-urlencoded")
-        .body(format!("pending={pending}&user=0"))
-        .send()
-        .await
-        .unwrap();
-    (location(&response), true)
+}
+
+/// The value of a hidden form field on a broker page.
+fn field(page: &str, name: &str) -> String {
+    let marker = format!("name=\"{name}\" value=\"");
+    let start = page
+        .find(&marker)
+        .unwrap_or_else(|| panic!("no {name}: {page}"))
+        + marker.len();
+    page[start..].split('"').next().unwrap().to_owned()
+}
+
+/// What the browser saw on its way back to the assistant.
+struct SignIn {
+    callback: String,
+    picked: bool,
+    consented: bool,
+}
+
+/// Open the authorization URL like a browser: follow the broker's
+/// redirects, pick the demo user if asked, approve consent if asked, and
+/// stop at the redirect back to the assistant.
+async fn sign_in(browser: &reqwest::Client, issuer: &str, auth_url: &str) -> SignIn {
+    let (mut picked, mut consented) = (false, false);
+    let mut response = browser.get(auth_url).send().await.unwrap();
+    loop {
+        if response.status() == 303 {
+            let next = location(&response);
+            if !next.starts_with(issuer) {
+                return SignIn {
+                    callback: next,
+                    picked,
+                    consented,
+                };
+            }
+            response = browser.get(&next).send().await.unwrap();
+            continue;
+        }
+        assert_eq!(response.status(), 200, "{}", response.url());
+        let page = response.text().await.unwrap();
+        let pending = field(&page, "pending");
+        response = if page.contains("/login/demo\"") {
+            assert!(page.contains("synthetic demo user"), "{page}");
+            assert!(!picked, "the picker showed twice");
+            picked = true;
+            submit(
+                browser,
+                format!("{issuer}/login/demo"),
+                &[("pending", &pending), ("user", "0")],
+            )
+            .await
+        } else {
+            assert!(page.contains("Allow"), "{page}");
+            assert!(!consented, "consent showed twice");
+            consented = true;
+            let csrf = field(&page, "csrf");
+            submit(
+                browser,
+                format!("{issuer}/consent"),
+                &[
+                    ("pending", &pending),
+                    ("csrf", &csrf),
+                    ("decision", "approve"),
+                ],
+            )
+            .await
+        };
+    }
 }
 
 /// A fresh rmcp OAuth state machine for the MCP endpoint.
@@ -219,8 +290,12 @@ async fn signed_in(
     let mut oauth = oauth(instance).await;
     oauth.start_authorization(request(assistant)).await.unwrap();
     let auth_url = oauth.get_authorization_url().await.unwrap();
-    let (callback, picked) = sign_in(browser, &instance.issuer(), &auth_url).await;
-    assert!(picked, "a new browser must see the picker");
+    let SignIn {
+        callback,
+        consented,
+        ..
+    } = sign_in(browser, &instance.issuer(), &auth_url).await;
+    assert!(consented, "a new grant needs consent");
     assert!(callback.starts_with(&assistant.redirect_uri), "{callback}");
     oauth.handle_callback_url(&callback).await.unwrap();
     oauth
@@ -350,8 +425,12 @@ async fn rmcp_signs_in_through_the_broker_and_checks_iss() {
     assert_eq!(param("resource"), Some(instance.mcp_url()));
     assert_eq!(param("client_id"), Some(assistant.client_id.clone()));
 
-    let (callback, picked) = sign_in(&browser, &issuer, &auth_url).await;
-    assert!(picked);
+    let SignIn {
+        callback,
+        picked,
+        consented,
+    } = sign_in(&browser, &issuer, &auth_url).await;
+    assert!(picked && consented);
     // The broker fetched the loopback CIMD document to validate the client.
     assert!(assistant.fetches() >= 1);
     let returned: Vec<(String, String)> = reqwest::Url::parse(&callback)
@@ -518,9 +597,15 @@ async fn confirm_booking_steps_up_then_rmcp_refresh_rotates() {
         .unwrap();
     let requested: Vec<&str> = requested.split(' ').collect();
     assert!(requested.contains(&"rooms:book") && requested.contains(&"offline_access"));
-    // The broker session from the first sign-in skips the picker.
-    let (callback, picked) = sign_in(&browser, &issuer, &auth_url).await;
+    // The broker session from the first sign-in skips the picker; the
+    // wider scope set is a new grant, so consent shows again.
+    let SignIn {
+        callback,
+        picked,
+        consented,
+    } = sign_in(&browser, &issuer, &auth_url).await;
     assert!(!picked, "the session cookie should carry the sign-in");
+    assert!(consented, "a step-up is a new grant key");
     oauth.handle_callback_url(&callback).await.unwrap();
 
     let upgraded = tokens(&oauth).await;

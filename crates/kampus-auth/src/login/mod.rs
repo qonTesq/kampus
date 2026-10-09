@@ -29,10 +29,7 @@ pub(crate) async fn login(
         return PageError::BadRequest.into_response();
     };
     if let Some(session) = inner.session(&headers) {
-        return match inner.store.take_pending(&id, now) {
-            Some(pending) => inner.approve(&pending, &session),
-            None => PageError::Expired.into_response(),
-        };
+        return inner.consent_or_code(&id, &session);
     }
     let Some(pending) = inner.store.pending(&id, now) else {
         return PageError::Expired.into_response();

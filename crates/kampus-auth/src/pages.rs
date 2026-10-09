@@ -49,15 +49,10 @@ pub(crate) enum PageError {
     Busy,
     /// A rate limit was hit.
     RateLimited,
-    /// The request came from another origin.
-    #[cfg_attr(
-        not(feature = "sandbox"),
-        allow(
-            dead_code,
-            reason = "without sandbox demo login, sessions are created by upstream login (group 6)"
-        )
-    )]
+    /// The request came from another origin, or its CSRF token is wrong.
     CrossSite,
+    /// A page that needs a broker session was opened without one.
+    SignedOut,
     /// Unexpected failure (randomness, rendering).
     Internal,
 }
@@ -105,6 +100,12 @@ impl PageError {
                 StatusCode::FORBIDDEN,
                 "Request refused",
                 "This form was submitted from another site, so kampus refused it.",
+                false,
+            ),
+            Self::SignedOut => (
+                StatusCode::FORBIDDEN,
+                "Not signed in",
+                "Your kampus sign-in has ended. Connect kampus from your assistant to sign in again, then come back to this page.",
                 false,
             ),
             Self::Internal => (
