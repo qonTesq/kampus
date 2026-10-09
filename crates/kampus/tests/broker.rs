@@ -16,6 +16,11 @@ use tokio_util::sync::CancellationToken;
 
 const CURRENT: &str = "2026-07-28";
 
+// rmcp's own OAuth client against the broker (demo users need the sandbox).
+#[cfg(feature = "sandbox")]
+#[path = "broker/e2e.rs"]
+mod e2e;
+
 fn temple_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../schools/temple")
 }
@@ -118,6 +123,10 @@ upstream:
     /// Build and serve kampus (MCP + broker) until the returned token fires.
     fn start(&self) -> CancellationToken {
         let policy = PolicyConfig::load(&temple_dir().join("policy.yaml")).unwrap();
+        self.start_with(self.school(), policy)
+    }
+
+    fn start_with(&self, school: SchoolConfig, policy: PolicyConfig) -> CancellationToken {
         let env = Env {
             has_var: &|_| true,
             sandbox_compiled: cfg!(feature = "sandbox"),
@@ -128,7 +137,7 @@ upstream:
             audit_path: Some(self.dir.join("audit.jsonl")),
             ..AppOptions::default()
         };
-        let app = App::build_with(self.school(), policy, &env, options).unwrap();
+        let app = App::build_with(school, policy, &env, options).unwrap();
         let cancel = CancellationToken::new();
         let serve = |listener: &std::net::TcpListener, router: axum::Router| {
             // A duplicated socket does not inherit non-blocking mode on Windows.
