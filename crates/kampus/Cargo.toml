@@ -51,6 +51,9 @@ aws-lc-rs.workspace = true
 # Broker tests: token header inspection and inline broker configuration.
 jsonwebtoken.workspace = true
 serde-saphyr.workspace = true
+# rmcp's own OAuth client and Streamable HTTP client for the broker e2e test
+# (auth-broker decision 13); the production feature set is unchanged.
+rmcp = { workspace = true, features = ["auth", "client", "transport-streamable-http-client-reqwest"] }
 
 # The authorization broker end to end (auth-broker change).
 [[test]]
