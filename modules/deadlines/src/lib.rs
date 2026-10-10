@@ -169,12 +169,15 @@ fn configured_source(init: &ModuleInit) -> Result<Option<Source>, RegistryError>
     // does) binds nothing.
     let lazy = Arc::new(sandbox::LazyCanvas::new(canvas.clone()));
     let provider = Arc::clone(&lazy);
+    // A real demo sign-in has no seed mapping; it may see one synthetic profile.
+    let fallback = canvas.fallback_synthetic_user.clone();
     let profiles = Box::new(move |subject: &str| {
         Ok(lazy
             .running()?
             .profiles
             .synthetic_user_for(subject)
-            .map(str::to_owned))
+            .map(str::to_owned)
+            .or_else(|| fallback.clone()))
     });
     Ok(Some(Source::new(provider, profiles)))
 }

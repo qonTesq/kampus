@@ -1590,6 +1590,7 @@ async fn two_students_on_one_cimd_client_see_only_their_own_deadlines() {
             enabled: true,
             base_url: canvas.parse().unwrap(),
             service_token_env: None,
+            fallback_synthetic_user: None,
         });
     })
     .await;

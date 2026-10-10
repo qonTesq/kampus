@@ -269,6 +269,7 @@ mod production {
             enabled: true,
             base_url: "http://127.0.0.1:8290/".parse().unwrap(),
             service_token_env: None,
+            fallback_synthetic_user: None,
         });
         s
     }
@@ -326,6 +327,7 @@ mod sandbox {
             enabled: canvas_enabled,
             base_url: format!("http://127.0.0.1:{port}/").parse().unwrap(),
             service_token_env: None,
+            fallback_synthetic_user: None,
         });
         s
     }
@@ -401,6 +403,58 @@ mod sandbox {
         // Seed offsets +3h, +10h, +20h, +72h from the fake's start.
         assert_eq!(got, ["7002", "7003", "7004", "7005"]);
         assert_eq!(out.provenance.source_kind, SourceKind::Sandbox);
+    }
+
+    #[tokio::test]
+    async fn fallback_profile_serves_unmapped_signed_in_students_only() {
+        let now = Utc::now();
+        let args = json!({
+            "from": (now - chrono::TimeDelta::hours(1)).to_rfc3339(),
+            "to": (now + chrono::TimeDelta::days(4)).to_rfc3339(),
+        });
+        let call = |m: Arc<dyn Module>, who: Principal| {
+            let args = args.clone();
+            async move {
+                let mut c = ctx(who);
+                c.now = now;
+                m.call(TOOL, args, &c).await
+            }
+        };
+        let assignments = |out: &ToolSuccess| -> Vec<String> {
+            out.data["deadlines"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|d| d["assignment_id"].as_str().unwrap().to_owned())
+                .collect()
+        };
+        // A broker subject from a real sign-in; the seed does not map it.
+        let real = "k1.3f9c0b7e5d2a41c8";
+
+        let without = module(&init(sandbox_school(true, true, free_port()))).unwrap();
+        let err = call(without, student(real)).await.unwrap_err();
+        assert_eq!(err.code, ErrorCode::PermissionDenied);
+
+        let mut school = sandbox_school(true, true, free_port());
+        school.canvas.as_mut().unwrap().fallback_synthetic_user =
+            Some("synthetic-student-b".into());
+        let m = module(&init(school)).unwrap();
+        let out = call(Arc::clone(&m), student(real)).await.unwrap();
+        assert_eq!(out.provenance.source_kind, SourceKind::Sandbox);
+        let b = call(Arc::clone(&m), student(STUDENT_B)).await.unwrap();
+        assert_eq!(assignments(&out), assignments(&b));
+        // Seed-mapped subjects keep their own profile.
+        let a = call(Arc::clone(&m), student(STUDENT_A)).await.unwrap();
+        assert_eq!(assignments(&a), ["7002", "7003", "7004", "7005"]);
+        assert_ne!(assignments(&a), assignments(&b));
+        // Guests and devices never reach the fallback.
+        for who in [
+            Principal::guest(),
+            principal(AuthKind::Device, &[Role::Student], real),
+        ] {
+            let err = call(Arc::clone(&m), who).await.unwrap_err();
+            assert_eq!(err.code, ErrorCode::PermissionDenied);
+        }
     }
 
     #[tokio::test]
