@@ -9,8 +9,8 @@
 
 ## 2. Minimal scopes
 
-- [x] 2.1 Metadata advertises only `offline_access`; snapshot test
-- [x] 2.2 e2e: rmcp seeds from the metadata and still steps up to `rooms:book`
+- [x] 2.1 Reverted after the live Claude run: Claude does not step up on 403 `insufficient_scope`, so the metadata keeps `rooms:book` in `scopes_supported`
+- [x] 2.2 Not needed after the revert; the existing e2e step-up test (explicit `offline_access` first) stays
 
 ## 3. Local times
 

@@ -1,35 +1,5 @@
 ## MODIFIED Requirements
 
-### Requirement: Authorization server metadata
-
-The broker SHALL serve RFC 8414 metadata at the path-inserted well-known URL for its issuer. The metadata SHALL contain:
-- the exact issuer
-- the authorization, token and JWKS endpoints under the issuer
-- `response_types_supported: ["code"]`
-- `grant_types_supported` with `authorization_code`, `refresh_token` and `client_credentials`
-- `code_challenge_methods_supported: ["S256"]`
-- `token_endpoint_auth_methods_supported` with `none`, `client_secret_basic` and `client_secret_post`
-- `client_id_metadata_document_supported: true`
-- `authorization_response_iss_parameter_supported: true`
-- `scopes_supported: ["offline_access"]`, so that clients which seed their first request from it start without tool scopes
-
-It SHALL NOT advertise a `registration_endpoint`. A configured tool scope such as `rooms:book` SHALL still be granted when an authorization request asks for it.
-
-#### Scenario: Assistant chooses CIMD
-
-- **WHEN** a client reads the metadata
-- **THEN** both `client_id_metadata_document_supported: true` and `none` in `token_endpoint_auth_methods_supported` are present, and no `registration_endpoint` is present
-
-#### Scenario: Host spoofing
-
-- **WHEN** the metadata request carries an attacker-controlled Host or forwarded host
-- **THEN** every URL in the document comes from configuration
-
-#### Scenario: First sign-in starts small and steps up
-
-- **WHEN** a client asks for every scope in `scopes_supported` at first sign-in and later calls confirm_booking
-- **THEN** the first token lacks `rooms:book`, the call gets 403 `insufficient_scope` naming `rooms:book`, and a new authorization asking for it is granted after its own consent
-
 ### Requirement: User sign-in
 
 After a valid authorization request, the broker SHALL establish the user through the school's upstream OIDC provider using the authorization-code flow with PKCE, `state` and `nonce`. It SHALL validate the ID token's issuer, audience, signature, expiry and nonce, and take claims only from that validated ID token. In builds with the `sandbox` feature and `sandbox.enabled`, the broker MAY additionally offer configured synthetic demo users, labeled as synthetic, whose subjects start with `synthetic:`. Demo users SHALL be unreachable in other builds. The broker SHALL NOT accept, store or display passwords, and SHALL NOT persist user records. A signed-in browser session SHALL be held in a host-only, `Secure`, `HttpOnly`, `SameSite=Lax` cookie that references server-side state with a bounded lifetime. The sign-in page and the signed-in label SHALL name the school's configured display name, not the IdP host. When the upstream IdP is the only way to sign in, the sign-in page SHALL redirect straight to the upstream login for the same pending authorization.

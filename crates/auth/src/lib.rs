@@ -315,7 +315,7 @@ impl Broker {
     pub fn router(&self) -> Router {
         let issuer = &self.inner.issuer;
         let base = issuer.path().trim_end_matches('/').to_owned();
-        let document = metadata::document(issuer);
+        let document = metadata::document(issuer, &self.inner.scopes);
         let jwks = self.inner.keys.jwks();
         let browser = Router::new()
             .route(&format!("{base}/authorize"), get(authorize::authorize))

@@ -21,9 +21,9 @@ The sheet: system font stack, 40 rem column, 16 px base, dark text on white (con
 
 The upstream button reads "Sign in with your {display_name} account"; the session label for an upstream sign-in becomes "your {display_name} account", so consent and connections say "Signed in as your Saint Joseph's University account". The IdP host is no longer shown. `GET /login` without a session, with an upstream IdP and no demo users answers 303 to `/login/upstream?pending={id}` after the pending ID is checked; with demo users the page is shown.
 
-## Minimal scopes
+## Minimal scopes (reverted)
 
-`scopes_supported` lists only `offline_access`. RFC 8414 makes the field optional and "not necessarily all" supported scopes, so leaving out `rooms:book` is allowed. `grantable` still checks requests against the configured scopes, so a step-up for `rooms:book` is granted as before. The e2e test now lets rmcp seed its first request from the metadata, which is what Claude and ChatGPT do.
+Tried: `scopes_supported: ["offline_access"]`, so assistants that seed their first request from it start without `rooms:book` and step up on the 403. Live on 2026-10-10, Claude signed in with `offline_access` only, then on `confirm_booking` got 403 `insufficient_scope` naming `rooms:book` and did not start a new authorization: it told the user to reconnect from connector settings. A manual disconnect and connect asked for the same scopes again (consent was skipped because the request matched the existing grant). Booking was impossible, so the change was reverted: the metadata keeps listing `rooms:book`, which assistants request at first sign-in. rmcp's own step-up stays covered by the e2e test.
 
 ## Local times
 
