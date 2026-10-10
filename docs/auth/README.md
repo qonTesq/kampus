@@ -1,8 +1,41 @@
-# Auth and policy
+# Auth and policy: operator overview
 
-kampus is an OAuth resource server. It verifies access tokens from one configured issuer, the school's own authorization server or (once `auth-broker` lands) the kampus broker, through the same code path. It never forwards a user's token upstream. The dispatcher evaluates policy on every call before limits, cache or provider code. All seven tools stay listed for every caller: policy refuses calls, it never hides tools.
+kampus has two auth parts, and a school chooses how much of it to run:
 
-Until `auth-broker` lands, the repository ships no authorization server. Public tools work without a token, and protected calls get 401.
+- **The resource server (always on).** Every kampus binary verifies OAuth access tokens from one configured issuer, `auth.issuer`, and runs school policy on every call before limits, cache or provider code. It never forwards a user's token upstream. All seven tools stay listed for every caller: policy refuses calls, it never hides tools.
+- **The broker (optional).** A small OAuth 2.1 authorization server built into the binary behind the `broker` cargo feature, started when `school.yaml` has an `auth.broker` section. It lets Claude and ChatGPT connect by URL alone (Client ID Metadata Documents, CIMD) or as pre-registered workspace clients, signs students in through the school's OIDC IdP (or synthetic demo users in a sandbox build), asks for consent, and issues the tokens the resource server verifies. It stores no passwords or user records.
+
+The resource server treats the broker like any other issuer: it finds the keys through RFC 8414 discovery on the public issuer URL, with no in-process shortcut. A school that already runs its own authorization server can skip the broker ([school-idp.md](school-idp.md#alternative-your-schools-own-authorization-server)).
+
+| Topic | Doc |
+|---|---|
+| Broker config, listeners, proxy paths, signing keys and rotation, a curl walkthrough | [broker.md](broker.md) |
+| Connecting the broker to the school's IdP (registration, scopes, role mapping, subject key) | [school-idp.md](school-idp.md) |
+| What the live runs with SJU's Google Workspace, Claude and ChatGPT showed | [qualification.md](qualification.md) |
+| What students see when they add kampus to their own assistant | [student-assistants.md](student-assistants.md) |
+| Publishing it on a domain | [deploy/cloudflare-tunnel](../../deploy/cloudflare-tunnel/README.md), [deploy/trial](../../deploy/trial/) |
+
+## Builds
+
+| Build | Command | Auth |
+|---|---|---|
+| Production | `cargo build --release -p kampus` | resource server only; `auth.issuer` must be the school's own authorization server, and an `auth.broker` section fails startup |
+| Production with broker | `cargo build --release -p kampus --features broker` | plus the broker, upstream OIDC sign-in only |
+| Demo | `cargo build --release -p kampus --features sandbox,broker` | plus synthetic demo users, the synthetic Canvas and simulated bookings, with `sandbox.enabled: true` |
+
+`kampus check --school … --policy …` validates both files, including the `auth.broker` section, without binding listeners, creating the key file or contacting the IdP.
+
+## How a sign-in works (broker)
+
+1. The assistant calls a tool without a token. A public tool runs as a guest. A protected one gets a 401 challenge naming the protected-resource metadata ([lazy authentication](#lazy-authentication-and-step-up-oauth-mode)).
+2. The assistant reads that metadata, then the broker's RFC 8414 metadata at `/.well-known/oauth-authorization-server/auth`. The broker advertises CIMD and `none` client authentication and has no `registration_endpoint`: no dynamic client registration.
+3. The assistant opens `/auth/authorize` in the student's browser. The client is either a CIMD URL listed in `auth.broker.cimd_clients` (the broker fetches and validates the document) or a pre-registered client in `auth.broker.clients` with its own secret. PKCE (S256) and an exact redirect URI are required.
+4. The student signs in at the school's IdP (or picks a synthetic demo user in a sandbox build). The broker maps IdP claims to kampus roles and derives a pseudonymous subject; tokens never carry a name or an email.
+5. The consent page names the assistant by its host or the school's label, the resource and any extra scope. Allow sends the browser back with `code`, `state` and `iss`.
+6. The assistant redeems the code at `/auth/token` for a 15-minute access token (`at+jwt`, EdDSA, `aud` = the MCP resource URL) and a rotating refresh token. Reusing a rotated-out refresh token revokes the whole family.
+7. Every MCP call is verified by the resource server and decided by `policy.yaml`. A student can disconnect an assistant at `/auth/connections`; its refresh then fails, and a held access token works until it expires.
+
+The broker keeps all of this state in memory, so a restart signs everyone out (the key file persists, so issued access tokens stay valid until they expire). Claude and ChatGPT both completed this flow live by URL only, through SJU's Google Workspace, and refreshed in the background ([qualification.md](qualification.md)).
 
 ## Token profile
 
@@ -46,9 +79,9 @@ For each `tools/call`, before the MCP layer runs:
 | signed in | any other refusal (role, unapproved client, Sensitive switch off, …) | 200 with the `permission_denied` envelope |
 | any | presented token invalid | **401** `Bearer resource_metadata="…", error="invalid_token"`, no audit row (no call reached policy) |
 
-A protected call is never answered with a 200 result asking the user to sign in. Each challenged call passes admission once, so a flood gets **429** with `Retry-After` beyond the guest rate, and writes exactly one audit row. Every 401/403 sets `Access-Control-Expose-Headers: www-authenticate`. A tokenless 401 carries no `error` attribute, following RFC 6750 §3.1, since no token was presented. The live qualification in `auth-broker` confirms that Claude accepts this.
+A protected call is never answered with a 200 result asking the user to sign in. Each challenged call passes admission once, so a flood gets **429** with `Retry-After` beyond the guest rate, and writes exactly one audit row. Every 401/403 sets `Access-Control-Expose-Headers: www-authenticate`. A tokenless 401 carries no `error` attribute, following RFC 6750 §3.1, since no token was presented. Claude accepted this live: the tokenless 401 produced its Connect card ([qualification.md](qualification.md)).
 
-The protected-resource metadata (`/.well-known/oauth-protected-resource/mcp` and the root form) names the resource and the issuer. It lists no `scopes_supported`: `rooms:book` is requested only through the 403 step-up, so a first sign-in asks for no booking scope.
+The protected-resource metadata (`/.well-known/oauth-protected-resource/mcp` and the root form) names the resource and the issuer. It lists no `scopes_supported`, so that `rooms:book` would be requested only through the 403 step-up. The broker's own RFC 8414 metadata does list `scopes_supported` (`rooms:book`, `offline_access`), and in the live runs Claude and ChatGPT both requested every listed scope at first sign-in, so the step-up never ran live. A fix is an open owner decision ([qualification.md](qualification.md#findings-and-owner-decisions-task-77)).
 
 Try it against a local Temple instance (`KAMPUS_TEMPLE_AUDIT_SALT` set, `kampus serve --school schools/temple/school.yaml --policy schools/temple/policy.yaml`):
 
@@ -67,7 +100,7 @@ The second prints `www-authenticate: Bearer resource_metadata="http://127.0.0.1:
 
 **No-login fallback.** Set `auth.mode: no_login` and restart. Missing credentials become guest, and refusals stay `permission_denied` results: no-login mode never sends a 401/403 challenge. Supplied invalid credentials still get 401.
 
-ChatGPT documents a different mixed-auth signal: per-tool `securitySchemes` plus a tool result carrying `_meta["mcp/www_authenticate"]`. That needs a 200 result, which the "never a 200 sign-in result" rule forbids, so it isn't implemented. The `auth-broker` live run checks whether ChatGPT honors the HTTP 401; if it doesn't, the choice goes back to the owner.
+ChatGPT documents a different mixed-auth signal: per-tool `securitySchemes` plus a tool result carrying `_meta["mcp/www_authenticate"]`. That needs a 200 result, which the "never a 200 sign-in result" rule forbids, so it isn't implemented. In the live run ChatGPT connected with the standard HTTP 401 challenge, so nothing more is needed today ([qualification.md](qualification.md#findings-and-owner-decisions-task-77)).
 
 ## Client classes and policy
 
@@ -77,11 +110,15 @@ Every caller is classified before policy from the verified principal and `policy
 - **self-registered:** a user token whose `client_id` is registered `cimd` or `dcr`
 - **other:** guests, devices, and unregistered or unapproved clients
 
+With the broker, the CIMD URLs in `auth.broker.cimd_clients` go in the registry as `registration: cimd` (self-registered: a student adding kampus to a personal Claude or ChatGPT) and the `auth.broker.clients` as `pre_registered_confidential` (the school's workspace assistants, which hold a secret only the school's admin knows). Device clients (the owl) get `client_credentials` tokens and are classified as devices.
+
 Only `pre_registered_confidential` entries can ever be approved. Config validation, every admin save and the approval switch refuse an approval for anything else, even in a forged request.
 
 Rules select callers with `client_trust`: `any`, `approved`, `unapproved` (self-registered or other), `self_registered` or `unapproved_other`.
 
 **Personal Sensitive access (off by default).** `allow_self_registered_sensitive: true` lets a student's own self-registered assistant read that student's own Sensitive data (today only `my_deadlines`). A call passes only when `sensitive_enabled` is also on, the caller is a verified user token with the student role, the tool is a read, and an enabled allow rule with `client_trust: self_registered` names the tool explicitly, with no matching deny. Config validation rejects a `self_registered` allow rule that uses `*` or names a non-read tool. Faculty, devices, writes, `*` or broader rules and Confidential data stay denied before any provider access. With the switch off, these calls are denied as `builtin:self_registered_sensitive_off`. Calls under the switch are audited with the rule `sensitive-self-registered-student` and the CIMD client ID, so they're distinguishable from approved-workspace rows (`sensitive-approved-student`, workspace client ID). The bundled Temple and SJU policies register Claude's and ChatGPT's CIMD URLs as `cimd` (unapproved) and ship the rule with both switches off. The admin page has a labeled checkbox for the switch; it saves through the same validated, audited path.
+
+### Audit rule IDs
 
 Built-in refusal IDs (they can't be relaxed by `policy.yaml`): `builtin:confidential`, `builtin:tool_roles`, `builtin:tool_scopes`, `builtin:sensitive_disabled`, `builtin:self_registered_sensitive_off`, `builtin:sensitive_unapproved_client`, `builtin:device_unbound`, `builtin:rule_scopes`, `default_deny`. Pipeline IDs: `builtin:authentication_required`, `builtin:invalid_arguments`, `builtin:rate_limited`, `builtin:overloaded`, `builtin:deadline_exceeded`. Configured rule IDs appear verbatim. The development-only acceptance tool uses `builtin:acceptance`.
 

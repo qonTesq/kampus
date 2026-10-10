@@ -16,7 +16,11 @@ sandbox = [
     "kampus-transit-tools/sandbox",
     "kampus-deadlines/sandbox",
     "kampus-device/sandbox",
+    "kampus-auth?/sandbox",
 ]
+# The kampus authorization broker on its own listener (`auth.broker` in
+# school.yaml). Demo build: `--features sandbox,broker`.
+broker = ["dep:kampus-auth"]
 # Development acceptance only: adds the `kampus_hello` tool. Never in the demo build.
 acceptance = []
 
@@ -28,6 +32,7 @@ kampus-courses.workspace = true
 kampus-transit-tools.workspace = true
 kampus-library-hours.workspace = true
 kampus-deadlines.workspace = true
+kampus-auth = { workspace = true, optional = true }
 axum.workspace = true
 chrono.workspace = true
 http.workspace = true
@@ -43,6 +48,17 @@ tracing-subscriber.workspace = true
 [dev-dependencies]
 # Locally generated signing keys for the auth tests.
 aws-lc-rs.workspace = true
+# Broker tests: token header inspection and inline broker configuration.
+jsonwebtoken.workspace = true
+serde-saphyr.workspace = true
+# rmcp's own OAuth client and Streamable HTTP client for the broker e2e test
+# (auth-broker decision 13); the production feature set is unchanged.
+rmcp = { workspace = true, features = ["auth", "client", "transport-streamable-http-client-reqwest"] }
+
+# The authorization broker end to end (auth-broker change).
+[[test]]
+name = "broker"
+required-features = ["broker"]
 
 # Multi-school instance tests; contents owned by the multi-school change.
 [[test]]

@@ -181,7 +181,7 @@ async fn recent_reads_the_tail_of_a_large_log() {
         .map(|e| e.rule)
         .collect();
     assert_eq!(rules, ["r4999", "r4998", "r4997"]);
-    assert!(audit.recent(0).unwrap().is_empty());
+    assert_eq!(audit.recent(0).unwrap(), [] as [AuditEvent; 0]);
     let _ = fs::remove_dir_all(path.parent().unwrap());
 }
 

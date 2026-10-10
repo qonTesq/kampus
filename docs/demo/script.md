@@ -2,6 +2,8 @@
 
 Five minutes for the presentation and demo, not counting Q&A. The same material doubles as the script for the demo video.
 
+> **Status, 2026-10-10.** This is the OwlHacks script. Since then, sign-in runs through the kampus broker built into the binary (`--features sandbox,broker` for the demo), and a student can add kampus to a personal Claude or ChatGPT by URL alone ([docs/auth](../auth/README.md)). **Room search currently fails upstream** (LibCal's API now refuses anonymous requests; [details](../auth/qualification.md#findings-and-owner-decisions-task-77)), so until it's fixed, replace the room questions in beats 1, 3 and 4 with a train or library-hours question, and skip the booking.
+
 ## Roles and setup
 
 Three speakers:
@@ -95,7 +97,7 @@ Option 2 takes about 15 seconds; give the spare time to the owl by letting a jud
 **Slide 3.** **A**, one line each:
 - "**Live, public data:** Temple LibCal, Banner, SEPTA, library hours. **Synthetic:** anything personal."
 - "Rust, no `unsafe`, 276 tests, policy checked on every call, never by hiding tools."
-- "Login through a standards-based authorization server; public tools need no sign-in at all."
+- "Sign-in through kampus's own standards-based broker and the school's accounts; public tools need no sign-in at all."
 - "Running on **kampus.study**, with Cloudflare, Gemini and ElevenLabs."
 
 ### 4:40–5:00 · Close
@@ -128,7 +130,7 @@ For the submission, and as a backup during the live demo. Record screen and audi
 - [ ] **ChatGPT approval is OFF** (it's off by default; don't touch the admin page).
 - [ ] **Audit terminal** open in a large font, with old entries scrolled away.
 - [ ] **The laptop doesn't sleep,** it's plugged in, and a phone hotspot is ready as backup.
-- [ ] **These are running:** the authorization server (once `auth-broker` lands), two `kampus.exe` (Temple on 8080, SJU on 8090), `cloudflared`. Quick check: `https://mcp.kampus.study/.well-known/oauth-protected-resource` and `https://sju.kampus.study/.well-known/oauth-protected-resource` both load.
+- [ ] **These are running:** two `kampus.exe` (Temple's built with `--features sandbox,broker` for the demo users and synthetic Canvas; SJU's can be the `--features broker` build with SJU sign-in, as in the live runs), each with its broker on its own listener (Temple: MCP 8080, broker 8082; SJU: MCP 8090, broker 8092), and `cloudflared` routing as in [deploy/cloudflare-tunnel](../../deploy/cloudflare-tunnel/README.md). Quick check: `https://mcp.kampus.study/.well-known/oauth-protected-resource` and `https://sju.kampus.study/.well-known/oauth-authorization-server/auth` both load.
 - [ ] **Claude has both connectors:** `kampus` (signed in as `student-a`) and `kampus-sju` (no sign-in).
 - [ ] **The owl** has been tested awake, and the JBL was reconnected right before.
 - [ ] **Backup video** open in a tab. If any beat takes more than 20 seconds, say "here's the recorded run" and play that part.

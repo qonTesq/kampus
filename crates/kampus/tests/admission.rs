@@ -45,6 +45,7 @@ async fn spawn(trusted_proxy: Option<TrustedProxy>) -> Server {
     };
     let n = NEXT.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
     let options = AppOptions {
+        secrets: None,
         audit_hasher: Some(kampus_core::audit::SubjectHasher::new("temple", b"salt")),
         keys: Some(KeySource::from_jwks_json(&json!({ "keys": [] })).unwrap()),
         audit_path: Some(std::env::temp_dir().join(format!(

@@ -12,7 +12,7 @@ use axum::response::{IntoResponse, Response};
 use axum::routing::get;
 use chrono::{DateTime, Utc};
 use kampus_core::contracts::providers::{
-    DeadlineProvider, DeadlineQuery, Deadlines, SubmissionStatus,
+    Deadline, DeadlineProvider, DeadlineQuery, Deadlines, SubmissionStatus,
 };
 use kampus_core::contracts::{ErrorCode, ToolError};
 use url::Url;
@@ -83,7 +83,7 @@ fn seed_loader_refuses_unlabeled_or_uncontrolled_data() {
     assert!(matches!(Seed::parse(&unlabeled), Err(CanvasError::Seed(_))));
     let free_code = raw.replacen("\"SYN-1010\"", "\"CIS 1001 <b>hi</b>\"", 1);
     assert!(matches!(Seed::parse(&free_code), Err(CanvasError::Seed(_))));
-    let shared_subject = raw.replacen("00000000000b", "00000000000a", 1);
+    let shared_subject = raw.replacen("synthetic:student-b", "synthetic:student-a", 1);
     assert!(matches!(
         Seed::parse(&shared_subject),
         Err(CanvasError::Seed(_))
@@ -119,7 +119,7 @@ async fn fake_debug_excludes_records_and_tokens() {
         "synthetic-canvas-",
         "IGNORE",
         "Synthetic Studies",
-        "5eed0000",
+        "synthetic:student",
         "users_by_token",
     ] {
         assert!(!debug.contains(forbidden));
@@ -277,12 +277,7 @@ async fn injected_fixture_prose_never_reaches_output() {
 #[tokio::test]
 async fn unvaulted_user_is_denied_before_any_request() {
     let canvas = start();
-    for user in [
-        "synthetic-nobody",
-        "",
-        "9001",
-        "5eed0000-0000-4000-8000-00000000000a",
-    ] {
+    for user in ["synthetic-nobody", "", "9001", "synthetic:student-a"] {
         let err = list(
             &canvas.provider,
             &query(user, "2026-09-21T00:00:00Z", "2026-09-28T00:00:00Z", 10),
@@ -317,7 +312,7 @@ async fn requests_carry_only_that_users_canvas_token() {
             Some(format!("Bearer {a}").as_str())
         );
         let everything = format!("{} {:?}", request.path_and_query, request.other_headers);
-        for leaked in [STUDENT_A, "5eed0000", "Bearer", b.as_str()] {
+        for leaked in [STUDENT_A, "synthetic:student", "Bearer", b.as_str()] {
             assert!(!everything.contains(leaked), "request carried {leaked:?}");
         }
     }
@@ -455,7 +450,7 @@ async fn expect_code(courses: Response, items: Response, code: ErrorCode) {
 #[tokio::test]
 async fn valid_empty_lists_are_an_empty_success() {
     let d = run(ok("[]"), ok("[]")).await.unwrap();
-    assert!(d.deadlines.is_empty());
+    assert_eq!(d.deadlines, [] as [Deadline; 0]);
     assert!(!d.truncated);
 }
 

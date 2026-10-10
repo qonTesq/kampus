@@ -9,17 +9,20 @@ members = [
     "crates/kampus-hours",
     "crates/kampus-canvas",
     "crates/kampus-device",
+    "crates/kampus-auth",
     "modules/rooms",
     "modules/courses",
     "modules/transit",
     "modules/library-hours",
     "modules/deadlines",
 ]
+# cargo-fuzz targets (nightly, run locally; never part of the gate).
+exclude = ["fuzz"]
 
 [workspace.package]
 version = "0.1.0"
 edition = "2024"
-rust-version = "1.96"
+rust-version = "1.99"
 license = "Apache-2.0"
 publish = false
 
@@ -52,6 +55,13 @@ http = "1.5"
 # HMAC-SHA256 for salted audit subject hashes.
 jsonwebtoken = { version = "11.1.0", default-features = false, features = ["aws_lc_rs"] }
 aws-lc-rs = "1.18.1"
+# Authorization broker (auth-broker sign-off S3). openidconnect without its
+# default features, so it brings no second reqwest; kampus-auth drives it
+# through the workspace reqwest. askama: compile-time, auto-escaped pages.
+openidconnect = { version = "4.0.1", default-features = false }
+askama = { version = "0.16.1", default-features = false, features = ["derive", "std"] }
+# Dev-only: grant and scope invariants in kampus-auth.
+proptest = "1"
 
 # Workspace crates.
 kampus-core = { path = "crates/kampus-core" }
@@ -61,6 +71,7 @@ kampus-transit = { path = "crates/kampus-transit" }
 kampus-hours = { path = "crates/kampus-hours" }
 kampus-canvas = { path = "crates/kampus-canvas" }
 kampus-device = { path = "crates/kampus-device" }
+kampus-auth = { path = "crates/kampus-auth" }
 kampus-rooms = { path = "modules/rooms" }
 kampus-courses = { path = "modules/courses" }
 kampus-transit-tools = { path = "modules/transit" }

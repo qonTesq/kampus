@@ -1,0 +1,81 @@
+# Kampus Trial University access policy. up.sh copies it to data/policy.yaml
+# once; after that the admin page edits data/policy.yaml and up.sh never
+# overwrites it. Synthetic data only, so the global Sensitive switch is on;
+# the personal switch stays off for the operator to flip live.
+version: 1
+school_id: trial
+
+tier_mapping:
+  public: public
+  internal: sensitive
+  sensitive: sensitive
+  confidential: confidential
+
+client_registry:
+  - client_id: kampus-claude
+    registration: pre_registered_confidential
+    approved: true
+    workspace: Claude (trial workspace)
+  - client_id: kampus-chatgpt
+    registration: pre_registered_confidential
+    approved: false
+    workspace: ChatGPT (trial workspace)
+  - client_id: https://claude.ai/oauth/mcp-oauth-client-metadata
+    registration: cimd
+    approved: false
+    workspace: Claude (personal, CIMD)
+  - client_id: https://chatgpt.com/oauth/client.json
+    registration: cimd
+    approved: false
+    workspace: ChatGPT (personal, CIMD)
+
+sensitive_enabled: true
+allow_self_registered_sensitive: false
+
+rules:
+  - id: public-read
+    effect: allow
+    roles: [student, faculty, staff, guest]
+    tools: [find_study_room, search_courses, next_departures, library_hours]
+    effective_classes: [public]
+  - id: booking-propose
+    effect: allow
+    roles: [student]
+    tools: [book_study_room]
+    effective_classes: [public]
+  - id: booking-confirm
+    effect: allow
+    roles: [student]
+    tools: [confirm_booking]
+    effective_classes: [public]
+    required_scopes: ["rooms:book"]
+  - id: sensitive-approved-student
+    effect: allow
+    roles: [student]
+    tools: [my_deadlines]
+    effective_classes: [sensitive]
+    client_trust: approved
+  - id: sensitive-self-registered-student
+    effect: allow
+    roles: [student]
+    tools: [my_deadlines]
+    effective_classes: [sensitive]
+    client_trust: self_registered
+  - id: sensitive-unapproved-deny
+    effect: deny
+    roles: [student, faculty, staff, guest]
+    tools: ["*"]
+    effective_classes: [sensitive, confidential]
+    client_trust: unapproved_other
+
+audit:
+  retention_hours: 24
+  salt_env: KAMPUS_TRIAL_AUDIT_SALT
+
+limits:
+  user_reads_per_minute: 60
+  guest_reads_per_minute: 30
+  booking_proposals_per_minute: 5
+  booking_confirms_per_minute: 2
+  device_binds_per_minute: 6
+  device_binds_per_source_per_minute: 30

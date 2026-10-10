@@ -6,7 +6,7 @@ use chrono::{NaiveDate, NaiveTime};
 use serde::{Deserialize, Serialize};
 use url::Url;
 
-use super::validate::{Env, Issues};
+use super::validate::{Env, Issues, is_cimd_url, is_loopback_cimd_url, is_loopback_host};
 use crate::contracts::Role;
 
 /// `school.yaml` version 1. Everything school-specific lives here.
@@ -183,10 +183,118 @@ pub struct AuthConfig {
     /// Dotted claim path holding the role names, e.g. `roles` or `entitlements.roles`.
     #[serde(default = "default_roles_claim")]
     pub roles_claim: String,
+    /// The kampus authorization broker serving `issuer`; requires a binary
+    /// built with the `broker` feature.
+    #[serde(default)]
+    pub broker: Option<BrokerConfig>,
 }
 
 fn default_roles_claim() -> String {
     "roles".to_owned()
+}
+
+/// `auth.broker`: the kampus authorization broker for this school.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BrokerConfig {
+    /// The broker's own listener (never the MCP or admin listener).
+    pub listen: SocketAddr,
+    /// Signing key file (active + previous Ed25519 key); `serve` creates it.
+    pub key_file: PathBuf,
+    /// Env var holding the pseudonymous-subject HMAC key (hex, at least 32 bytes).
+    pub subject_key_env: String,
+    #[serde(default = "d_access_ttl")]
+    pub access_token_ttl_seconds: u32,
+    /// Absolute lifetime of a refresh-token family.
+    #[serde(default = "d_family_ttl")]
+    pub refresh_family_ttl_hours: u32,
+    /// Grantable scopes; must equal the scopes the registered tools require.
+    #[serde(default)]
+    pub scopes: BTreeSet<String>,
+    /// Exact Client ID Metadata Document URLs that may be fetched.
+    #[serde(default)]
+    pub cimd_clients: Vec<String>,
+    /// Pre-registered confidential clients (school workspaces).
+    #[serde(default)]
+    pub clients: Vec<BrokerClient>,
+    /// Device clients: `client_credentials` only.
+    #[serde(default)]
+    pub devices: Vec<BrokerDevice>,
+    /// The school's OIDC identity provider.
+    #[serde(default)]
+    pub upstream: Option<UpstreamIdp>,
+    /// Synthetic demo users; sandbox build with `sandbox.enabled` only.
+    #[serde(default)]
+    pub demo_users: Vec<DemoUser>,
+}
+
+const fn d_access_ttl() -> u32 {
+    900
+}
+const fn d_family_ttl() -> u32 {
+    168
+}
+
+/// A pre-registered confidential client.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BrokerClient {
+    pub client_id: String,
+    /// Shown on the consent page instead of any self-asserted name.
+    pub label: String,
+    pub secret_env: String,
+    /// Exact redirect URIs (no wildcards, prefixes or fragments).
+    pub redirect_uris: Vec<String>,
+}
+
+/// A device client using the `client_credentials` grant.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BrokerDevice {
+    /// Must match a `devices[].client_id`.
+    pub client_id: String,
+    pub secret_env: String,
+    pub roles: BTreeSet<Role>,
+    #[serde(default)]
+    pub scopes: BTreeSet<String>,
+}
+
+/// The school's upstream OIDC identity provider.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UpstreamIdp {
+    pub issuer: Url,
+    pub client_id: String,
+    pub client_secret_env: String,
+    #[serde(default = "d_upstream_scopes")]
+    pub scopes: Vec<String>,
+    /// Ordered rules; the roles are the union of every matching rule.
+    pub role_mapping: Vec<RoleMapping>,
+}
+
+fn d_upstream_scopes() -> Vec<String> {
+    vec!["openid".to_owned()]
+}
+
+/// One `(claim path, value) -> role` mapping rule.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RoleMapping {
+    /// Dotted claim path in the validated ID token.
+    pub claim: String,
+    /// Matches a string claim equal to it, or an array containing it.
+    pub value: String,
+    pub role: Role,
+}
+
+/// A synthetic demo user (sandbox only).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DemoUser {
+    pub label: String,
+    /// Must start with `synthetic:`.
+    pub subject: String,
+    pub roles: BTreeSet<Role>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
@@ -504,7 +612,238 @@ pub(super) fn validate(c: &SchoolConfig, env: &Env<'_>) -> Vec<super::ConfigIssu
         }
     }
     validate_devices(&mut v, &c.devices, env);
+    validate_broker(&mut v, c, env, sandbox_on);
     v.0
+}
+
+/// Longest access-token lifetime the broker may configure: the resource
+/// server's own maximum.
+const MAX_ACCESS_TTL_SECONDS: u32 = 7200;
+
+fn validate_broker(v: &mut Issues, c: &SchoolConfig, env: &Env<'_>, sandbox_on: bool) {
+    let Some(b) = &c.auth.broker else {
+        return;
+    };
+    let f = "auth.broker";
+    if b.listen == c.server.listen || b.listen == c.server.admin_listen {
+        v.push(
+            format!("{f}.listen"),
+            "must differ from server.listen and server.admin_listen",
+        );
+    }
+    if !b.listen.ip().is_loopback() && c.server.trusted_proxy.is_none() {
+        v.push(
+            format!("{f}.listen"),
+            "a non-loopback broker listener needs server.trusted_proxy",
+        );
+    }
+    let issuer = &c.auth.issuer;
+    if matches!(issuer.path(), "" | "/")
+        || issuer.path().ends_with('/')
+        || issuer.query().is_some()
+        || issuer.fragment().is_some()
+    {
+        v.push(
+            "auth.issuer",
+            "the broker issuer must have a path (https://host/auth), no trailing slash, query or fragment",
+        );
+    }
+    if issuer.host_str().is_some_and(is_loopback_host)
+        && issuer.port_or_known_default() != Some(b.listen.port())
+    {
+        v.push(
+            "auth.issuer",
+            "a loopback broker issuer must use the auth.broker.listen port",
+        );
+    }
+    v.secret_env(&format!("{f}.subject_key_env"), &b.subject_key_env, env);
+    if !(60..=MAX_ACCESS_TTL_SECONDS).contains(&b.access_token_ttl_seconds) {
+        v.push(
+            format!("{f}.access_token_ttl_seconds"),
+            "must be within 60..=7200 (the resource server maximum)",
+        );
+    }
+    if !(1..=720).contains(&b.refresh_family_ttl_hours) {
+        v.push(
+            format!("{f}.refresh_family_ttl_hours"),
+            "must be within 1..=720",
+        );
+    }
+    for scope in &b.scopes {
+        if !is_scope_token(scope) || scope == "offline_access" {
+            v.push(format!("{f}.scopes"), format!("invalid scope {scope}"));
+        }
+    }
+    validate_broker_clients(v, c, b, env, sandbox_on);
+    validate_broker_login(v, b, env, sandbox_on);
+}
+
+fn validate_broker_clients(
+    v: &mut Issues,
+    c: &SchoolConfig,
+    b: &BrokerConfig,
+    env: &Env<'_>,
+    sandbox_on: bool,
+) {
+    let f = "auth.broker";
+    for (i, url) in b.cimd_clients.iter().enumerate() {
+        if !(is_cimd_url(url) || sandbox_on && is_loopback_cimd_url(url)) {
+            v.push(
+                format!("{f}.cimd_clients[{i}]"),
+                "must be an https URL with a path and no credentials, query or fragment (loopback http only in a sandbox build with sandbox.enabled)",
+            );
+        }
+    }
+    v.unique(
+        &format!("{f} client IDs"),
+        b.cimd_clients
+            .iter()
+            .map(String::as_str)
+            .chain(b.clients.iter().map(|x| x.client_id.as_str()))
+            .chain(b.devices.iter().map(|x| x.client_id.as_str())),
+    );
+    for (i, client) in b.clients.iter().enumerate() {
+        let cf = format!("{f}.clients[{i}]");
+        v.id(&format!("{cf}.client_id"), &client.client_id);
+        if client.label.trim().is_empty() || client.label.chars().count() > 80 {
+            v.push(format!("{cf}.label"), "must be 1-80 characters");
+        }
+        v.secret_env(&format!("{cf}.secret_env"), &client.secret_env, env);
+        if client.redirect_uris.is_empty() {
+            v.push(format!("{cf}.redirect_uris"), "must list at least one URI");
+        }
+        for (j, uri) in client.redirect_uris.iter().enumerate() {
+            if !is_redirect_uri(uri) {
+                v.push(
+                    format!("{cf}.redirect_uris[{j}]"),
+                    "must be an absolute https URI (http only on loopback) without wildcards or fragments",
+                );
+            }
+        }
+    }
+    for (i, device) in b.devices.iter().enumerate() {
+        let df = format!("{f}.devices[{i}]");
+        if !c.devices.iter().any(|d| d.client_id == device.client_id) {
+            v.push(
+                format!("{df}.client_id"),
+                "must match a devices[].client_id",
+            );
+        }
+        v.secret_env(&format!("{df}.secret_env"), &device.secret_env, env);
+        if device.roles.is_empty() || device.roles.contains(&Role::Admin) {
+            v.push(
+                format!("{df}.roles"),
+                "must be non-empty and cannot grant admin",
+            );
+        }
+        if !device.scopes.is_subset(&b.scopes) {
+            v.push(
+                format!("{df}.scopes"),
+                "must be a subset of auth.broker.scopes",
+            );
+        }
+    }
+}
+
+fn validate_broker_login(v: &mut Issues, b: &BrokerConfig, env: &Env<'_>, sandbox_on: bool) {
+    let f = "auth.broker";
+    if !b.demo_users.is_empty() && !sandbox_on {
+        v.push(
+            format!("{f}.demo_users"),
+            "requires a sandbox build with sandbox.enabled: true",
+        );
+    }
+    v.unique(
+        &format!("{f}.demo_users"),
+        b.demo_users.iter().map(|u| u.subject.as_str()),
+    );
+    for (i, user) in b.demo_users.iter().enumerate() {
+        let uf = format!("{f}.demo_users[{i}]");
+        if !user.subject.starts_with("synthetic:") || user.subject.len() > 128 {
+            v.push(
+                format!("{uf}.subject"),
+                "must be a synthetic subject (synthetic:...)",
+            );
+        }
+        if user.label.trim().is_empty() || user.label.chars().count() > 80 {
+            v.push(format!("{uf}.label"), "must be 1-80 characters");
+        }
+        if user.roles.is_empty() || user.roles.contains(&Role::Admin) {
+            v.push(
+                format!("{uf}.roles"),
+                "must be non-empty and cannot grant admin",
+            );
+        }
+    }
+    let Some(up) = &b.upstream else {
+        if b.demo_users.is_empty() {
+            v.push(
+                f,
+                "set upstream (the school's OIDC IdP) or, in a sandbox build, demo_users",
+            );
+        }
+        return;
+    };
+    let uf = format!("{f}.upstream");
+    let https = up.issuer.scheme() == "https"
+        || sandbox_on && up.issuer.host_str().is_some_and(is_loopback_host);
+    if !https {
+        v.push(
+            format!("{uf}.issuer"),
+            "must use https (loopback http only in a sandbox build with sandbox.enabled)",
+        );
+    }
+    v.url(&format!("{uf}.issuer"), &up.issuer);
+    if up.client_id.trim().is_empty() || up.client_id.len() > 256 {
+        v.push(format!("{uf}.client_id"), "must be 1-256 characters");
+    }
+    v.secret_env(
+        &format!("{uf}.client_secret_env"),
+        &up.client_secret_env,
+        env,
+    );
+    if !up.scopes.iter().any(|s| s == "openid") || !up.scopes.iter().all(|s| is_scope_token(s)) {
+        v.push(
+            format!("{uf}.scopes"),
+            "must include openid and contain only scope tokens",
+        );
+    }
+    if up.role_mapping.is_empty() {
+        v.push(format!("{uf}.role_mapping"), "must map at least one role");
+    }
+    for (i, rule) in up.role_mapping.iter().enumerate() {
+        let rf = format!("{uf}.role_mapping[{i}]");
+        if rule.claim.split('.').any(|key| key.trim().is_empty()) {
+            v.push(format!("{rf}.claim"), "must be a dotted claim path");
+        }
+        if rule.value.is_empty() {
+            v.push(format!("{rf}.value"), "must not be empty");
+        }
+        if rule.role == Role::Admin {
+            v.push(format!("{rf}.role"), "the admin role can never be mapped");
+        }
+    }
+}
+
+/// An RFC 6749 section 3.3 scope token.
+pub fn is_scope_token(s: &str) -> bool {
+    !s.is_empty()
+        && s.bytes()
+            .all(|b| b == 0x21 || (0x23..=0x5b).contains(&b) || (0x5d..=0x7e).contains(&b))
+}
+
+/// An exact-match redirect URI: absolute, https (http only on loopback), no
+/// wildcard, no fragment, no credentials.
+fn is_redirect_uri(uri: &str) -> bool {
+    !uri.contains('*')
+        && Url::parse(uri).is_ok_and(|u| {
+            let host = u.host_str().unwrap_or_default();
+            (u.scheme() == "https" && !host.is_empty()
+                || u.scheme() == "http" && is_loopback_host(host))
+                && u.fragment().is_none()
+                && u.username().is_empty()
+                && u.password().is_none()
+        })
 }
 
 fn validate_devices(v: &mut Issues, devices: &[DeviceConfig], env: &Env<'_>) {

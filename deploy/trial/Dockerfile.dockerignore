@@ -1,0 +1,11 @@
+# Allowlist: only what the build needs. Never data/, secrets/, .env or target/.
+*
+!Cargo.toml
+!Cargo.lock
+!rust-toolchain.toml
+!crates/
+!modules/
+!fixtures/
+!schools/
+!tests/
+**/target/

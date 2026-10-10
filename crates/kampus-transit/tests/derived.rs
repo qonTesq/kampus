@@ -11,7 +11,7 @@ use std::sync::Arc;
 use chrono::{NaiveTime, TimeZone, Utc};
 use chrono_tz::America::New_York;
 use kampus_core::config::{SchoolConfig, ServiceWindow};
-use kampus_core::contracts::providers::{DepartureQuery, ServiceStatus};
+use kampus_core::contracts::providers::{Departure, DepartureQuery, ServiceStatus};
 use kampus_core::contracts::{ErrorCode, SourceKind};
 use kampus_core::runtime::SharedRuntime;
 use kampus_transit::{BuildError, GtfsError, GtfsSchedule, in_window, parse_vehicle_points};
@@ -206,7 +206,7 @@ async fn live_flight_outside_window_is_no_service_without_a_request() {
         .await
         .unwrap();
     assert_eq!(got.value.service_status, ServiceStatus::NoService);
-    assert!(got.value.departures.is_empty());
+    assert_eq!(got.value.departures, [] as [Departure; 0]);
     assert_eq!(got.provenance.source_kind, SourceKind::Live);
 }
 

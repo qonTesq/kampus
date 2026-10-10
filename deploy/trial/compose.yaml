@@ -1,0 +1,44 @@
+# kampus trial: kampus (MCP + broker + admin, all on loopback) and Caddy
+# (the only public listener, ports 80/443). Start it with ./up.sh, which
+# writes .env and data/ first. `docker compose config` prints the secrets
+# from .env; use `docker compose config -q` to validate.
+name: kampus-trial
+
+services:
+  kampus:
+    build:
+      context: ../..
+      dockerfile: deploy/trial/Dockerfile
+    image: kampus-trial:local
+    # Host network so every kampus listener stays on the host's loopback:
+    # Caddy reaches 8080/8082, and the admin page (8081) needs an SSH tunnel.
+    network_mode: host
+    # The owner of data/ (set by up.sh); never root.
+    user: "${KAMPUS_UID:?run ./up.sh}:${KAMPUS_GID:?run ./up.sh}"
+    env_file: .env
+    # The resource server fetches the broker's metadata through the public
+    # issuer URL; this avoids depending on hairpin NAT to the VM's own IP.
+    extra_hosts:
+      - "${KAMPUS_DOMAIN:?run ./up.sh}:127.0.0.1"
+    volumes:
+      - ./data:/srv/kampus/data
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2
+    network_mode: host
+    environment:
+      KAMPUS_DOMAIN: ${KAMPUS_DOMAIN:?run ./up.sh}
+      ACME_EMAIL: ${ACME_EMAIL:?run ./up.sh}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:

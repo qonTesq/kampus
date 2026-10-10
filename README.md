@@ -7,7 +7,7 @@ kampus is an open-source [MCP](https://modelcontextprotocol.io) server that conn
 🥈 **Runner-up (2nd place) at OwlHacks 2026** (September 2026).
 
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
-![Rust 1.96](https://img.shields.io/badge/rust-1.96-orange.svg)
+![Rust 1.99](https://img.shields.io/badge/rust-1.99-orange.svg)
 ![MCP 2026-07-28 + 2025-11-25](https://img.shields.io/badge/MCP-2026--07--28%20%2B%202025--11--25-purple.svg)
 
 ---
@@ -22,7 +22,7 @@ Universities can't simply let AI assistants into their systems either: student r
 
 | Tool | What you can ask | Data | Source |
 |---|---|---|---|
-| `find_study_room` | "Is there a group room at Charles free at 3?" | Public | LibCal (live) |
+| `find_study_room` | "Is there a group room at Charles free at 3?" | Public | LibCal (live; currently failing upstream, see below) |
 | `book_study_room` | Propose a booking (nothing is written yet) | Public | LibCal (simulated in the sandbox build) |
 | `confirm_booking` | Confirm a proposal (the only write; needs your approval) | Public | LibCal (simulated in the sandbox build) |
 | `search_courses` | "Is there a machine learning course in CIS this fall?" | Public | Banner 9 (live) |
@@ -36,6 +36,8 @@ Universities can't simply let AI assistants into their systems either: student r
 - **ChatGPT**, on the same server with the same student logged in, is **refused**, because it isn't the school's approved workspace.
 - A **talking owl** (a Raspberry Pi kiosk) connects as a public device: it answers campus questions but never touches personal data.
 
+Room search is down for now: LibCal's API began refusing anonymous requests after the fixtures were recorded, and a switch to the public booking page's endpoint is planned ([details](docs/auth/qualification.md#findings-and-owner-decisions-task-77)).
+
 Every decision lands in an audit log that records which feature was used and when, **never what was asked or answered**, with student IDs hashed.
 
 ## How it works
@@ -45,17 +47,17 @@ flowchart LR
     A[Claude] --> M
     B[ChatGPT] --> M
     C[Talking owl] --> M
-    M["kampus<br/>login · policy · audit"] --> L[LibCal]
+    M["kampus<br/>sign-in broker · policy · audit"] --> L[LibCal]
     M --> R[Banner]
     M --> S[SEPTA]
     M --> H[Library hours]
     M --> V[Canvas]
-    K[(School login<br/>OAuth 2.1)] -.-> M
+    I[(School IdP<br/>OIDC)] -.-> M
 ```
 
 - **MCP is a thin outer layer.** Only the `kampus` binary speaks MCP. Modules and vendor adapters exchange plain Rust types and never see tokens.
 - **Policy on every call, before any data or cache is touched.** It checks role × tool × data class × which assistant is asking. Tools are never hidden: every caller sees the same list, and refusals are explicit and audited.
-- **Standard sign-in, any compliant issuer.** kampus is an OAuth resource server that verifies RFC 9068 access tokens (audience = its own resource URL) from one configured issuer: the school's own authorization server, or the kampus broker from the upcoming `auth-broker` change. Public tools work without signing in; protected calls answer with a 401 or 403 challenge. Approved assistants are pre-registered confidential clients; anything that registers itself is unapproved.
+- **Standard sign-in, with the school's own accounts.** kampus is an OAuth resource server that verifies RFC 9068 access tokens (audience = its own resource URL) from one configured issuer. That issuer is either the school's own authorization server or the built-in kampus broker (`--features broker`), which signs students in through the school's OIDC IdP and keeps no passwords, names or emails. A student adds kampus to Claude or ChatGPT by pasting one URL (Client ID Metadata Documents); the school's own workspace assistants are pre-registered clients with a secret. Public tools work without signing in; protected calls answer with a 401 or 403 challenge. Only pre-registered clients can be approved for personal data. Tested live with SJU's Google Workspace, Claude and ChatGPT: [docs/auth](docs/auth/README.md).
 - **Adapters per vendor, not per school.** One LibCal adapter serves every LibCal school. Everything school-specific lives in two files: `schools/<id>/school.yaml` and `policy.yaml`.
 - **Real data first.** Tests run against recorded real responses from every public source (`fixtures/`).
 
@@ -68,23 +70,50 @@ flowchart LR
 
 Adding a school means writing a `school.yaml` and a `policy.yaml`. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
-## Quickstart (local, no login)
+## Quickstart
 
-You need Rust 1.96 (pinned in `rust-toolchain.toml`).
+You need Rust 1.99 (pinned in `rust-toolchain.toml`) and `openssl`. Run these from the repository root in a POSIX shell (Git Bash works on Windows).
+
+### Public tools, no sign-in
 
 ```bash
 git clone <this repo> && cd kampus
 cargo build --release -p kampus
 
-# Run Temple in no-login mode: everyone is a guest, public tools work, personal data is refused.
+# Temple in no-login mode: everyone is a guest, public tools work, personal data is refused.
 sed 's/^  mode: oauth/  mode: no_login/' schools/temple/school.yaml > school.local.yaml
 export KAMPUS_TEMPLE_AUDIT_SALT=$(openssl rand -hex 32)
 ./target/release/kampus serve --school school.local.yaml --policy schools/temple/policy.yaml
 ```
 
-kampus now serves MCP at `http://127.0.0.1:8080/mcp`. Try it with the [MCP Inspector](https://modelcontextprotocol.io/docs/tools/inspector), or put a tunnel in front of it and add it as a custom connector in Claude or an app in ChatGPT.
+kampus now serves MCP at `http://127.0.0.1:8080/mcp`. Try it with the [MCP Inspector](https://modelcontextprotocol.io/docs/tools/inspector).
 
-For the full setup, with the synthetic Canvas and booking (`--features sandbox`) and a public domain, see [docs/development](docs/development/README.md), [docs/auth](docs/auth/README.md) and [deploy/cloudflare-tunnel](deploy/cloudflare-tunnel/README.md). The repository ships no authorization server until the `auth-broker` change lands; until then, protected calls get a 401.
+### With the sign-in broker (synthetic demo users)
+
+The demo build adds the broker, synthetic students, the synthetic Canvas and simulated bookings. This runs the fictional trial school from [`deploy/trial/`](deploy/trial/) on your machine:
+
+```bash
+cargo build --release -p kampus --features sandbox,broker
+
+sed -e 's#https://trial.kampus.invalid/mcp#http://127.0.0.1:8080/mcp#'     -e 's#https://trial.kampus.invalid/auth#http://127.0.0.1:8082/auth#'     deploy/trial/school.trial.yaml > school.local.yaml
+for name in AUDIT_SALT SUBJECT_KEY CLAUDE_SECRET CHATGPT_SECRET; do
+  export KAMPUS_TRIAL_$name=$(openssl rand -hex 32)
+done
+./target/release/kampus serve --school school.local.yaml --policy deploy/trial/policy.trial.yaml
+```
+
+The log says `authorization broker listening`. MCP is at `http://127.0.0.1:8080/mcp`, and the broker's metadata at `http://127.0.0.1:8082/.well-known/oauth-authorization-server/auth`. Its signing key is created in `data/auth/`. To sign in by hand (authorize, pick a demo student, consent, token, an MCP call, refresh, disconnect), follow the [curl walkthrough](docs/auth/broker.md#walkthrough-sign-in-with-curl-sandbox-build).
+
+If `CARGO_TARGET_DIR` is set, the binary is under that directory instead of `./target`.
+
+### On a real domain
+
+Claude and ChatGPT need a public HTTPS address. Two ways to get one:
+
+- [deploy/trial](deploy/trial/): one command (`up.sh`) on a server with Docker and a domain: kampus with the broker behind Caddy.
+- [deploy/cloudflare-tunnel](deploy/cloudflare-tunnel/README.md): a named Cloudflare Tunnel in front of a laptop, as used for the live runs.
+
+Then add the `/mcp` URL as a custom connector in Claude or a developer-mode connector in ChatGPT ([student guide](docs/auth/student-assistants.md)). Operators: start with [docs/auth](docs/auth/README.md), then [broker.md](docs/auth/broker.md) and [school-idp.md](docs/auth/school-idp.md) to sign students in with the school's own accounts.
 
 ## Repository layout
 
@@ -93,13 +122,14 @@ kampus is a monorepo: the Rust server, the owl voice client and its hardware.
 ```
 crates/kampus          the server binary: MCP mapping (rmcp), HTTP router, login middleware, admin page
 crates/kampus-core     contracts, config, policy, audit, dispatch, output sanitizing
+crates/kampus-auth     the OAuth sign-in broker (behind the `broker` feature)
 crates/kampus-*        vendor adapters: libcal, banner, transit, hours, canvas; device binding
 modules/*              one folder per capability: module.yaml + a small crate
 schools/<id>/          school.yaml and policy.yaml per school
 fixtures/              recorded real responses used by tests
 clients/owl/           the talking mascot (Python, Raspberry Pi)
 hardware/owl/          the mascot's CAD, print files, wiring and parts list
-deploy/                Caddy and Cloudflare Tunnel notes, and the owl's Pi setup (deploy/owl-pi)
+deploy/                the one-command trial, Caddy and Cloudflare Tunnel notes, and the owl's Pi setup
 openspec/              the living specification and the change history
 docs/                  contracts, auth, transit, device API, demo, research
 ```
@@ -112,27 +142,28 @@ Each part has its own CI (`.github/workflows/server.yml`, `owl.yml`), so a chang
 cargo fmt --all
 cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
-cargo clippy --workspace --all-targets --features kampus/sandbox -- -D warnings
-cargo test --workspace --features kampus/sandbox
+cargo clippy --workspace --all-targets --features kampus/sandbox,kampus/broker -- -D warnings
+cargo test --workspace --features kampus/sandbox,kampus/broker
 ```
 
 House rules (from [AGENTS.md](AGENTS.md)): no `unsafe` (the workspace forbids it), no school-specific values in code, sandbox code only behind the `sandbox` feature, and tests against recorded real responses.
 
 ## Status and roadmap
 
-kampus is a hackathon prototype, not production software. Personal data in the demo is synthetic, and bookings are simulated.
+kampus is a hackathon prototype, not production software. Personal data in the demo is synthetic, and bookings are simulated. Sign-in through a real school account works: the broker has been run live against Saint Joseph's University's Google Workspace with Claude and ChatGPT ([record](docs/auth/qualification.md)).
 
 Next up:
 - A published-timetable fallback for Regional Rail, so late-night trips still get an answer
 - A fast "list distinct courses" option, and course descriptions and prerequisites from Banner
 - Dining, events and building information
-- Real Canvas access through a per-user token vault, and a real school login
+- Room search through LibCal's public booking endpoint, and times in the school's time zone
+- Real Canvas access through a per-user token vault
 - The security and accessibility review a university would require
 
 ## Docs
 
 - [Research report](docs/research/campus-ai-connector-report.md): the original plan and the research behind it
-- [Contracts](docs/contracts/README.md) · [Auth](docs/auth/README.md) · [Transit](docs/transit/README.md) · [Device API](docs/device-api/README.md)
+- [Contracts](docs/contracts/README.md) · [Auth](docs/auth/README.md) · [Add kampus to your assistant](docs/auth/student-assistants.md) · [Transit](docs/transit/README.md) · [Device API](docs/device-api/README.md)
 - [Demo script](docs/demo/script.md)
 
 ## License

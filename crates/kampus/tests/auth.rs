@@ -242,6 +242,7 @@ async fn spawn_with(mode: AuthMode, edit: impl FnOnce(&mut SchoolConfig)) -> Ser
     let policy_path = log_path.with_extension("yaml");
     std::fs::copy(root.join("policy.yaml"), &policy_path).unwrap();
     let options = AppOptions {
+        secrets: None,
         audit_hasher: Some(kampus_core::audit::SubjectHasher::new(
             "temple",
             b"test-salt",
@@ -1398,8 +1399,8 @@ async fn tokenless_challenge_flood_is_rate_limited_and_audited_once_per_call() {
 // ---- personal Sensitive access for self-registered clients ---------------------
 
 const CIMD: &str = "https://claude.ai/oauth/mcp-oauth-client-metadata";
-const STUDENT_A: &str = "5eed0000-0000-4000-8000-00000000000a";
-const STUDENT_B: &str = "5eed0000-0000-4000-8000-00000000000b";
+const STUDENT_A: &str = "synthetic:student-a";
+const STUDENT_B: &str = "synthetic:student-b";
 
 fn cimd_student(subject: &str) -> String {
     let mut c = claims(CIMD, 300);

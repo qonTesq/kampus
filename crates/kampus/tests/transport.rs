@@ -32,6 +32,7 @@ fn app() -> App {
         sandbox_compiled: false,
     };
     let options = AppOptions {
+        secrets: None,
         audit_hasher: Some(kampus_core::audit::SubjectHasher::new(
             "temple",
             b"test-salt",

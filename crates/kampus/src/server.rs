@@ -14,7 +14,7 @@ use rmcp::model::{
     ListToolsResult, PaginatedRequestParams, ProtocolVersion, ServerCapabilities, ServerConfig,
     Tool, ToolAnnotations,
 };
-use rmcp::service::RequestContext;
+use rmcp::service::{MaybeSendFuture, RequestContext};
 use rmcp::{ErrorData as McpError, RoleServer, ServerHandler};
 use serde_json::Value;
 
@@ -103,12 +103,12 @@ impl ServerHandler for KampusMcp {
         self.tools.iter().find(|t| t.name == name).cloned()
     }
 
-    async fn list_tools(
+    fn list_tools(
         &self,
         _request: Option<PaginatedRequestParams>,
         _ctx: RequestContext<RoleServer>,
-    ) -> Result<ListToolsResult, McpError> {
-        Ok(ListToolsResult::with_all_items(self.tools.to_vec()))
+    ) -> impl Future<Output = Result<ListToolsResult, McpError>> + MaybeSendFuture + '_ {
+        std::future::ready(Ok(ListToolsResult::with_all_items(self.tools.to_vec())))
     }
 
     async fn call_tool(

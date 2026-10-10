@@ -20,9 +20,9 @@ server:
 
 auth:
   mode: oauth
-  # The kampus authorization broker (auth-broker change). Until it lands,
-  # nothing serves this issuer: public tools work without a token, and
-  # protected calls get 401.
+  # The kampus authorization broker. This checked-in file has no
+  # auth.broker section, so nothing serves this issuer: public tools work
+  # without a token and protected calls get 401. See docs/auth/broker.md.
   issuer: http://127.0.0.1:8082/auth
 
 modules: [rooms, courses, transit, library_hours, deadlines]

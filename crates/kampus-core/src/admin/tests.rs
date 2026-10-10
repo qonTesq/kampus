@@ -161,7 +161,7 @@ async fn forged_cimd_approval_and_relabel_fail_and_keep_the_previous_policy() {
         (entry.registration, entry.approved),
         (ClientRegistration::Cimd, false)
     );
-    assert!(admin.audit.recent(10).unwrap().is_empty());
+    assert_eq!(admin.audit.recent(10).unwrap(), [] as [AuditEvent; 0]);
     fs::remove_dir_all(dir).unwrap();
 }
 

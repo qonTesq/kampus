@@ -118,7 +118,10 @@ async fn hawk_hill_at_three_and_both_campuses_use_real_recordings_and_separate_c
         .iter()
         .map(|r| r["id"].to_string())
         .collect();
-    assert!(!city["rooms"].as_array().unwrap().is_empty());
+    assert_ne!(
+        city["rooms"].as_array().unwrap().as_slice(),
+        [] as [Value; 0]
+    );
     assert!(
         city["rooms"]
             .as_array()
@@ -127,7 +130,10 @@ async fn hawk_hill_at_three_and_both_campuses_use_real_recordings_and_separate_c
             .all(|r| ids.contains(&r["room_id"].as_str().unwrap().to_owned()))
     );
     let temple_result = find(&temple, "8404", &context("temple")).await;
-    assert!(!temple_result["rooms"].as_array().unwrap().is_empty());
+    assert_ne!(
+        temple_result["rooms"].as_array().unwrap().as_slice(),
+        [] as [Value; 0]
+    );
     assert!(
         temple_result["rooms"]
             .as_array()

@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "kind": "recorded",
+  "captured_at": "2026-10-02T21:12:59Z",
+  "source_url": "https://claude.ai/oauth/mcp-oauth-client-metadata",
+  "request": {
+    "method": "GET",
+    "headers": {
+      "Accept": "application/json"
+    },
+    "cookies": "omitted"
+  },
+  "http_status": 200,
+  "content_type": "application/json",
+  "cache_control": "public, max-age=300",
+  "body_file": "body.bin",
+  "byte_length": 342,
+  "sha256": "049f8cf53fbaaa902e71402620e96269a8973917b90e69c98b0edccfb9b07f79",
+  "license_provenance": "Anthropic's hosted Client ID Metadata Document for Claude; public, unauthenticated. Recorded as evidence of the document shape; no license is asserted."
+}

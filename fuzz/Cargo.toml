@@ -1,0 +1,43 @@
+# cargo-fuzz targets for the broker's pure request parsers (auth-broker
+# design §14). Excluded from the workspace; nightly only, never in the gate:
+#   cargo +nightly fuzz run <target> -- -max_total_time=600
+# Targets: authorize_query, token_form, cimd_document. On Windows MSVC the
+# sanitizer runtime comes from Visual Studio's "C++ AddressSanitizer"
+# component; without it, run on Linux or WSL.
+[package]
+name = "kampus-fuzz"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+# Its own workspace root (as `cargo fuzz init` generates), so cargo never
+# searches past the excluded directory for an enclosing workspace.
+[workspace]
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+kampus-auth = { path = "../crates/kampus-auth", features = ["fuzzing"] }
+
+[[bin]]
+name = "authorize_query"
+path = "fuzz_targets/authorize_query.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "token_form"
+path = "fuzz_targets/token_form.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "cimd_document"
+path = "fuzz_targets/cimd_document.rs"
+test = false
+doc = false
+bench = false

@@ -125,3 +125,34 @@ impl Issues {
 pub(super) fn is_loopback_host(host: &str) -> bool {
     matches!(host, "localhost" | "127.0.0.1" | "[::1]" | "::1")
 }
+
+/// A Client ID Metadata Document URL: https, a host, a non-root path, and
+/// no credentials, query or fragment, already in canonical form.
+pub(super) fn is_cimd_url(id: &str) -> bool {
+    cimd_shape(id, "https")
+}
+
+/// The sandbox-only exception for a local test client: the same shape over
+/// `http` on a loopback host. Callers allow it only in a sandbox build with
+/// `sandbox.enabled`.
+pub(super) fn is_loopback_cimd_url(id: &str) -> bool {
+    cimd_shape(id, "http")
+        && Url::parse(id)
+            .ok()
+            .and_then(|u| u.host_str().map(is_loopback_host))
+            .unwrap_or(false)
+}
+
+fn cimd_shape(id: &str, scheme: &str) -> bool {
+    id.len() <= 2048
+        && Url::parse(id).is_ok_and(|u| {
+            u.scheme() == scheme
+                && u.host_str().is_some()
+                && u.as_str() == id
+                && u.path() != "/"
+                && u.username().is_empty()
+                && u.password().is_none()
+                && u.query().is_none()
+                && u.fragment().is_none()
+        })
+}
