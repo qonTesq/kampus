@@ -5,7 +5,7 @@
 - [x] 1.1 Inline stylesheet with a CSP `style-src` hash; tests for the hash and the unchanged headers
 - [x] 1.2 Name the school on the sign-in button and in the upstream session label
 - [x] 1.3 Redirect `/login` to `/login/upstream` when the IdP is the only option
-- [ ] 1.4 Grant time in the school's timezone (blocked: needs a `kampus-auth` → `chrono-tz` edge in `Cargo.lock`)
+- [x] 1.4 Grant time in the school's timezone (done by the integrator: the workspace `chrono-tz` added to `kampus-auth`, one `Cargo.lock`)
 
 ## 2. Minimal scopes
 

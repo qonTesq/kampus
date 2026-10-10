@@ -129,6 +129,8 @@ pub(crate) struct Inner {
     pub(crate) store: Box<dyn Store>,
     pub(crate) limits: Limits,
     pub(crate) school_name: String,
+    /// The school's timezone, for times shown on pages.
+    pub(crate) timezone: chrono_tz::Tz,
     /// The school's OIDC `IdP`, when configured.
     pub(crate) upstream: Option<login::upstream::Upstream>,
     /// The pseudonymous-subject HMAC key.
@@ -275,6 +277,8 @@ impl Broker {
             store: Box::new(MemoryStore::new(capacity)),
             limits: Limits::new(),
             school_name: school.school.display_name.clone(),
+            // Config validation already refused an unknown timezone.
+            timezone: school.school.timezone.parse().unwrap_or(chrono_tz::UTC),
             upstream,
             subject_key,
             #[cfg(feature = "sandbox")]

@@ -75,10 +75,10 @@ fn consent_csrf(pending: &Pending, session: &Session) -> String {
     sha256_hex(&format!("{}:{}", pending.csrf, session.csrf))
 }
 
-/// `2026-10-09 14:05 UTC`.
-fn utc(seconds: i64) -> String {
+/// `2026-10-09 10:05 EDT`, in the school's timezone.
+fn local(seconds: i64, tz: chrono_tz::Tz) -> String {
     chrono::DateTime::from_timestamp(seconds, 0)
-        .map(|t| t.format("%Y-%m-%d %H:%M UTC").to_string())
+        .map(|t| t.with_timezone(&tz).format("%Y-%m-%d %H:%M %Z").to_string())
         .unwrap_or_default()
 }
 
@@ -205,7 +205,7 @@ pub(crate) async fn connections(
         .map(|g| Row {
             scopes: g.key.scopes.iter().cloned().collect::<Vec<_>>().join(", "),
             resource: g.key.resource,
-            granted: utc(g.granted_at),
+            granted: local(g.granted_at, inner.timezone),
             id: g.id,
             label: g.label,
         })
@@ -246,4 +246,14 @@ pub(crate) async fn revoke(
         tracing::info!(client_id = %revoked.key.client_id, "grant revoked");
     }
     see_other(&inner.url("/connections?revoked=1"))
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn grant_times_use_the_school_timezone() {
+        let tz: chrono_tz::Tz = "America/New_York".parse().unwrap();
+        // 2026-10-10 15:31 UTC is 11:31 EDT.
+        assert_eq!(super::local(1_791_646_260, tz), "2026-10-10 11:31 EDT");
+    }
 }
