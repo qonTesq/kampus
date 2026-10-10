@@ -9,7 +9,7 @@ import re
 from pathlib import Path
 import tempfile
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -31,14 +31,18 @@ class Recorder:
     def __init__(self):
         self.stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
 
-    def capture(self, vendor, label, url, opener=None, form=None):
+    def capture(self, vendor, label, url, opener=None, form=None, headers=None, note=None):
         folder = ROOT / vendor / (self.stamp + "-" + label)
         folder.mkdir(parents=True, exist_ok=False)
         data = urllib.parse.urlencode(form).encode() if form is not None else None
-        request = urllib.request.Request(url, data=data, headers={"User-Agent": "kampus-public-fixture-capture/1", "Accept-Encoding": "identity"})
+        # Only public, non-secret headers; they are recorded in the manifest.
+        sent = {"Accept-Encoding": "identity", **(headers or {})}
+        request = urllib.request.Request(url, data=data, headers={"User-Agent": "kampus-public-fixture-capture/1", **sent})
         meta = {"format_version": 1, "kind": "recorded", "captured_at": datetime.now(timezone.utc).isoformat(),
-                "source_url": url, "request": {"method": request.get_method(), "form": form, "headers": {"Accept-Encoding": "identity"}, "cookies": "omitted"},
+                "source_url": url, "request": {"method": request.get_method(), "form": form, "headers": sent, "cookies": "omitted"},
                 "license_provenance": PROVENANCE}
+        if note:
+            meta["source_note"] = note
         body = None
         try:
             try:
@@ -80,6 +84,29 @@ def public(rec, cfg, date):
     for label, station in [("temple-arrivals", cfg["rail_station"]), ("subway-error", cfg["invalid_rail_station"])]:
         rec.capture("septa", label, cfg["rail"] + "?" + urllib.parse.urlencode({"station": station}))
     rec.capture("hours", "temple-hours", cfg["hours"])
+
+
+LIBCAL_PAGE_NOTE = ("Public LibCal booking page and the data endpoint that page itself calls. "
+                    "Undocumented by Springshare; best-effort, may change without notice.")
+
+
+def libcal(rec, cfg):
+    """LibCal public booking-page data: the room directory page, the availability
+    grid the page POSTs for each date, and the API 1.1 refusal as evidence."""
+    for loc in cfg["libcal_public"]:
+        base, lid, label = loc["base"], loc["lid"], loc["label"]
+        page = base + "/spaces?" + urllib.parse.urlencode({"m": "s", "lid": lid, "search": ""})
+        rec.capture("libcal", label + "-directory", page, note=LIBCAL_PAGE_NOTE)
+        for date in loc["dates"]:
+            end = (datetime.fromisoformat(date) + timedelta(days=1)).date().isoformat()
+            form = {"lid": lid, "gid": 0, "eid": -1, "seat": 0, "seatId": 0, "zone": 0,
+                    "start": date, "end": end, "pageIndex": 0, "pageSize": 18}
+            rec.capture("libcal", f"{label}-grid-{date}", base + "/spaces/availability/grid", form=form,
+                        headers={"Referer": page, "X-Requested-With": "XMLHttpRequest"}, note=LIBCAL_PAGE_NOTE)
+        if loc.get("api_evidence"):
+            api = base + "/api/1.1/space/items/" + lid + "?" + urllib.parse.urlencode({"availability": loc["dates"][0]})
+            rec.capture("libcal", label + "-api-1.1-availability", api,
+                        note="Documented LibCal API 1.1, recorded anonymously as evidence that it now refuses anonymous reads.")
 
 
 def gtfs(rec, cfg):
@@ -184,7 +211,7 @@ def verify():
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("mode", choices=["public", "gtfs", "flight", "verify"])
+    parser.add_argument("mode", choices=["public", "libcal", "gtfs", "flight", "verify"])
     parser.add_argument("--config", type=Path, default=ROOT / "sources.json")
     parser.add_argument("--date", default=datetime.now().date().isoformat())
     parser.add_argument("--gtfs-release", help="Release tag instead of latest, e.g. v202609061")
@@ -195,6 +222,8 @@ if __name__ == "__main__":
     recorder = Recorder()
     if args.mode == "public":
         public(recorder, cfg, args.date)
+    elif args.mode == "libcal":
+        libcal(recorder, cfg)
     elif args.mode == "gtfs":
         gtfs(recorder, cfg)
     elif args.mode == "flight":

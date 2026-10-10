@@ -11,5 +11,10 @@
   "hours": "https://library.temple.edu/hours",
   "flight": "https://flight.transloc.com/Services/JSONPRelay.svc/GetMapVehiclePoints",
   "gtfs_release_api": "https://api.github.com/repos/septadev/GTFS/releases/latest",
-  "gtfs_stop_ids": ["53", "1277", "32148"]
+  "gtfs_stop_ids": ["53", "1277", "32148"],
+  "libcal_public": [
+    {"label": "sju-hawk-hill", "base": "https://sju.libcal.com", "lid": "20094", "dates": ["2026-10-12", "2026-10-10", "2026-10-11"], "api_evidence": true},
+    {"label": "sju-university-city", "base": "https://sju.libcal.com", "lid": "20098", "dates": ["2026-10-12", "2026-10-10"]},
+    {"label": "temple", "base": "https://charlesstudy.temple.edu", "lid": "8404", "dates": ["2026-10-12", "2026-10-11", "2026-11-26"], "api_evidence": true}
+  ]
 }

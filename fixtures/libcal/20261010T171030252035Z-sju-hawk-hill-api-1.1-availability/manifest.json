@@ -1,0 +1,21 @@
+{
+  "format_version": 1,
+  "kind": "recorded",
+  "captured_at": "2026-10-10T17:10:34.765973+00:00",
+  "source_url": "https://sju.libcal.com/api/1.1/space/items/20094?availability=2026-10-12",
+  "request": {
+    "method": "GET",
+    "form": null,
+    "headers": {
+      "Accept-Encoding": "identity"
+    },
+    "cookies": "omitted"
+  },
+  "license_provenance": "Public vendor response recorded for offline interoperability tests. Upstream retains rights; no additional license is asserted.",
+  "source_note": "Documented LibCal API 1.1, recorded anonymously as evidence that it now refuses anonymous reads.",
+  "http_status": 403,
+  "content_type": "text/html; charset=utf-8",
+  "body_file": "body.bin",
+  "sha256": "80832376a95c900cfa6fcbc2a125706c3f87805bf89151c9697a5c5568f51bea",
+  "byte_length": 53
+}

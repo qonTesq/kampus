@@ -1,0 +1,2259 @@
+    <!DOCTYPE html>
+<html lang="en">
+<head>
+    <!-- iid: 1621 -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            
+            <link href="https://static-assets-us.libcal.com/bootstrap_23/bootstrap3_16.min.css" rel="stylesheet">
+    
+
+    <link href="//cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <link href="https://static-assets-us.libcal.com/css_163/LibCal_public.min.css" rel="stylesheet">
+    <link href="https://static-assets-us.libcal.com/css_163/print.min.css" rel="stylesheet" media="print">
+    
+<script src="https://static-assets-us.libcal.com/jquery_16/jquery.min.js"></script>
+
+
+    <script src="https://static-assets-us.libcal.com/bootstrap_23/bootstrap3.min.js"></script>
+    <script src="https://static-assets-us.libcal.com/js_163/LibCal_public.min.js"></script>
+        <script>
+    springSpace.dateFormat = "dddd, MMMM D, YYYY";
+    springSpace.dateShortFormat = "dddd, MMMM D, YYYY";
+    springSpace.timeFormat = "h:mma";
+    springSpace.timezone = 'America/New_York';
+    springSpace.currency = "USD";
+
+    springSpace.language = 'en'; // en
+    springSpace.locale = 'en-US'; // en-US
+
+    springSpace.phpTimeFormat = 'g:ia';
+
+    springSpace.bootstrapAsset = 'https://static-assets-us.libcal.com/bootstrap_23/bootstrap3_16.min.css';
+    springSpace.publicCssAsset = 'https://static-assets-us.libcal.com/css_163/LibCal_public.min.css';
+    springSpace.adminCssAsset = 'https://static-assets-us.libcal.com/css_163/LibCal_admin.min.css';
+</script>
+    <meta name="robots" content="noindex, nofollow, noarchive">    <title>
+                    Search Spaces - Charles Library -
+                Temple University Libraries Reservation System -
+        Temple University Libraries
+    </title>
+    <style>
+            #s-lc-public-banner {
+            padding: 0;
+            margin: 0;
+        }
+
+        .s-lc-public-footer {
+            margin: 0;
+        }
+    </style>
+            <link href='https://fonts.googleapis.com/css?family=Droid+Sans:400,700' rel='stylesheet' type='text/css'>
+<link href="https://fonts.googleapis.com/css?family=Faustina&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css?family=Roboto&display=swap" rel="stylesheet">
+<style>
+
+
+
+
+#s-lc-public-banner-img {width: auto; padding: 10px;height: 75px;background-color: #A50030;}
+#s-lc-public-banner {display:none;}
+
+.logo-container {
+  border-bottom: solid #A50030 2px;
+}
+.logo-container .container {
+  margin-bottom: 14px;
+  margin-top: 14px;
+}
+.logo-container a.header-name {
+    color: #000;
+    font-size: 3.5rem;
+    font-family: Faustina, Times, serif;
+    vertical-align: bottom;
+    text-decoration: none;
+    white-space: nowrap;
+}
+.logo-container a.header-name img {
+    max-width: 90px;
+    max-height: 90px;
+    min-width: 90px;
+    min-height: 90px;
+    vertical-align: bottom;
+    display: inline-block;
+    margin-right: 10px;
+}
+
+a {color:#A50030;}
+p {
+   font-family: faustina; font-size:16px;}
+
+body {
+   font-family: faustina; font-size:16px;}
+#s-lc-public-bc .breadcrumb {
+    font-family: faustina;
+    font-weight: 100;}.breadcrumb>.active {display:none;}
+
+h1 {font-family:"Roboto"; font-size:200;}
+h2{font-family:"Roboto"; font-size:24px;}
+
+#s-lc-rm-tg-h {font-family:"Roboto";}
+#s-lc-public-pt {font-family: "Roboto";}
+
+
+
+p.select {font-size:16px; margin-left:30px;}
+
+.radio {
+    line-height:1.75;
+    font-size: 16px;
+}
+.s-lc-app-s1h3 {
+    color: #555;}
+
+.lc_rm_b , .lc_rm_t,.lc_rm_u {
+background-repeat: no-repeat;
+background-position:right top;
+}
+.lc_rm_u,.lc_rm_b {   
+    background-image: url(images/libcal/xbookedborder.png);    
+}
+ .lc_rm_t {
+background-image: url(images/libcal/checktentativeborder.png);
+}
+#s-lc-public-appm-pt {
+    line-height: normal;
+    font-family: "roboto";}
+.s-lc-appm-s1h3 {font-family: "roboto";}
+
+#s-lc-appm-s2-with {font-family: "roboto";}
+#s-lc-appm-userdesc {font-family: "Faustina"; serif; font-size:100%;}
+
+#s-lc-appointment-details {font-family: "Roboto"; serif;}
+
+#fieldset {
+      font-family: "Roboto";}
+
+.form-horizontal .control-label {
+    padding-top: 7px;
+    margin-bottom: 0;
+    text-align: right;
+    font-family: Faustina;
+}
+
+.s-lc-header{padding:0;}
+
+#s-lc-public-pt .pull-left{
+float: none !important;
+} 
+
+/*  temp styles for appointment scheduling */
+.s-lc-app-booking-title-user, .s-lc-appm-booking-title-user  {
+    position: relative;
+    left: 4.3em;
+    bottom: 1.1em;
+}
+
+ #s-lc-public-pt .bootstrap-select .dropdown-toggle {width:auto}
+
+#cal-form .bootstrap-select {
+    width: 100%;}
+.bootstrap-select .btn  {width:100%;}
+
+.s-lc-app-s1h3 {font-family:"roboto";}
+
+#s-lc-rm-cal .ui-datepicker {
+    width: 100%;
+}
+.ui-datepicker {font-family:"roboto";}
+
+.ui-datepicker-month {
+  height: 30px;
+}
+
+.lc_rm_hours {
+    font-size: 10px;
+    color: #4e4e4e;
+    font-family: "roboto";}
+
+.lc_rm_b {
+    height: 19px;
+    background-color: #2F287D;}
+@media only screen and (max-width: 550px) {
+#s-lc-public-bc .breadcrumb {
+    display: none;
+  }
+}
+
+@media (min-width: 950px){
+.container {
+     {max-width: 1200px;
+    min-width: 1200px;}
+
+}}
+
+#footer-wrapper{padding:0;}@media (min-width:768px){#footer-wrapper.container{width:750px;padding-left:0;padding-right:0;}}@media (min-width:992px){#footer-wrapper.container{width:970px;padding-left:0;padding-right:0;}}@media (min-width:1200px){#footer-wrapper.container{width:1170px;padding-left:0;padding-right:0;}.panels-flexible-region-site_footer-center{margin-left:42px;}}.panels-flexible-region.panels-flexible-region-site_footer-left.panels-flexible-region-first {float:left;}.panels-flexible-region-site_footer-center{float:left;}@font-face {  font-family: "BebasNeueRegular";  src: url("https://web.old.tul-infra.page/sites/all/themes/templelibrary_responsive/fonts/BebasNeue-webfont.eot");  src: url("https://web.old.tul-infra.page/sites/all/themes/templelibrary_responsive/fonts/BebasNeue-webfont.eot?#iefix") format("embedded-opentype"), url("https://web.old.tul-infra.page/sites/all/themes/templelibrary_responsive/fonts/BebasNeue-webfont.woff") format("woff"), url("fonts/BebasNeue-webfont.ttf") format("truetype"), url("fonts/BebasNeue-webfont.svg#BebasNeueRegular") format("svg");  font-weight: normal !important;  font-style: normal !important;}@font-face {  font-family: "Droid";  src: url("https://web.old.tul-infra.page/sites/all/themes/templelibrary_responsive/fonts/droidsans-webfont.eot");  src: url("https://web.old.tul-infra.page/sites/all/themes/templelibrary_responsive/fonts/droidsans-webfont.eot?#iefix") format("embedded-opentype"), url("https://web.old.tul-infra.page/sites/all/themes/templelibrary_responsive/fonts/droidsans-webfont.woff") format("woff"), url("fonts/droidsans-webfont.ttf") format("truetype"), url("fonts/droidsans-webfont.svg#Droid") format("svg");  font-weight: normal !important;  font-style: normal !important;}@font-face {  font-family: "DroidBld";  src: url("https://web.old.tul-infra.page/sites/all/themes/templelibrary_responsive/fonts/droidsans-bold-webfont.eot");  src: url("https://web.old.tul-infra.page/sites/all/themes/templelibrary_responsive/fonts/droidsans-bold-webfont.eot?#iefix") format("embedded-opentype"), url("https://web.old.tul-infra.page/sites/all/themes/templelibrary_responsive/fonts/droidsans-bold-webfont.woff") format("woff"), url("fonts/droidsans-bold-webfont.ttf") format("truetype"), url("fonts/droidsans-bold-webfont.svg#DroidBld") format("svg");  font-weight: normal !important;  font-style: normal !important;}#footer {  margin-top: 0px;  background-color: #222222;  color: white;  padding-bottom: 28px;  font-family: BebasNeueRegular;  width: 100%;}#footer .identity {  position: relative;  top: -10px;  font-size: 1.375em;  line-height: 1.2em;  margin-left: 42px;}#footer h1, #footer h2, #footer h3, #footer h4, #footer h5, #footer h6 {  color: white;  font-family: arial !important;  font-size: 1.125em;  letter-spacing: 0.075em;}#footer p, #footer div, #footer a {  color: white;  font-family: Arial !important;}#footer h2 {  font-size: 1.375em;  line-height: 1.2em;  font-weight: 100;}/****footer*****/#footer-wrapper{  padding:0;}@media (min-width:768px){  #footer-wrapper.container{    width:750px;padding-left:0;padding-right:0;  }}@media (min-width:992px){  #footer-wrapper.container{    width:970px;padding-left:0;padding-right:0;  }}@media (min-width:1200px){  #footer-wrapper.container{    width:1170px;padding-left:0;padding-right:0;  }  .panels-flexible-region-site_footer-center{    margin-left:42px;  }}.panels-flexible-region.panels-flexible-region-site_footer-left.panels-flexible-region-first {  float:left;}.panels-flexible-region-site_footer-center{  float:left;}#mini-panel-footer_mini_panel .panels-flexible-region-site_footer-center {  background-color: transparent;  padding: 0px;  padding-left: 77px;  margin-bottom: 21px;}}#mini-panel-footer_mini_panel ul {  margin: auto;}#mini-panel-footer_mini_panel ul li {  list-style-type: none;  line-height: 2.5;  padding-left: 28px;}#footer-top {  height: 21px;  background-color: #303030;  width: 100%;  clear: both;  margin-bottom: 14px;}#footer-wrapper {  position: relative;  bottom: 0;  width: 100%;}#sys-status { margin: 0; padding: 4px 0 4px 42px;  width: 100%;  background-color: #303030;  color: #aaaaaa;}#sys-status a {  color: #eeeeee;}#social-media {  padding-right: 35px;  text-align: right;}#social-media img {  display: inline-block;  height: 36px;  width: 36px;  border: 0px;  vertical-align: bottom;  margin-right: 35px;}.pane-search-form {  width: 100%;  float: right;  padding: 28px;}.pane-search-form h2.pane-title {  display: inline;}.pane-search-form .pane-content {  display: inline;}.pane-search-form .pane-content form {  display: inline;}.pane-search-form .pane-content form div {  display: inline;}.pane-search-form {  width: 100%;  padding: 14px 0;  text-align: left;}#search-block-form input {  margin: 0 5px;  display: inline;}#search-block-form .field-prefix {  color: #494949;  font-size: 12px;  font-weight: bold;}#block-search-form {  overflow: hidden;  *zoom: 1;  width: 295px;}.pane-block-48 {  width: 100%;}#homebox-link {  float: right;  margin: -22px 42px 0 0;  z-index: 10000;  position: relative;}
+
+#header { background-color: #F9E7BD;}
+</style>
+
+</head>
+<body id="equip_" class="s-lc-public s-lc-public-page-5">
+
+
+<a id="s-lc-public-skiplink" class="s-lc-skiplink alert-info" href="#s-lc-public-title-area">Skip to Main Content</a>
+
+<div id="s-lc-public-cust-header" role="banner"><div class="logo-container">
+   <div class="container">
+      <a href="https://library.temple.edu" class="header-name" id="header-logo">
+        <img src="https://libproxy.temple.edu/public/temple-logo-t-box.png" class="header-logo" alt=""> <span>University Libraries</span>
+      </a>
+  </div>
+</div>
+</div>
+<div class="container">
+    
+    <div id="s-lc-public-bc" class="row">
+        <div class="col-md-12">
+            <nav aria-label="Breadcrumb">
+                <ol class="breadcrumb">
+                    <li><a href="https://library.temple.edu">Temple University Libraries</a></li>
+
+                    <li class="s-lc-desktop-only"><a href="https://charlesstudy.temple.edu" >Temple University Libraries Reservation System</a></li>
+
+                                            <li><a href="/r/search" >Search Spaces</a></li>
+                    
+                                            <li class="active s-lc-desktop-only" aria-current="page">Search Spaces - Charles Library</li>
+                    
+                                        </ol>
+            </nav>
+        </div>
+    </div>
+
+    <noscript>
+        <div class="alert alert-danger" id="noscript">Your browser has javascript disabled. Without javascript some functions will not work.</div>
+    </noscript>
+
+    <main aria-label="Main Content">
+        <div id="s-lc-public-title-area">
+                <div id="s-lc-public-title" class="row">
+    <div class="col-md-12">
+        <h1 id="s-lc-public-pt" class="s-lc-eq-booking-header">
+            <div class="s-lc-eq-booking-title">
+                Search Spaces -
+
+                                    <div class="s-lc-eq-location-name">
+                        Charles Library
+
+                        <small>
+                            <a href="/r/search?change-location">
+                                <i class="fa fa-map-marker" aria-hidden="true"></i>
+                                <span class="sr-only">
+                                    Change Location                                </span>
+                            </a>
+                        </small>
+                    </div>
+                            </div>
+
+                    </h1>
+    </div>
+</div>
+
+        </div>
+
+            <div id="s-lc-public-main" class="s-lc-public-main">
+        <div id="s-lc-public-page-content" class="row">
+            <div class="col-md-4">
+                <div id="s-lc-filter-summary" class="s-lc-mobile-only">
+                    <a href="javascript:void(0)" id="s-lc-interactive-filters-show" class="pull-right">
+                        Edit Search
+                    </a>
+
+                    <h2 class="s-lc-sub-header margin-top-none">
+                        Search Options
+                    </h2>
+
+                    <div class="s-lc-filters-used margin-bottom-med">
+    
+    
+    
+    
+</div>
+                </div>
+
+                <div id="s-lc-interactive-filters" class="s-lc-desktop-only">
+                    <div class="s-lc-search-filters margin-bottom-med">
+    <ul class="nav nav-tabs margin-bottom-med s-lc-search-pills" role="tablist">
+        <li role="presentation">
+            <a href="#by-time" id="tab-by-time" data-toggle="tab" role="tab"
+               aria-controls="by-time" aria-selected="false"
+               tabindex="-1">
+                Search by Time
+            </a>
+        </li>
+
+        <li role="presentation" class="active">
+            <a href="#by-space" id="tab-by-space" data-toggle="tab" role="tab"
+               aria-controls="by-space" aria-selected="true"
+               tabindex="0">
+                Search by Space
+            </a>
+        </li>
+    </ul>
+
+    <div class="tab-content">
+        <div class="tab-pane " id="by-time"
+             role="tabpanel" aria-labelledby="tab-by-time">
+            
+    
+<form id="s-lc-search-filters" role="search" method="get" action="?" autocomplete="off">
+    <input type="hidden" name="m" value="t">
+
+    <input type="hidden" id="s-lc-location" name="lid" value="8404">
+
+    
+            <div class="form-group " id="s-lc-group_container">
+            <label id="s-lc-group_fi_label" class=" control-label " for="s-lc-group">
+            Category
+            
+                    </label>
+    
+                <select
+        id="s-lc-group"
+        name="gid"
+        class="form-control "
+        title=""
+                                                    >
+            
+    <option value="0" selected="selected">Show All</option>
+
+    
+
+
+
+
+
+
+                <option value="15326">Charles Library small group study rooms
+
+
+</option>
+                    <option value="15331">Charles Library large group study rooms
+
+
+</option>
+                    <option value="15441">Event and meeting rooms
+
+
+</option>
+    
+
+    </select>
+
+        
+        
+    
+    </div>
+    
+    <div class="form-group " id="s-lc-type_container">
+            <label id="s-lc-type_fi_label" class=" control-label " for="s-lc-type">
+            Capacity
+            
+                    </label>
+    
+                <select
+        id="s-lc-type"
+        name="capacity"
+        class="form-control "
+        title=""
+        required="required"                                            >
+            
+
+
+    <option value="0" selected="selected">All Spaces (not seats)</option>
+
+
+
+
+
+                <option value="1">Space For 1 person
+
+
+</option>
+                    <option value="2">Space For 5-8 people
+
+
+</option>
+                    <option value="3">Space For 9-12 people
+
+
+</option>
+                    <option value="4">Space For 13+ people
+
+
+</option>
+    
+
+    </select>
+
+        
+        
+    
+    </div>
+
+    
+    <div class="form-group " id="s-lc-date_container">
+            <label id="s-lc-date_fi_label" class=" control-label " for="s-lc-date">
+            Date
+            
+                    </label>
+    
+                <input
+        type="date"
+        id="s-lc-date"
+        name="date"
+        aria-labelledby="s-lc-date_fi_label"
+        value="2026-10-10"
+        autocomplete="off"
+        class="form-control s-lc-native-date "
+                                        required="required"            >
+
+        
+        
+    
+    </div>
+
+            <div id="s-lc-search-daily" style="display: none;">
+            <div class="form-group " id="s-lc-date-end_container">
+            <label id="s-lc-date-end_fi_label" class=" control-label " for="s-lc-date-end">
+            Until
+            
+                    </label>
+    
+                <input
+        type="date"
+        id="s-lc-date-end"
+        name="date-end"
+        aria-labelledby="s-lc-date-end_fi_label"
+        value="2026-10-10"
+        autocomplete="off"
+        class="form-control s-lc-native-date "
+                                                    >
+
+        
+        
+    
+    </div>
+        </div>
+
+        <div id="s-lc-search-hourly" class="row" >
+            <div class="col-xs-6">
+                <div class="form-group " id="s-lc-time-start_container">
+            <label id="s-lc-time-start_fi_label" class=" control-label " for="s-lc-time-start">
+            From
+            
+                    </label>
+    
+                <input
+        type="time"
+        id="s-lc-time-start"
+        name="start"
+        aria-labelledby="s-lc-time-start_fi_label"
+        value="14:00"
+        autocomplete="off"
+        class="form-control s-lc-native-time "
+                                required="required"    >
+
+        
+        
+    
+    </div>
+            </div>
+
+            <div class="col-xs-6">
+                <div class="form-group " id="s-lc-time-end_container">
+            <label id="s-lc-time-end_fi_label" class=" control-label " for="s-lc-time-end">
+            Until
+            
+                    </label>
+    
+                <input
+        type="time"
+        id="s-lc-time-end"
+        name="end"
+        aria-labelledby="s-lc-time-end_fi_label"
+        value="16:00"
+        autocomplete="off"
+        class="form-control s-lc-native-time "
+                                required="required"    >
+
+        
+        
+    
+    </div>
+            </div>
+        </div>
+    
+    <div id="s-lc-search-filters-container" class="form-group">
+            </div>
+
+        
+    <div class="form-group margin-bottom-none">
+        <button class="btn btn-block btn-default" type="submit" id="s-lc-go" >
+            <i class="fa fa-search fa-lg" aria-hidden="true"></i>
+            Search
+        </button>
+    </div>
+</form>
+        </div>
+
+        <div class="tab-pane active" id="by-space"
+             role="tabpanel" aria-labelledby="tab-by-space">
+            
+    
+<form id="s-lc-by-space-search-filters" role="search" method="get" action="?" autocomplete="off">
+    <input type="hidden" name="m" value="s">
+
+    <input type="hidden" id="s-lc-by-space-location" name="lid" value="8404">
+
+    
+    <div class="form-group " id="s-lc-by-space-item_container">
+            <label id="s-lc-by-space-item_fi_label" class=" control-label " for="s-lc-by-space-item">
+            Seat/Space Name
+            
+                    </label>
+    
+                
+    
+            <input id="s-lc-by-space-item" name="search" value="" type="text"  placeholder="Enter seat/space name" class="form-control " autocomplete="off">
+    
+            
+    
+        
+        
+    
+    </div>
+
+            <div class="form-group " id="s-lc-by-space-group_container">
+            <label id="s-lc-by-space-group_fi_label" class=" control-label " for="s-lc-by-space-group">
+            Category
+            
+                    </label>
+    
+                <select
+        id="s-lc-by-space-group"
+        name="gid"
+        class="form-control "
+        title=""
+                                                    >
+            
+    <option value="0" selected="selected">Show All</option>
+
+    
+
+
+
+
+
+
+                <option value="15326">Charles Library small group study rooms
+
+
+</option>
+                    <option value="15331">Charles Library large group study rooms
+
+
+</option>
+                    <option value="15441">Event and meeting rooms
+
+
+</option>
+    
+
+    </select>
+
+        
+        
+    
+    </div>
+    
+    <div class="form-group " id="s-lc-by-space-type_container">
+            <label id="s-lc-by-space-type_fi_label" class=" control-label " for="s-lc-by-space-type">
+            Capacity
+            
+                    </label>
+    
+                <select
+        id="s-lc-by-space-type"
+        name="capacity"
+        class="form-control "
+        title=""
+        required="required"                                            >
+            
+
+
+    <option value="0" selected="selected">All Spaces (not seats)</option>
+
+
+
+
+
+                <option value="1">Space For 1 person
+
+
+</option>
+                    <option value="2">Space For 5-8 people
+
+
+</option>
+                    <option value="3">Space For 9-12 people
+
+
+</option>
+                    <option value="4">Space For 13+ people
+
+
+</option>
+    
+
+    </select>
+
+        
+        
+    
+    </div>
+
+    
+    <div id="s-lc-search-filters-container" class="form-group">
+            </div>
+
+    
+    <div class="form-group margin-bottom-none">
+        <button class="btn btn-block btn-default" type="submit" id="s-lc-by-space-go">
+            <i class="fa fa-search fa-lg" aria-hidden="true"></i>
+            Search
+        </button>
+    </div>
+</form>
+        </div>
+    </div>
+</div>
+                </div>
+            </div>
+
+            <div class="col-md-8">
+                
+                
+                
+<div id="s-lc-eq-search-results" aria-live="polite" class="margin-bottom-lg">
+                <h2 class="s-lc-section-header margin-top-none" tabindex="-1">
+            32 Matches
+        </h2>
+
+                                                            
+
+    
+<div class="media s-lc-booking-suggestion">
+    <div class="media-left s-lc-eq-image s-lc-desktop-only">
+                    <a href="/space/58701?image=true"  aria-hidden="true" tabindex="-1">
+                <img loading="lazy" class="media-object img-rounded" src="https://d68g328n4ug0e.cloudfront.net/default-space.png" alt="311" />
+            </a>
+            </div>
+
+    <div class="media-body">
+        <h3 class="media-heading s-lc-suggestion-heading">
+                            <a href="/space/58701" >
+                    311
+                </a>
+                    </h3>
+
+        <div class="s-lc-suggestion-body">
+            <div class="s-lc-booking-group">
+                Charles Library small group study rooms
+                                            </div>
+
+                            <div class="s-lc-booking-desc">
+                    Small group study room
+
+                </div>
+                    </div>
+
+        <div class="s-lc-suggestion-footer">
+            <div class="s-lc-booking-actions">
+                <a href="/space/58701?show-availability=true"  class="btn btn-primary btn-sm s-lc-font-size-standard s-lc-suggestion-book-now" aria-label="Show Availability: 311">
+                    Show Availability
+                </a>
+            </div>
+
+            <div class="s-lc-booking-icons">
+                    <span title="The capacity of this space">
+        <i class="fa fa-user" aria-hidden="true"></i>
+        6
+    </span>
+
+            </div>
+        </div>
+    </div>
+</div>
+                                                            
+
+    
+<div class="media s-lc-booking-suggestion">
+    <div class="media-left s-lc-eq-image s-lc-desktop-only">
+                    <a href="/space/226283?image=true"  aria-hidden="true" tabindex="-1">
+                <img loading="lazy" class="media-object img-rounded" src="https://d68g328n4ug0e.cloudfront.net/default-space.png" alt="323" />
+            </a>
+            </div>
+
+    <div class="media-body">
+        <h3 class="media-heading s-lc-suggestion-heading">
+                            <a href="/space/226283" >
+                    323
+                </a>
+                    </h3>
+
+        <div class="s-lc-suggestion-body">
+            <div class="s-lc-booking-group">
+                Charles Library small group study rooms
+                                            </div>
+
+                    </div>
+
+        <div class="s-lc-suggestion-footer">
+            <div class="s-lc-booking-actions">
+                <a href="/space/226283?show-availability=true"  class="btn btn-primary btn-sm s-lc-font-size-standard s-lc-suggestion-book-now" aria-label="Show Availability: 323">
+                    Show Availability
+                </a>
+            </div>
+
+            <div class="s-lc-booking-icons">
+                    <span title="The capacity of this space">
+        <i class="fa fa-user" aria-hidden="true"></i>
+        6
+    </span>
+
+            </div>
+        </div>
+    </div>
+</div>
+                                                            
+
+    
+<div class="media s-lc-booking-suggestion">
+    <div class="media-left s-lc-eq-image s-lc-desktop-only">
+                    <a href="/space/58706?image=true"  aria-hidden="true" tabindex="-1">
+                <img loading="lazy" class="media-object img-rounded" src="https://d68g328n4ug0e.cloudfront.net/default-space.png" alt="327" />
+            </a>
+            </div>
+
+    <div class="media-body">
+        <h3 class="media-heading s-lc-suggestion-heading">
+                            <a href="/space/58706" >
+                    327
+                </a>
+                    </h3>
+
+        <div class="s-lc-suggestion-body">
+            <div class="s-lc-booking-group">
+                Charles Library small group study rooms
+                                            </div>
+
+                            <div class="s-lc-booking-desc">
+                    Breakout room
+
+                </div>
+                    </div>
+
+        <div class="s-lc-suggestion-footer">
+            <div class="s-lc-booking-actions">
+                <a href="/space/58706?show-availability=true"  class="btn btn-primary btn-sm s-lc-font-size-standard s-lc-suggestion-book-now" aria-label="Show Availability: 327">
+                    Show Availability
+                </a>
+            </div>
+
+            <div class="s-lc-booking-icons">
+                    <span title="The capacity of this space">
+        <i class="fa fa-user" aria-hidden="true"></i>
+        6
+    </span>
+
+            </div>
+        </div>
+    </div>
+</div>
+                                                            
+
+    
+<div class="media s-lc-booking-suggestion">
+    <div class="media-left s-lc-eq-image s-lc-desktop-only">
+                    <a href="/space/58707?image=true"  aria-hidden="true" tabindex="-1">
+                <img loading="lazy" class="media-object img-rounded" src="https://d68g328n4ug0e.cloudfront.net/default-space.png" alt="348" />
+            </a>
+            </div>
+
+    <div class="media-body">
+        <h3 class="media-heading s-lc-suggestion-heading">
+                            <a href="/space/58707" >
+                    348
+                </a>
+                    </h3>
+
+        <div class="s-lc-suggestion-body">
+            <div class="s-lc-booking-group">
+                Charles Library small group study rooms
+                                            </div>
+
+                            <div class="s-lc-booking-desc">
+                    3rd floor north reading room. This room has a table and two chairs, but not technology
+
+                </div>
+                    </div>
+
+        <div class="s-lc-suggestion-footer">
+            <div class="s-lc-booking-actions">
+                <a href="/space/58707?show-availability=true"  class="btn btn-primary btn-sm s-lc-font-size-standard s-lc-suggestion-book-now" aria-label="Show Availability: 348">
+                    Show Availability
+                </a>
+            </div>
+
+            <div class="s-lc-booking-icons">
+                    <span title="The capacity of this space">
+        <i class="fa fa-user" aria-hidden="true"></i>
+        4
+    </span>
+
+            </div>
+        </div>
+    </div>
+</div>
+                                                            
+
+    
+<div class="media s-lc-booking-suggestion">
+    <div class="media-left s-lc-eq-image s-lc-desktop-only">
+                    <a href="/space/58708?image=true"  aria-hidden="true" tabindex="-1">
+                <img loading="lazy" class="media-object img-rounded" src="https://d68g328n4ug0e.cloudfront.net/default-space.png" alt="349" />
+            </a>
+            </div>
+
+    <div class="media-body">
+        <h3 class="media-heading s-lc-suggestion-heading">
+                            <a href="/space/58708" >
+                    349
+                </a>
+                    </h3>
+
+        <div class="s-lc-suggestion-body">
+            <div class="s-lc-booking-group">
+                Charles Library small group study rooms
+                                            </div>
+
+                            <div class="s-lc-booking-desc">
+                    3rd floor north reading room.
+
+                </div>
+                    </div>
+
+        <div class="s-lc-suggestion-footer">
+            <div class="s-lc-booking-actions">
+                <a href="/space/58708?show-availability=true"  class="btn btn-primary btn-sm s-lc-font-size-standard s-lc-suggestion-book-now" aria-label="Show Availability: 349">
+                    Show Availability
+                </a>
+            </div>
+
+            <div class="s-lc-booking-icons">
+                    <span title="The capacity of this space">
+        <i class="fa fa-user" aria-hidden="true"></i>
+        4
+    </span>
+
+            </div>
+        </div>
+    </div>
+</div>
+                                                            
+
+    
+<div class="media s-lc-booking-suggestion">
+    <div class="media-left s-lc-eq-image s-lc-desktop-only">
+                    <a href="/space/58709?image=true"  aria-hidden="true" tabindex="-1">
+                <img loading="lazy" class="media-object img-rounded" src="https://d68g328n4ug0e.cloudfront.net/default-space.png" alt="383" />
+            </a>
+            </div>
+
+    <div class="media-body">
+        <h3 class="media-heading s-lc-suggestion-heading">
+                            <a href="/space/58709" >
+                    383
+                </a>
+                    </h3>
+
+        <div class="s-lc-suggestion-body">
+            <div class="s-lc-booking-group">
+                Charles Library small group study rooms
+                                            </div>
+
+                            <div class="s-lc-booking-desc">
+                    Small breakout room that includes a Kramer box for wireless projection onto the screen.
+
+                </div>
+                    </div>
+
+        <div class="s-lc-suggestion-footer">
+            <div class="s-lc-booking-actions">
+                <a href="/space/58709?show-availability=true"  class="btn btn-primary btn-sm s-lc-font-size-standard s-lc-suggestion-book-now" aria-label="Show Availability: 383">
+                    Show Availability
+                </a>
+            </div>
+
+            <div class="s-lc-booking-icons">
+                    <span title="The capacity of this space">
+        <i class="fa fa-user" aria-hidden="true"></i>
+        6
+    </span>
+
+            </div>
+        </div>
+    </div>
+</div>
+                                                            
+
+    
+<div class="media s-lc-booking-suggestion">
+    <div class="media-left s-lc-eq-image s-lc-desktop-only">
+                    <a href="/space/58710?image=true"  aria-hidden="true" tabindex="-1">
+                <img loading="lazy" class="media-object img-rounded" src="https://d68g328n4ug0e.cloudfront.net/default-space.png" alt="384" />
+            </a>
+            </div>
+
+    <div class="media-body">
+        <h3 class="media-heading s-lc-suggestion-heading">
+                            <a href="/space/58710" >
+                    384
+                </a>
+                    </h3>
+
+        <div class="s-lc-suggestion-body">
+            <div class="s-lc-booking-group">
+                Charles Library small group study rooms
+                                            </div>
+
+                            <div class="s-lc-booking-desc">
+                    Medium group study room
+
+                </div>
+                    </div>
+
+        <div class="s-lc-suggestion-footer">
+            <div class="s-lc-booking-actions">
+                <a href="/space/58710?show-availability=true"  class="btn btn-primary btn-sm s-lc-font-size-standard s-lc-suggestion-book-now" aria-label="Show Availability: 384">
+                    Show Availability
+                </a>
+            </div>
+
+            <div class="s-lc-booking-icons">
+                    <span title="The capacity of this space">
+        <i class="fa fa-user" aria-hidden="true"></i>
+        6
+    </span>
+
+            </div>
+        </div>
+    </div>
+</div>
+                                                            
+
+    
+<div class="media s-lc-booking-suggestion">
+    <div class="media-left s-lc-eq-image s-lc-desktop-only">
+                    <a href="/space/58759?image=true"  aria-hidden="true" tabindex="-1">
+                <img loading="lazy" class="media-object img-rounded" src="https://d68g328n4ug0e.cloudfront.net/default-space.png" alt="385" />
+            </a>
+            </div>
+
+    <div class="media-body">
+        <h3 class="media-heading s-lc-suggestion-heading">
+                            <a href="/space/58759" >
+                    385
+                </a>
+                    </h3>
+
+        <div class="s-lc-suggestion-body">
+            <div class="s-lc-booking-group">
+                Charles Library small group study rooms
+                                            </div>
+
+                            <div class="s-lc-booking-desc">
+                    Medium group study room, Breakout+
+
+                </div>
+                    </div>
+
+        <div class="s-lc-suggestion-footer">
+            <div class="s-lc-booking-actions">
+                <a href="/space/58759?show-availability=true"  class="btn btn-primary btn-sm s-lc-font-size-standard s-lc-suggestion-book-now" aria-label="Show Availability: 385">
+                    Show Availability
+                </a>
+            </div>
+
+            <div class="s-lc-booking-icons">
+                    <span title="The capacity of this space">
+        <i class="fa fa-user" aria-hidden="true"></i>
+        6
+    </span>
+
+            </div>
+        </div>
+    </div>
+</div>
+                                                            
+
+    
+<div class="media s-lc-booking-suggestion">
+    <div class="media-left s-lc-eq-image s-lc-desktop-only">
+                    <a href="/space/58711?image=true"  aria-hidden="true" tabindex="-1">
+                <img loading="lazy" class="media-object img-rounded" src="https://d68g328n4ug0e.cloudfront.net/default-space.png" alt="386" />
+            </a>
+            </div>
+
+    <div class="media-body">
+        <h3 class="media-heading s-lc-suggestion-heading">
+                            <a href="/space/58711" >
+                    386
+                </a>
+                    </h3>
+
+        <div class="s-lc-suggestion-body">
+            <div class="s-lc-booking-group">
+                Charles Library small group study rooms
+                                            </div>
+
+                            <div class="s-lc-booking-desc">
+                    Group study room
+
+                </div>
+                    </div>
+
+        <div class="s-lc-suggestion-footer">
+            <div class="s-lc-booking-actions">
+                <a href="/space/58711?show-availability=true"  class="btn btn-primary btn-sm s-lc-font-size-standard s-lc-suggestion-book-now" aria-label="Show Availability: 386">
+                    Show Availability
+                </a>
+            </div>
+
+            <div class="s-lc-booking-icons">
+                    <span title="The capacity of this space">
+        <i class="fa fa-user" aria-hidden="true"></i>
+        4
+    </span>
+
+            </div>
+        </div>
+    </div>
+</div>
+                                                            
+
+    
+<div class="media s-lc-booking-suggestion">
+    <div class="media-left s-lc-eq-image s-lc-desktop-only">
+                    <a href="/space/58760?image=true"  aria-hidden="true" tabindex="-1">
+                <img loading="lazy" class="media-object img-rounded" src="https://d68g328n4ug0e.cloudfront.net/default-space.png" alt="387" />
+            </a>
+            </div>
+
+    <div class="media-body">
+        <h3 class="media-heading s-lc-suggestion-heading">
+                            <a href="/space/58760" >
+                    387
+                </a>
+                    </h3>
+
+        <div class="s-lc-suggestion-body">
+            <div class="s-lc-booking-group">
+                Charles Library large group study rooms
+                                            </div>
+
+                            <div class="s-lc-booking-desc">
+                    Large group study room, breakout+
+
+                </div>
+                    </div>
+
+        <div class="s-lc-suggestion-footer">
+            <div class="s-lc-booking-actions">
+                <a href="/space/58760?show-availability=true"  class="btn btn-primary btn-sm s-lc-font-size-standard s-lc-suggestion-book-now" aria-label="Show Availability: 387">
+                    Show Availability
+                </a>
+            </div>
+
+            <div class="s-lc-booking-icons">
+                    <span title="The capacity of this space">
+        <i class="fa fa-user" aria-hidden="true"></i>
+        12
+    </span>
+
+            </div>
+        </div>
+    </div>
+</div>
+                                                            
+
+    
+<div class="media s-lc-booking-suggestion">
+    <div class="media-left s-lc-eq-image s-lc-desktop-only">
+                    <a href="/space/58712?image=true"  aria-hidden="true" tabindex="-1">
+                <img loading="lazy" class="media-object img-rounded" src="https://d68g328n4ug0e.cloudfront.net/default-space.png" alt="389" />
+            </a>
+            </div>
+
+    <div class="media-body">
+        <h3 class="media-heading s-lc-suggestion-heading">
+                            <a href="/space/58712" >
+                    389
+                </a>
+                    </h3>
+
+        <div class="s-lc-suggestion-body">
+            <div class="s-lc-booking-group">
+                Charles Library small group study rooms
+                                            </div>
+
+                            <div class="s-lc-booking-desc">
+                    3rd floor north reading room. This room has a table and two chairs, but not technology
+
+                </div>
+                    </div>
+
+        <div class="s-lc-suggestion-footer">
+            <div class="s-lc-booking-actions">
+                <a href="/space/58712?show-availability=true"  class="btn btn-primary btn-sm s-lc-font-size-standard s-lc-suggestion-book-now" aria-label="Show Availability: 389">
+                    Show Availability
+                </a>
+            </div>
+
+            <div class="s-lc-booking-icons">
+                    <span title="The capacity of this space">
+        <i class="fa fa-user" aria-hidden="true"></i>
+        2
+    </span>
+
+            </div>
+        </div>
+    </div>
+</div>
+                                                            
+
+    
+<div class="media s-lc-booking-suggestion">
+    <div class="media-left s-lc-eq-image s-lc-desktop-only">
+                    <a href="/space/58713?image=true"  aria-hidden="true" tabindex="-1">
+                <img loading="lazy" class="media-object img-rounded" src="https://d68g328n4ug0e.cloudfront.net/default-space.png" alt="390" />
+            </a>
+            </div>
+
+    <div class="media-body">
+        <h3 class="media-heading s-lc-suggestion-heading">
+                            <a href="/space/58713" >
+                    390
+                </a>
+                    </h3>
+
+        <div class="s-lc-suggestion-body">
+            <div class="s-lc-booking-group">
+                Charles Library small group study rooms
+                                            </div>
+
+                            <div class="s-lc-booking-desc">
+                    3rd floor north reading room. This room has a table and two chairs, but not technology
+
+                </div>
+                    </div>
+
+        <div class="s-lc-suggestion-footer">
+            <div class="s-lc-booking-actions">
+                <a href="/space/58713?show-availability=true"  class="btn btn-primary btn-sm s-lc-font-size-standard s-lc-suggestion-book-now" aria-label="Show Availability: 390">
+                    Show Availability
+                </a>
+            </div>
+
+            <div class="s-lc-booking-icons">
+                    <span title="The capacity of this space">
+        <i class="fa fa-user" aria-hidden="true"></i>
+        2
+    </span>
+
+            </div>
+        </div>
+    </div>
+</div>
+                                                            
+
+    
+<div class="media s-lc-booking-suggestion">
+    <div class="media-left s-lc-eq-image s-lc-desktop-only">
+                    <a href="/space/58714?image=true"  aria-hidden="true" tabindex="-1">
+                <img loading="lazy" class="media-object img-rounded" src="https://d68g328n4ug0e.cloudfront.net/default-space.png" alt="391" />
+            </a>
+            </div>
+
+    <div class="media-body">
+        <h3 class="media-heading s-lc-suggestion-heading">
+                            <a href="/space/58714" >
+                    391
+                </a>
+                    </h3>
+
+        <div class="s-lc-suggestion-body">
+            <div class="s-lc-booking-group">
+                Charles Library small group study rooms
+                                            </div>
+
+                            <div class="s-lc-booking-desc">
+                    3rd floor north reading room. This room has a table and two chairs, but not technology
+
+                </div>
+                    </div>
+
+        <div class="s-lc-suggestion-footer">
+            <div class="s-lc-booking-actions">
+                <a href="/space/58714?show-availability=true"  class="btn btn-primary btn-sm s-lc-font-size-standard s-lc-suggestion-book-now" aria-label="Show Availability: 391">
+                    Show Availability
+                </a>
+            </div>
+
+            <div class="s-lc-booking-icons">
+                    <span title="The capacity of this space">
+        <i class="fa fa-user" aria-hidden="true"></i>
+        2
+    </span>
+
+            </div>
+        </div>
+    </div>
+</div>
+                                                            
+
+    
+<div class="media s-lc-booking-suggestion">
+    <div class="media-left s-lc-eq-image s-lc-desktop-only">
+                    <a href="/space/58715?image=true"  aria-hidden="true" tabindex="-1">
+                <img loading="lazy" class="media-object img-rounded" src="https://d68g328n4ug0e.cloudfront.net/default-space.png" alt="392" />
+            </a>
+            </div>
+
+    <div class="media-body">
+        <h3 class="media-heading s-lc-suggestion-heading">
+                            <a href="/space/58715" >
+                    392
+                </a>
+                    </h3>
+
+        <div class="s-lc-suggestion-body">
+            <div class="s-lc-booking-group">
+                Charles Library small group study rooms
+                                            </div>
+
+                            <div class="s-lc-booking-desc">
+                    3rd floor north reading room. This room has a table and two chairs, but not technology
+
+                </div>
+                    </div>
+
+        <div class="s-lc-suggestion-footer">
+            <div class="s-lc-booking-actions">
+                <a href="/space/58715?show-availability=true"  class="btn btn-primary btn-sm s-lc-font-size-standard s-lc-suggestion-book-now" aria-label="Show Availability: 392">
+                    Show Availability
+                </a>
+            </div>
+
+            <div class="s-lc-booking-icons">
+                    <span title="The capacity of this space">
+        <i class="fa fa-user" aria-hidden="true"></i>
+        2
+    </span>
+
+            </div>
+        </div>
+    </div>
+</div>
+                                                            
+
+    
+<div class="media s-lc-booking-suggestion">
+    <div class="media-left s-lc-eq-image s-lc-desktop-only">
+                    <a href="/space/58761?image=true"  aria-hidden="true" tabindex="-1">
+                <img loading="lazy" class="media-object img-rounded" src="https://d68g328n4ug0e.cloudfront.net/default-space.png" alt="402" />
+            </a>
+            </div>
+
+    <div class="media-body">
+        <h3 class="media-heading s-lc-suggestion-heading">
+                            <a href="/space/58761" >
+                    402
+                </a>
+                    </h3>
+
+        <div class="s-lc-suggestion-body">
+            <div class="s-lc-booking-group">
+                Charles Library large group study rooms
+                                            </div>
+
+                            <div class="s-lc-booking-desc">
+                    Large group study room, breakout+
+
+                </div>
+                    </div>
+
+        <div class="s-lc-suggestion-footer">
+            <div class="s-lc-booking-actions">
+                <a href="/space/58761?show-availability=true"  class="btn btn-primary btn-sm s-lc-font-size-standard s-lc-suggestion-book-now" aria-label="Show Availability: 402">
+                    Show Availability
+                </a>
+            </div>
+
+            <div class="s-lc-booking-icons">
+                    <span title="The capacity of this space">
+        <i class="fa fa-user" aria-hidden="true"></i>
+        8
+    </span>
+
+            </div>
+        </div>
+    </div>
+</div>
+                                                            
+
+    
+<div class="media s-lc-booking-suggestion">
+    <div class="media-left s-lc-eq-image s-lc-desktop-only">
+                    <a href="/space/58716?image=true"  aria-hidden="true" tabindex="-1">
+                <img loading="lazy" class="media-object img-rounded" src="https://d68g328n4ug0e.cloudfront.net/default-space.png" alt="403" />
+            </a>
+            </div>
+
+    <div class="media-body">
+        <h3 class="media-heading s-lc-suggestion-heading">
+                            <a href="/space/58716" >
+                    403
+                </a>
+                    </h3>
+
+        <div class="s-lc-suggestion-body">
+            <div class="s-lc-booking-group">
+                Charles Library small group study rooms
+                                            </div>
+
+                            <div class="s-lc-booking-desc">
+                    Group study room
+
+                </div>
+                    </div>
+
+        <div class="s-lc-suggestion-footer">
+            <div class="s-lc-booking-actions">
+                <a href="/space/58716?show-availability=true"  class="btn btn-primary btn-sm s-lc-font-size-standard s-lc-suggestion-book-now" aria-label="Show Availability: 403">
+                    Show Availability
+                </a>
+            </div>
+
+            <div class="s-lc-booking-icons">
+                    <span title="The capacity of this space">
+        <i class="fa fa-user" aria-hidden="true"></i>
+        4
+    </span>
+
+            </div>
+        </div>
+    </div>
+</div>
+                                                            
+
+    
+<div class="media s-lc-booking-suggestion">
+    <div class="media-left s-lc-eq-image s-lc-desktop-only">
+                    <a href="/space/58717?image=true"  aria-hidden="true" tabindex="-1">
+                <img loading="lazy" class="media-object img-rounded" src="https://d68g328n4ug0e.cloudfront.net/default-space.png" alt="404" />
+            </a>
+            </div>
+
+    <div class="media-body">
+        <h3 class="media-heading s-lc-suggestion-heading">
+                            <a href="/space/58717" >
+                    404
+                </a>
+                    </h3>
+
+        <div class="s-lc-suggestion-body">
+            <div class="s-lc-booking-group">
+                Charles Library small group study rooms
+                                            </div>
+
+                            <div class="s-lc-booking-desc">
+                    Group study room
+
+                </div>
+                    </div>
+
+        <div class="s-lc-suggestion-footer">
+            <div class="s-lc-booking-actions">
+                <a href="/space/58717?show-availability=true"  class="btn btn-primary btn-sm s-lc-font-size-standard s-lc-suggestion-book-now" aria-label="Show Availability: 404">
+                    Show Availability
+                </a>
+            </div>
+
+            <div class="s-lc-booking-icons">
+                    <span title="The capacity of this space">
+        <i class="fa fa-user" aria-hidden="true"></i>
+        4
+    </span>
+
+            </div>
+        </div>
+    </div>
+</div>
+                                                            
+
+    
+<div class="media s-lc-booking-suggestion">
+    <div class="media-left s-lc-eq-image s-lc-desktop-only">
+                    <a href="/space/58762?image=true"  aria-hidden="true" tabindex="-1">
+                <img loading="lazy" class="media-object img-rounded" src="https://d68g328n4ug0e.cloudfront.net/default-space.png" alt="405" />
+            </a>
+            </div>
+
+    <div class="media-body">
+        <h3 class="media-heading s-lc-suggestion-heading">
+                            <a href="/space/58762" >
+                    405
+                </a>
+                    </h3>
+
+        <div class="s-lc-suggestion-body">
+            <div class="s-lc-booking-group">
+                Charles Library large group study rooms
+                                            </div>
+
+                            <div class="s-lc-booking-desc">
+                    Large group study room, Breakout+ ATC - This room is unique in that it has a built in phone line for audio conferencing.
+
+                </div>
+                    </div>
+
+        <div class="s-lc-suggestion-footer">
+            <div class="s-lc-booking-actions">
+                <a href="/space/58762?show-availability=true"  class="btn btn-primary btn-sm s-lc-font-size-standard s-lc-suggestion-book-now" aria-label="Show Availability: 405">
+                    Show Availability
+                </a>
+            </div>
+
+            <div class="s-lc-booking-icons">
+                    <span title="The capacity of this space">
+        <i class="fa fa-user" aria-hidden="true"></i>
+        14
+    </span>
+
+            </div>
+        </div>
+    </div>
+</div>
+                                                            
+
+    
+<div class="media s-lc-booking-suggestion">
+    <div class="media-left s-lc-eq-image s-lc-desktop-only">
+                    <a href="/space/58718?image=true"  aria-hidden="true" tabindex="-1">
+                <img loading="lazy" class="media-object img-rounded" src="https://d68g328n4ug0e.cloudfront.net/default-space.png" alt="411" />
+            </a>
+            </div>
+
+    <div class="media-body">
+        <h3 class="media-heading s-lc-suggestion-heading">
+                            <a href="/space/58718" >
+                    411
+                </a>
+                    </h3>
+
+        <div class="s-lc-suggestion-body">
+            <div class="s-lc-booking-group">
+                Charles Library small group study rooms
+                                            </div>
+
+                            <div class="s-lc-booking-desc">
+                    Group study room
+
+                </div>
+                    </div>
+
+        <div class="s-lc-suggestion-footer">
+            <div class="s-lc-booking-actions">
+                <a href="/space/58718?show-availability=true"  class="btn btn-primary btn-sm s-lc-font-size-standard s-lc-suggestion-book-now" aria-label="Show Availability: 411">
+                    Show Availability
+                </a>
+            </div>
+
+            <div class="s-lc-booking-icons">
+                    <span title="The capacity of this space">
+        <i class="fa fa-user" aria-hidden="true"></i>
+        4
+    </span>
+
+            </div>
+        </div>
+    </div>
+</div>
+                                                            
+
+    
+<div class="media s-lc-booking-suggestion">
+    <div class="media-left s-lc-eq-image s-lc-desktop-only">
+                    <a href="/space/58719?image=true"  aria-hidden="true" tabindex="-1">
+                <img loading="lazy" class="media-object img-rounded" src="https://d68g328n4ug0e.cloudfront.net/default-space.png" alt="412" />
+            </a>
+            </div>
+
+    <div class="media-body">
+        <h3 class="media-heading s-lc-suggestion-heading">
+                            <a href="/space/58719" >
+                    412
+                </a>
+                    </h3>
+
+        <div class="s-lc-suggestion-body">
+            <div class="s-lc-booking-group">
+                Charles Library small group study rooms
+                                            </div>
+
+                            <div class="s-lc-booking-desc">
+                    Group study room
+
+                </div>
+                    </div>
+
+        <div class="s-lc-suggestion-footer">
+            <div class="s-lc-booking-actions">
+                <a href="/space/58719?show-availability=true"  class="btn btn-primary btn-sm s-lc-font-size-standard s-lc-suggestion-book-now" aria-label="Show Availability: 412">
+                    Show Availability
+                </a>
+            </div>
+
+            <div class="s-lc-booking-icons">
+                    <span title="The capacity of this space">
+        <i class="fa fa-user" aria-hidden="true"></i>
+        4
+    </span>
+
+            </div>
+        </div>
+    </div>
+</div>
+                                                            
+
+    
+<div class="media s-lc-booking-suggestion">
+    <div class="media-left s-lc-eq-image s-lc-desktop-only">
+                    <a href="/space/58720?image=true"  aria-hidden="true" tabindex="-1">
+                <img loading="lazy" class="media-object img-rounded" src="https://d68g328n4ug0e.cloudfront.net/default-space.png" alt="413" />
+            </a>
+            </div>
+
+    <div class="media-body">
+        <h3 class="media-heading s-lc-suggestion-heading">
+                            <a href="/space/58720" >
+                    413
+                </a>
+                    </h3>
+
+        <div class="s-lc-suggestion-body">
+            <div class="s-lc-booking-group">
+                Charles Library small group study rooms
+                                            </div>
+
+                            <div class="s-lc-booking-desc">
+                    Group study room
+
+                </div>
+                    </div>
+
+        <div class="s-lc-suggestion-footer">
+            <div class="s-lc-booking-actions">
+                <a href="/space/58720?show-availability=true"  class="btn btn-primary btn-sm s-lc-font-size-standard s-lc-suggestion-book-now" aria-label="Show Availability: 413">
+                    Show Availability
+                </a>
+            </div>
+
+            <div class="s-lc-booking-icons">
+                    <span title="The capacity of this space">
+        <i class="fa fa-user" aria-hidden="true"></i>
+        4
+    </span>
+
+            </div>
+        </div>
+    </div>
+</div>
+                                                            
+
+    
+<div class="media s-lc-booking-suggestion">
+    <div class="media-left s-lc-eq-image s-lc-desktop-only">
+                    <a href="/space/58721?image=true"  aria-hidden="true" tabindex="-1">
+                <img loading="lazy" class="media-object img-rounded" src="https://d68g328n4ug0e.cloudfront.net/default-space.png" alt="414" />
+            </a>
+            </div>
+
+    <div class="media-body">
+        <h3 class="media-heading s-lc-suggestion-heading">
+                            <a href="/space/58721" >
+                    414
+                </a>
+                    </h3>
+
+        <div class="s-lc-suggestion-body">
+            <div class="s-lc-booking-group">
+                Charles Library small group study rooms
+                                            </div>
+
+                            <div class="s-lc-booking-desc">
+                    Group study room
+
+                </div>
+                    </div>
+
+        <div class="s-lc-suggestion-footer">
+            <div class="s-lc-booking-actions">
+                <a href="/space/58721?show-availability=true"  class="btn btn-primary btn-sm s-lc-font-size-standard s-lc-suggestion-book-now" aria-label="Show Availability: 414">
+                    Show Availability
+                </a>
+            </div>
+
+            <div class="s-lc-booking-icons">
+                    <span title="The capacity of this space">
+        <i class="fa fa-user" aria-hidden="true"></i>
+        4
+    </span>
+
+            </div>
+        </div>
+    </div>
+</div>
+                                                            
+
+    
+<div class="media s-lc-booking-suggestion">
+    <div class="media-left s-lc-eq-image s-lc-desktop-only">
+                    <a href="/space/58722?image=true"  aria-hidden="true" tabindex="-1">
+                <img loading="lazy" class="media-object img-rounded" src="https://d68g328n4ug0e.cloudfront.net/default-space.png" alt="415" />
+            </a>
+            </div>
+
+    <div class="media-body">
+        <h3 class="media-heading s-lc-suggestion-heading">
+                            <a href="/space/58722" >
+                    415
+                </a>
+                    </h3>
+
+        <div class="s-lc-suggestion-body">
+            <div class="s-lc-booking-group">
+                Charles Library small group study rooms
+                                            </div>
+
+                            <div class="s-lc-booking-desc">
+                    Group study room
+
+                </div>
+                    </div>
+
+        <div class="s-lc-suggestion-footer">
+            <div class="s-lc-booking-actions">
+                <a href="/space/58722?show-availability=true"  class="btn btn-primary btn-sm s-lc-font-size-standard s-lc-suggestion-book-now" aria-label="Show Availability: 415">
+                    Show Availability
+                </a>
+            </div>
+
+            <div class="s-lc-booking-icons">
+                    <span title="The capacity of this space">
+        <i class="fa fa-user" aria-hidden="true"></i>
+        4
+    </span>
+
+            </div>
+        </div>
+    </div>
+</div>
+                                                            
+
+    
+<div class="media s-lc-booking-suggestion">
+    <div class="media-left s-lc-eq-image s-lc-desktop-only">
+                    <a href="/space/58723?image=true"  aria-hidden="true" tabindex="-1">
+                <img loading="lazy" class="media-object img-rounded" src="https://d68g328n4ug0e.cloudfront.net/default-space.png" alt="416" />
+            </a>
+            </div>
+
+    <div class="media-body">
+        <h3 class="media-heading s-lc-suggestion-heading">
+                            <a href="/space/58723" >
+                    416
+                </a>
+                    </h3>
+
+        <div class="s-lc-suggestion-body">
+            <div class="s-lc-booking-group">
+                Charles Library small group study rooms
+                                            </div>
+
+                            <div class="s-lc-booking-desc">
+                    Group study room
+
+                </div>
+                    </div>
+
+        <div class="s-lc-suggestion-footer">
+            <div class="s-lc-booking-actions">
+                <a href="/space/58723?show-availability=true"  class="btn btn-primary btn-sm s-lc-font-size-standard s-lc-suggestion-book-now" aria-label="Show Availability: 416">
+                    Show Availability
+                </a>
+            </div>
+
+            <div class="s-lc-booking-icons">
+                    <span title="The capacity of this space">
+        <i class="fa fa-user" aria-hidden="true"></i>
+        4
+    </span>
+
+            </div>
+        </div>
+    </div>
+</div>
+                                                            
+
+    
+<div class="media s-lc-booking-suggestion">
+    <div class="media-left s-lc-eq-image s-lc-desktop-only">
+                    <a href="/space/58724?image=true"  aria-hidden="true" tabindex="-1">
+                <img loading="lazy" class="media-object img-rounded" src="https://d68g328n4ug0e.cloudfront.net/default-space.png" alt="417" />
+            </a>
+            </div>
+
+    <div class="media-body">
+        <h3 class="media-heading s-lc-suggestion-heading">
+                            <a href="/space/58724" >
+                    417
+                </a>
+                    </h3>
+
+        <div class="s-lc-suggestion-body">
+            <div class="s-lc-booking-group">
+                Charles Library small group study rooms
+                                            </div>
+
+                            <div class="s-lc-booking-desc">
+                    Group study room
+
+                </div>
+                    </div>
+
+        <div class="s-lc-suggestion-footer">
+            <div class="s-lc-booking-actions">
+                <a href="/space/58724?show-availability=true"  class="btn btn-primary btn-sm s-lc-font-size-standard s-lc-suggestion-book-now" aria-label="Show Availability: 417">
+                    Show Availability
+                </a>
+            </div>
+
+            <div class="s-lc-booking-icons">
+                    <span title="The capacity of this space">
+        <i class="fa fa-user" aria-hidden="true"></i>
+        4
+    </span>
+
+            </div>
+        </div>
+    </div>
+</div>
+                                                            
+
+    
+<div class="media s-lc-booking-suggestion">
+    <div class="media-left s-lc-eq-image s-lc-desktop-only">
+                    <a href="/space/58725?image=true"  aria-hidden="true" tabindex="-1">
+                <img loading="lazy" class="media-object img-rounded" src="https://d68g328n4ug0e.cloudfront.net/default-space.png" alt="418" />
+            </a>
+            </div>
+
+    <div class="media-body">
+        <h3 class="media-heading s-lc-suggestion-heading">
+                            <a href="/space/58725" >
+                    418
+                </a>
+                    </h3>
+
+        <div class="s-lc-suggestion-body">
+            <div class="s-lc-booking-group">
+                Charles Library small group study rooms
+                                            </div>
+
+                            <div class="s-lc-booking-desc">
+                    Group study room
+
+                </div>
+                    </div>
+
+        <div class="s-lc-suggestion-footer">
+            <div class="s-lc-booking-actions">
+                <a href="/space/58725?show-availability=true"  class="btn btn-primary btn-sm s-lc-font-size-standard s-lc-suggestion-book-now" aria-label="Show Availability: 418">
+                    Show Availability
+                </a>
+            </div>
+
+            <div class="s-lc-booking-icons">
+                    <span title="The capacity of this space">
+        <i class="fa fa-user" aria-hidden="true"></i>
+        4
+    </span>
+
+            </div>
+        </div>
+    </div>
+</div>
+                                                            
+
+    
+<div class="media s-lc-booking-suggestion">
+    <div class="media-left s-lc-eq-image s-lc-desktop-only">
+                    <a href="/space/58726?image=true"  aria-hidden="true" tabindex="-1">
+                <img loading="lazy" class="media-object img-rounded" src="https://d68g328n4ug0e.cloudfront.net/default-space.png" alt="422" />
+            </a>
+            </div>
+
+    <div class="media-body">
+        <h3 class="media-heading s-lc-suggestion-heading">
+                            <a href="/space/58726" >
+                    422
+                </a>
+                    </h3>
+
+        <div class="s-lc-suggestion-body">
+            <div class="s-lc-booking-group">
+                Charles Library small group study rooms
+                                            </div>
+
+                            <div class="s-lc-booking-desc">
+                    Group study room
+
+                </div>
+                    </div>
+
+        <div class="s-lc-suggestion-footer">
+            <div class="s-lc-booking-actions">
+                <a href="/space/58726?show-availability=true"  class="btn btn-primary btn-sm s-lc-font-size-standard s-lc-suggestion-book-now" aria-label="Show Availability: 422">
+                    Show Availability
+                </a>
+            </div>
+
+            <div class="s-lc-booking-icons">
+                    <span title="The capacity of this space">
+        <i class="fa fa-user" aria-hidden="true"></i>
+        4
+    </span>
+
+            </div>
+        </div>
+    </div>
+</div>
+                                                            
+
+    
+<div class="media s-lc-booking-suggestion">
+    <div class="media-left s-lc-eq-image s-lc-desktop-only">
+                    <a href="/space/58727?image=true"  aria-hidden="true" tabindex="-1">
+                <img loading="lazy" class="media-object img-rounded" src="https://d68g328n4ug0e.cloudfront.net/default-space.png" alt="424" />
+            </a>
+            </div>
+
+    <div class="media-body">
+        <h3 class="media-heading s-lc-suggestion-heading">
+                            <a href="/space/58727" >
+                    424
+                </a>
+                    </h3>
+
+        <div class="s-lc-suggestion-body">
+            <div class="s-lc-booking-group">
+                Charles Library small group study rooms
+                                            </div>
+
+                            <div class="s-lc-booking-desc">
+                    group study room
+
+                </div>
+                    </div>
+
+        <div class="s-lc-suggestion-footer">
+            <div class="s-lc-booking-actions">
+                <a href="/space/58727?show-availability=true"  class="btn btn-primary btn-sm s-lc-font-size-standard s-lc-suggestion-book-now" aria-label="Show Availability: 424">
+                    Show Availability
+                </a>
+            </div>
+
+            <div class="s-lc-booking-icons">
+                    <span title="The capacity of this space">
+        <i class="fa fa-user" aria-hidden="true"></i>
+        4
+    </span>
+
+            </div>
+        </div>
+    </div>
+</div>
+                                                            
+
+    
+<div class="media s-lc-booking-suggestion">
+    <div class="media-left s-lc-eq-image s-lc-desktop-only">
+                    <a href="/space/58763?image=true"  aria-hidden="true" tabindex="-1">
+                <img loading="lazy" class="media-object img-rounded" src="https://d68g328n4ug0e.cloudfront.net/default-space.png" alt="425" />
+            </a>
+            </div>
+
+    <div class="media-body">
+        <h3 class="media-heading s-lc-suggestion-heading">
+                            <a href="/space/58763" >
+                    425
+                </a>
+                    </h3>
+
+        <div class="s-lc-suggestion-body">
+            <div class="s-lc-booking-group">
+                Charles Library large group study rooms
+                                            </div>
+
+                            <div class="s-lc-booking-desc">
+                    Large group study room, breakout+
+
+                </div>
+                    </div>
+
+        <div class="s-lc-suggestion-footer">
+            <div class="s-lc-booking-actions">
+                <a href="/space/58763?show-availability=true"  class="btn btn-primary btn-sm s-lc-font-size-standard s-lc-suggestion-book-now" aria-label="Show Availability: 425">
+                    Show Availability
+                </a>
+            </div>
+
+            <div class="s-lc-booking-icons">
+                    <span title="The capacity of this space">
+        <i class="fa fa-user" aria-hidden="true"></i>
+        12
+    </span>
+
+            </div>
+        </div>
+    </div>
+</div>
+                                                            
+
+    
+<div class="media s-lc-booking-suggestion">
+    <div class="media-left s-lc-eq-image s-lc-desktop-only">
+                    <a href="/space/58728?image=true"  aria-hidden="true" tabindex="-1">
+                <img loading="lazy" class="media-object img-rounded" src="https://d68g328n4ug0e.cloudfront.net/default-space.png" alt="426" />
+            </a>
+            </div>
+
+    <div class="media-body">
+        <h3 class="media-heading s-lc-suggestion-heading">
+                            <a href="/space/58728" >
+                    426
+                </a>
+                    </h3>
+
+        <div class="s-lc-suggestion-body">
+            <div class="s-lc-booking-group">
+                Charles Library small group study rooms
+                                            </div>
+
+                            <div class="s-lc-booking-desc">
+                    Group study room
+
+                </div>
+                    </div>
+
+        <div class="s-lc-suggestion-footer">
+            <div class="s-lc-booking-actions">
+                <a href="/space/58728?show-availability=true"  class="btn btn-primary btn-sm s-lc-font-size-standard s-lc-suggestion-book-now" aria-label="Show Availability: 426">
+                    Show Availability
+                </a>
+            </div>
+
+            <div class="s-lc-booking-icons">
+                    <span title="The capacity of this space">
+        <i class="fa fa-user" aria-hidden="true"></i>
+        4
+    </span>
+
+            </div>
+        </div>
+    </div>
+</div>
+                                                            
+
+    
+<div class="media s-lc-booking-suggestion">
+    <div class="media-left s-lc-eq-image s-lc-desktop-only">
+                    <a href="/space/58729?image=true"  aria-hidden="true" tabindex="-1">
+                <img loading="lazy" class="media-object img-rounded" src="https://d68g328n4ug0e.cloudfront.net/default-space.png" alt="427" />
+            </a>
+            </div>
+
+    <div class="media-body">
+        <h3 class="media-heading s-lc-suggestion-heading">
+                            <a href="/space/58729" >
+                    427
+                </a>
+                    </h3>
+
+        <div class="s-lc-suggestion-body">
+            <div class="s-lc-booking-group">
+                Charles Library small group study rooms
+                                            </div>
+
+                            <div class="s-lc-booking-desc">
+                    Group study room
+
+                </div>
+                    </div>
+
+        <div class="s-lc-suggestion-footer">
+            <div class="s-lc-booking-actions">
+                <a href="/space/58729?show-availability=true"  class="btn btn-primary btn-sm s-lc-font-size-standard s-lc-suggestion-book-now" aria-label="Show Availability: 427">
+                    Show Availability
+                </a>
+            </div>
+
+            <div class="s-lc-booking-icons">
+                    <span title="The capacity of this space">
+        <i class="fa fa-user" aria-hidden="true"></i>
+        6
+    </span>
+
+            </div>
+        </div>
+    </div>
+</div>
+                                                            
+
+    
+<div class="media s-lc-booking-suggestion">
+    <div class="media-left s-lc-eq-image s-lc-desktop-only">
+                    <a href="/space/240675?image=true"  aria-hidden="true" tabindex="-1">
+                <img loading="lazy" class="media-object img-rounded" src="https://d68g328n4ug0e.cloudfront.net/default-space.png" alt="Charles Library Exhibition Space" />
+            </a>
+            </div>
+
+    <div class="media-body">
+        <h3 class="media-heading s-lc-suggestion-heading">
+                            <a href="/space/240675" >
+                    Charles Library Exhibition Space
+                </a>
+                    </h3>
+
+        <div class="s-lc-suggestion-body">
+            <div class="s-lc-booking-group">
+                Event and meeting rooms
+                                            </div>
+
+                    </div>
+
+        <div class="s-lc-suggestion-footer">
+            <div class="s-lc-booking-actions">
+                <a href="/space/240675?show-availability=true"  class="btn btn-primary btn-sm s-lc-font-size-standard s-lc-suggestion-book-now" aria-label="Show Availability: Charles Library Exhibition Space">
+                    Show Availability
+                </a>
+            </div>
+
+            <div class="s-lc-booking-icons">
+                    <span title="The capacity of this space">
+        <i class="fa fa-user" aria-hidden="true"></i>
+        1
+    </span>
+
+            </div>
+        </div>
+    </div>
+</div>
+            </div>
+            </div>
+        </div>
+    </div>
+    </main>
+
+    <footer id="s-lc-public-footer" class="row s-lc-public-footer">
+        <div id="s-lc-public-footer-brand">
+    <span title="libcal-us-2">Powered by</span> <a href="https://www.springshare.com" class="s-lc-link-in-text">Springshare</a>.
+</div>
+
+<div id="s-lc-public-footer-rights">
+    All rights reserved.
+</div>
+
+    <div id="s-lc-footer-support-link">
+        <a href="mailto:libcirc@temple.edu">Report a tech support issue.</a>
+    </div>
+
+                
+        <div id="s-lc-public-footer-admin-links" role="navigation" aria-label="Admin Footer">
+                            <a id="s-lc-sign-in" href="https://temple.libapps.com/libapps/login.php?site_id=4059&amp;target=">Login to LibApps</a>
+                    </div>
+
+        <div class="s-lc-public-footer-actions">
+    
+<div id="s-lc-language">
+    <select id="s-lc-language-selector" aria-label="Select Language">
+                <option value="ca" >català</option>
+                <option value="cy" >Cymraeg</option>
+                <option value="en" selected>English</option>
+                <option value="es" >español</option>
+                <option value="fr" >français</option>
+                <option value="ga" >Irish</option>
+                <option value="ja" >日本語 Nihongo</option>
+                <option value="nl" >Nederlands</option>
+                <option value="sl" >slovenski jezik</option>
+                <option value="vi" >Tiếng Việt</option>
+                <option value="zh" >中文 Zhōngwén</option>
+            </select>
+</div>
+</div>
+    </footer>
+
+    
+</div>
+
+<div id="s-lc-public-cust-footer"><div id="footer-wrapper" class="container">
+
+          <div id="footer" class="clearfix" style="padding-bottom: 0">
+          <div class="region region-footer">
+    <div id="block-block-101" class="block block-block">
+
+    
+  <div class="content">
+    <div id="footer-top"> </div>  </div>
+</div>
+<div id="block-panels-mini-footer-mini-panel" class="block block-panels-mini">
+
+    
+  <div class="content">
+    <div class="panel-flexible panels-flexible-site_footer clearfix" id="mini-panel-footer_mini_panel">
+<div class="panel-flexible-inside panels-flexible-site_footer-inside">
+<div class="panels-flexible-row panels-flexible-row-site_footer-main-row panels-flexible-row-first clearfix">
+  <div class="inside panels-flexible-row-inside panels-flexible-row-site_footer-main-row-inside panels-flexible-row-inside-first clearfix">
+<div class="panels-flexible-region panels-flexible-region-site_footer-left panels-flexible-region-first ">
+  <div class="inside panels-flexible-region-inside panels-flexible-region-site_footer-left-inside panels-flexible-region-inside-first">
+<div class="panel-pane pane-block pane-block-100">
+  
+      
+  
+  <div class="pane-content">
+    <div class="identity">
+      <h2 style="margin-bottom: 0;"><a href="https://www.temple.edu/">Temple University</a></h2>
+        <h3 style="margin-top: 7px;"><a href="https://library.temple.edu">University Libraries</a></h3>
+        <p class="droid" style="font-size:80%;margin-left: 0"><a href="https://library.temple.edu/libraries/2">See all library locations</a></p>
+     </div> 
+  </div>
+
+  
+  </div>
+  </div>
+</div>
+<div class="panels-flexible-region panels-flexible-region-site_footer-center">
+  <div class="inside panels-flexible-region-inside panels-flexible-region-site_footer-center-inside">
+<div class="panel-pane pane-block pane-block-98">
+  
+      
+  
+  <div class="pane-content">
+    <ul><li class="directory"><a href="https://library.temple.edu/people">Library Directory</a></li><li class="maps"><a href="https://library.temple.edu/libraries/2">Locations and Directions</a></li><li class="numbers"><a href="https://library.temple.edu/pages/19">Frequently Called Numbers</a></li></ul>  </div>
+
+  
+  </div>
+  </div>
+</div>
+<div class="panels-flexible-region panels-flexible-region-site_footer-right panels-flexible-region-last ">
+  <div class="inside panels-flexible-region-inside panels-flexible-region-site_footer-right-inside panels-flexible-region-inside-last">
+<div class="panel-pane pane-block pane-block-97">
+  
+      
+  
+  <div class="pane-content">
+    <p id="social-media"><a href="https://library.temple.edu/pages/18"><img alt="Twitter Icon" src="https://libproxy.temple.edu/public/twitter-logo_white.png"><img alt="Facebook Icon" src="https://libproxy.temple.edu/public/facebook-logo_white.png"><img alt="Instagram Icon" src="https://libproxy.temple.edu/public/instagram-logo_white.png"></a></p>  </div>
+
+  
+  </div>
+<div class="panel-separator"></div>
+
+  
+  </div>
+  </div>
+</div>
+  </div>
+</div>
+<div class="panels-flexible-row panels-flexible-row-site_footer-1 panels-flexible-row-last clearfix ">
+  <div class="inside panels-flexible-row-inside panels-flexible-row-site_footer-1-inside panels-flexible-row-inside-last clearfix">
+<div class="panels-flexible-region panels-flexible-region-site_footer-bottom panels-flexible-region-first panels-flexible-region-last ">
+  <div class="inside panels-flexible-region-inside panels-flexible-region-site_footer-bottom-inside panels-flexible-region-inside-first panels-flexible-region-inside-last">
+<div class="panel-pane pane-block pane-block-99">
+  
+      
+  
+  <div class="pane-content">
+    <p id="sys-status"><span>Need help? <a href="mailto:asktulibrary@temple.edu" rel="nofollow">Email us</a> at asktulibrary@temple.edu</span></p>  </div>
+
+  
+  </div>
+  </div>
+</div>
+  </div>
+</div>
+</div>
+</div>
+  </div>
+</div>
+  </div>
+       
+      </div> <!-- /#footer --></div>
+            <script>
+            var springyPage = {
+                searchFilters: {"zoneIdNameModelsByLocationId":[],"zoneIdNameModelsForGroup":[],"groupIdNameModelsByLocationId":{"7710":[{"id":35813,"name":"Loretta C. Duckworth Scholars Studio Spaces "},{"id":35808,"name":"Loretta C. Duckworth Scholars Studio Makerspace"}],"8404":[{"id":15326,"name":"Charles Library small group study rooms"},{"id":15331,"name":"Charles Library large group study rooms"},{"id":15441,"name":"Event and meeting rooms"}]},"capacityIndexesByLocation":{"8404":{"2":true,"1":true,"3":true,"4":true}},"searchFilters":[],"searchFilterMappingsByResource":[]},
+                isDailySearchByGroupId: {"15326":false,"15331":false,"15441":false},
+                endTimeRulesByGroupId: {"15326":{"min":60,"max":120,"step":30},"15331":{"min":30,"max":120,"step":30},"15441":{"min":60,"max":240,"step":30}},
+                isUsingPeriodBookings: false,
+                returnUrl: window.location.pathname,
+                unavailableUrl: window.location.href,
+                locationId: 8404,
+                isLibAuthEnabled: 0,
+                bookingMethod: 40,
+                capacityAllSpaces: 0,
+                focusTarget: '#s-lc-eq-search-results h2',
+                text: {
+                    showAll: 'Show\u0020All',
+                    selectCategory: 'Select\u0020Category',
+                    allSpaces: 'All\u0020Spaces\u0020\u0028not\u0020seats\u0029',
+                    date: 'Date',
+                    from: 'From',
+                    periodNoGroup: 'Select\u0020Category',
+                    periodEmpty: 'Closed',
+                    periodLoading: 'Fetching\u0020period\u0020information',
+                    timeErrorMin: 'Value\u0020must\u0020be\u0020\u0025time\u0025\u0020or\u0020later',
+                    timeErrorMax: 'Value\u0020must\u0020be\u0020\u0025time\u0025\u0020or\u0020earlier',
+                },
+            };
+        </script>
+    
+    <script defer src="https://static-assets-us.libcal.com/js_163/direct/public/equipment/search/periods.min.js"></script>
+    <script defer src="https://static-assets-us.libcal.com/js_163/direct/public/equipment/search/search.min.js"></script>
+
+
+
+</body>
+</html>

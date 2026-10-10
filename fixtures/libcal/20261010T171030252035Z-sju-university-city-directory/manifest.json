@@ -1,0 +1,21 @@
+{
+  "format_version": 1,
+  "kind": "recorded",
+  "captured_at": "2026-10-10T17:10:35.856504+00:00",
+  "source_url": "https://sju.libcal.com/spaces?m=s&lid=20098&search=",
+  "request": {
+    "method": "GET",
+    "form": null,
+    "headers": {
+      "Accept-Encoding": "identity"
+    },
+    "cookies": "omitted"
+  },
+  "license_provenance": "Public vendor response recorded for offline interoperability tests. Upstream retains rights; no additional license is asserted.",
+  "source_note": "Public LibCal booking page and the data endpoint that page itself calls. Undocumented by Springshare; best-effort, may change without notice.",
+  "http_status": 200,
+  "content_type": "text/html; charset=UTF-8",
+  "body_file": "body.bin",
+  "sha256": "feb66583de1f39db0dba6dcf4b167bbd3bb6fb1738ba5899eaa9b7274e920418",
+  "byte_length": 47504
+}

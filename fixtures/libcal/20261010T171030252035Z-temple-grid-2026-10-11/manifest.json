@@ -1,0 +1,34 @@
+{
+  "format_version": 1,
+  "kind": "recorded",
+  "captured_at": "2026-10-10T17:10:41.525372+00:00",
+  "source_url": "https://charlesstudy.temple.edu/spaces/availability/grid",
+  "request": {
+    "method": "POST",
+    "form": {
+      "lid": "8404",
+      "gid": 0,
+      "eid": -1,
+      "seat": 0,
+      "seatId": 0,
+      "zone": 0,
+      "start": "2026-10-11",
+      "end": "2026-10-12",
+      "pageIndex": 0,
+      "pageSize": 18
+    },
+    "headers": {
+      "Accept-Encoding": "identity",
+      "Referer": "https://charlesstudy.temple.edu/spaces?m=s&lid=8404&search=",
+      "X-Requested-With": "XMLHttpRequest"
+    },
+    "cookies": "omitted"
+  },
+  "license_provenance": "Public vendor response recorded for offline interoperability tests. Upstream retains rights; no additional license is asserted.",
+  "source_note": "Public LibCal booking page and the data endpoint that page itself calls. Undocumented by Springshare; best-effort, may change without notice.",
+  "http_status": 200,
+  "content_type": "application/json",
+  "body_file": "body.bin",
+  "sha256": "df7af2ba3287371851c0d71f6984e651f0a9cf12af2e561143aed5ee0da508c4",
+  "byte_length": 88283
+}
