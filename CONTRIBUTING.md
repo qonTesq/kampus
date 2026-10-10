@@ -24,6 +24,8 @@ Read [AGENTS.md](AGENTS.md) first. It lists the architecture, the hard rules and
      cargo run -p kampus -- check --school schools/<id>/school.yaml --policy schools/<id>/policy.yaml
    ```
 
+To sign the school's students in with their own accounts, add an `auth.broker` section and follow [docs/auth/school-idp.md](docs/auth/school-idp.md).
+
 If the school uses a vendor kampus already supports (LibCal, Banner 9, GTFS), no code changes are needed. See [schools/sju/README.md](schools/sju/README.md) for a worked example.
 
 ## Add a vendor adapter or a capability
@@ -48,9 +50,11 @@ The talking mascot lives in [`clients/owl/`](clients/owl/) (Python) and [`hardwa
 cargo fmt --all
 cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
-cargo clippy --workspace --all-targets --features kampus/sandbox -- -D warnings
-cargo test --workspace --features kampus/sandbox
+cargo clippy --workspace --all-targets --features kampus/sandbox,kampus/broker -- -D warnings
+cargo test --workspace --features kampus/sandbox,kampus/broker
 ```
+
+The second pair covers the sandbox and the sign-in broker (`crates/kampus-auth`) together. A production build without the broker is `cargo build --release -p kampus`; with it, add `--features broker`.
 
 Keep commits small, with an imperative subject line of at most 72 characters.
 
