@@ -263,39 +263,52 @@ fn authorization_code(
 
 /// `grant_type=refresh_token`: rotate the presented token. A rotated
 /// (retired) token revokes its whole family (RFC 9700 section 4.14.2). The
-/// scope may only narrow, and the family's grant must still exist.
+/// scope may only narrow, and the family's grant must still exist. Every
+/// refusal is logged with the client and a fixed reason class only.
 fn refresh_token(
     inner: &Inner,
     client: &Client,
     request: &TokenRequest,
 ) -> Result<Response, OAuthError> {
-    browser_client(client)?;
-    let presented = request
-        .param("refresh_token")
-        .ok_or_else(|| OAuthError::invalid_request("refresh_token is required"))?;
+    let refused = |reason: &'static str, error: OAuthError| {
+        tracing::info!(client_id = %client.id(), reason, "refresh refused");
+        error
+    };
+    browser_client(client).map_err(|e| refused("not_a_browser_client", e))?;
+    let presented = request.param("refresh_token").ok_or_else(|| {
+        refused(
+            "missing_token",
+            OAuthError::invalid_request("refresh_token is required"),
+        )
+    })?;
     let now = (inner.clock)();
     let hash = sha256_hex(presented);
     let Some(family) = inner.store.family_by_token(&hash, now) else {
         // Not a live current token: a retired one revokes its family here.
         if inner.store.revoke_if_retired(&hash) {
             tracing::warn!(client_id = %client.id(), "refresh token reused; family revoked");
+            return Err(refused("reused", OAuthError::invalid_grant()));
         }
-        return Err(OAuthError::invalid_grant());
+        // Unknown, expired, or its grant was revoked.
+        return Err(refused("unknown_token", OAuthError::invalid_grant()));
     };
     if family.grant.client_id != client.id() {
-        return Err(OAuthError::invalid_grant());
+        return Err(refused("other_client", OAuthError::invalid_grant()));
     }
-    let scopes = refresh_scopes(request.param("scope"), &family.grant.scopes)?;
+    let scopes = refresh_scopes(request.param("scope"), &family.grant.scopes)
+        .map_err(|e| refused("scope", e))?;
     if request
         .param("resource")
         .is_some_and(|r| !resource_matches(inner, r))
     {
-        return Err(OAuthError::invalid_target());
+        return Err(refused("resource", OAuthError::invalid_target()));
     }
     let next = random_hex(32).ok_or_else(OAuthError::server_error)?;
     let family = match inner.store.rotate(&hash, sha256_hex(&next), now) {
         Rotation::Rotated(family) => family,
-        Rotation::Reused | Rotation::Invalid => return Err(OAuthError::invalid_grant()),
+        Rotation::Reused | Rotation::Invalid => {
+            return Err(refused("rotation", OAuthError::invalid_grant()));
+        }
     };
     let minted = inner.mint(
         &family.grant.subject,

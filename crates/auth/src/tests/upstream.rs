@@ -877,6 +877,10 @@ async fn sentinel_flow() {
         "grant revoked",
         "upstream ID token refused",
         "no mapped kampus role",
+        // The workspace client replays the rotated token (revoking the
+        // family), then Claude's replay finds no family.
+        "refresh refused client_id=kampus-claude reason=\"reused\"",
+        "refresh refused client_id=https://claude.ai/oauth/mcp-oauth-client-metadata reason=\"unknown_token\"",
     ] {
         assert!(logs.contains(expected), "missing {expected:?} in:\n{logs}");
     }

@@ -31,7 +31,7 @@
 
 ## 7. Refused refresh log
 
-- [ ] 7.1 Log reason class and `client_id`; sentinel test expects it
+- [x] 7.1 Log reason class and `client_id`; sentinel test expects it
 
 ## 8. Gate
 

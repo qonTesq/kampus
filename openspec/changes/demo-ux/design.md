@@ -35,4 +35,4 @@ Contract DTOs stay `DateTime<Utc>`. The modules convert at the edge: transit map
 
 ## Refused refresh
 
-Each refusal in `refresh_token` logs `refresh refused` at info with `client_id` and a fixed `reason` (`unknown_token`, `other_client`, `scope`, `resource`, `rotation`, `not_a_browser_client`). No token, hash or family ID is logged.
+Each refusal in `refresh_token` logs `refresh refused` at info with `client_id` and a fixed `reason` (`not_a_browser_client`, `missing_token`, `reused`, `unknown_token` for an unknown, expired or revoked token, `other_client`, `scope`, `resource`, `rotation`). A failed client authentication is refused earlier and is not part of this log. No token, hash or family ID is logged.
