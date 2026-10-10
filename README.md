@@ -10,6 +10,13 @@ Kampus is an open-source [MCP](https://modelcontextprotocol.io) server that conn
 ![Rust 1.99](https://img.shields.io/badge/rust-1.99-orange.svg)
 ![MCP 2026-07-28 + 2025-11-25](https://img.shields.io/badge/MCP-2026--07--28%20%2B%202025--11--25-purple.svg)
 
+<p align="center">
+  <img src="docs/images/claude-deadlines.png" alt="Claude answering &quot;What's due this week?&quot; with deadlines from Kampus, labelled as sandbox data" width="49%">
+  <img src="docs/images/claude-booking.png" alt="Claude confirming a simulated study-room booking through Kampus" width="49%">
+</p>
+
+*Claude, signed in with a real Saint Joseph's University account, asking Kampus what's due (synthetic coursework, labelled as such) and booking a library study room (simulated). Recorded live on 2026-10-10.*
+
 ---
 
 ## Why
@@ -22,21 +29,19 @@ Universities can't simply let AI assistants into their systems either: student r
 
 | Tool | What you can ask | Data | Source |
 |---|---|---|---|
-| `find_study_room` | "Is there a group room at Charles free at 3?" | Public | LibCal (live; currently failing upstream, see below) |
-| `book_study_room` | Propose a booking (nothing is written yet) | Public | LibCal (simulated in the sandbox build) |
-| `confirm_booking` | Confirm a proposal (the only write; needs your approval) | Public | LibCal (simulated in the sandbox build) |
-| `search_courses` | "Is there a machine learning course in CIS this fall?" | Public | Banner 9 (live) |
-| `next_departures` | "When's the next B from Cecil B. Moore going south?" | Public | SEPTA live arrivals and GTFS schedule |
-| `library_hours` | "When does Charles Library close today?" | Public | Library website (live) |
-| `my_deadlines` | "What's due this week?" | **Sensitive** | Canvas (synthetic in the sandbox build) |
+| `find_study_room` | "Is there a room in Drexel Library free at 3?" | Public | LibCal public booking page (live) |
+| `book_study_room` | Propose a booking (nothing is written yet) | Public | LibCal (simulated in the demo build) |
+| `confirm_booking` | Confirm a proposal (the only write; needs your approval) | Public | LibCal (simulated in the demo build) |
+| `search_courses` | "Is there a machine learning course in CIS this fall?" | Public | Banner 9 (live; Temple) |
+| `next_departures` | "When's the next train from Overbrook?" | Public | SEPTA live arrivals and GTFS schedule |
+| `library_hours` | "Is the library open Monday?" | Public | Library website or LibCal hours (live) |
+| `my_deadlines` | "What's due this week?" | **Sensitive** | Canvas (synthetic in the demo build) |
 
 **The same question gets different answers depending on who's asking:**
 
-- **Claude**, registered as the school's *approved* assistant, can read your deadlines.
-- **ChatGPT**, on the same server with the same student logged in, is **refused**, because it isn't the school's approved workspace.
+- The school's **approved** assistant (for example its Claude workspace) can read a signed-in student's deadlines.
+- Another assistant, with the same student signed in, is **refused** unless the school's policy allows students' own assistants (a switch the school controls).
 - A **talking owl** (a Raspberry Pi kiosk) connects as a public device: it answers campus questions but never touches personal data.
-
-Room search is down for now: LibCal's API began refusing anonymous requests after the fixtures were recorded, and a switch to the public booking page's endpoint is planned ([details](docs/auth/qualification.md#findings-and-owner-decisions-task-77)).
 
 Every decision lands in an audit log that records which feature was used and when, **never what was asked or answered**, with student IDs hashed.
 
@@ -65,8 +70,10 @@ flowchart LR
 
 | School | Config | Notes |
 |---|---|---|
-| Temple University | [`schools/temple/`](schools/temple) | Reference school: all seven tools |
-| Saint Joseph's University | [`schools/sju/`](schools/sju) | Same binary, one config file: rooms and transit |
+| Temple University | [`schools/temple/`](schools/temple) | All seven tools; courses from Banner 9 |
+| Saint Joseph's University | [`schools/sju/`](schools/sju) | Rooms, transit and library hours live; a [demo profile](schools/sju/README.md) with sign-in through SJU's Google accounts, synthetic deadlines and simulated booking. Courses not yet: SJU runs Banner 8. |
+
+Both run from the same binary; only the two config files differ.
 
 Adding a school means writing a `school.yaml` and a `policy.yaml`. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
@@ -132,7 +139,7 @@ clients/owl/           the talking mascot (Python, Raspberry Pi)
 hardware/owl/          the mascot's CAD, print files, wiring and parts list
 deploy/                the one-command trial, Caddy and Cloudflare Tunnel notes, and the owl's Pi setup
 openspec/              the living specification and the change history
-docs/                  contracts, auth, transit, device API, demo, research
+docs/                  contracts, auth, transit, device API, research, screenshots
 ```
 
 Each part has its own CI (`.github/workflows/server.yml`, `owl.yml`), so a change in one doesn't rebuild the others.
@@ -149,23 +156,30 @@ cargo test --workspace --features kampus/sandbox,kampus/broker
 
 House rules (from [AGENTS.md](AGENTS.md)): no `unsafe` (the workspace forbids it), no school-specific values in code, sandbox code only behind the `sandbox` feature, and tests against recorded real responses.
 
+## See it working
+
+<p align="center">
+  <img src="docs/images/claude-tool-permissions.png" alt="Claude's connector settings for Kampus: six read-only tools always allowed, the booking confirmation needs approval" width="49%">
+  <img src="docs/images/connected-assistants.png" alt="Kampus connected-assistants page: signed in with a Saint Joseph's University account, Claude listed with a disconnect button" width="49%">
+</p>
+
+Claude groups Kampus's tools by their MCP hints (read-only versus the one write). Students see and disconnect their assistants on Kampus's own page. Every live run, including what failed, is written down in [docs/auth/qualification.md](docs/auth/qualification.md): Claude and ChatGPT connecting by URL alone, SJU Google sign-in, refresh, revoke, and the findings.
+
 ## Status and roadmap
 
-Kampus is a hackathon prototype, not production software. Personal data in the demo is synthetic, and bookings are simulated. Sign-in through a real school account works: the broker has been run live against Saint Joseph's University's Google Workspace with Claude and ChatGPT ([record](docs/auth/qualification.md)).
+Kampus started as an OwlHacks 2026 project and is now a working showcase, not production software. Personal data is synthetic and bookings are simulated; public data (rooms, trains, hours, courses) is live. Room availability comes from LibCal's public booking page, a documented best-effort source, because LibCal's API stopped answering anonymous requests in October 2026.
 
 Next up:
+- SJU course search (a Banner 8 adapter)
+- Real Canvas and LibCal access with credentials a school issues
 - A published-timetable fallback for Regional Rail, so late-night trips still get an answer
-- A fast "list distinct courses" option, and course descriptions and prerequisites from Banner
 - Dining, events and building information
-- Room search through LibCal's public booking endpoint, and times in the school's time zone
-- Real Canvas access through a per-user token vault
 - The security and accessibility review a university would require
 
 ## Docs
 
 - [Research report](docs/research/campus-ai-connector-report.md): the original plan and the research behind it
 - [Contracts](docs/contracts/README.md) · [Auth](docs/auth/README.md) · [Add Kampus to your assistant](docs/auth/student-assistants.md) · [Transit](docs/transit/README.md) · [Device API](docs/device-api/README.md)
-- [Demo script](docs/demo/script.md)
 
 ## License
 
