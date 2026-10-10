@@ -1,0 +1,93 @@
+# SJU demo policy (policy.yaml version 1) for school.yaml in this folder.
+# Same rules as ../policy.yaml; only the two Sensitive switches are on, so a
+# student's own self-registered Claude or ChatGPT reads their (synthetic)
+# deadlines. Turn them off again on the local admin page after the demo.
+# Deny wins; any call no enabled rule allows is denied.
+version: 1
+school_id: sju
+
+# Conservative tier mapping: Internal is Sensitive.
+tier_mapping:
+  public: public
+  internal: sensitive
+  sensitive: sensitive
+  confidential: confidential
+
+client_registry:
+  - client_id: kampus-sju-claude
+    registration: pre_registered_confidential
+    approved: true
+    workspace: Claude (school workspace)
+  - client_id: kampus-sju-chatgpt
+    registration: pre_registered_confidential
+    approved: false
+    workspace: ChatGPT (school workspace)
+  - client_id: kampus-sju-mascot
+    registration: device
+    approved: false
+    workspace: Mascot device
+  # Self-registered assistants (CIMD client ID URLs). Never approved; they
+  # read Sensitive data only under allow_self_registered_sensitive.
+  - client_id: https://claude.ai/oauth/mcp-oauth-client-metadata
+    registration: cimd
+    approved: false
+    workspace: Claude (personal, CIMD)
+  - client_id: https://chatgpt.com/oauth/client.json
+    registration: cimd
+    approved: false
+    workspace: ChatGPT (personal, CIMD)
+
+# Global Sensitive switch: on for this synthetic demo profile only.
+sensitive_enabled: true
+# Personal switch: a student's own self-registered assistant may read that
+# student's own Sensitive data (needs sensitive_enabled and the rule below).
+allow_self_registered_sensitive: true
+
+rules:
+  - id: public-read
+    effect: allow
+    roles: [student, faculty, staff, guest]
+    tools: [find_study_room, search_courses, next_departures, library_hours]
+    effective_classes: [public]
+  - id: booking-propose
+    effect: allow
+    roles: [student]
+    tools: [book_study_room]
+    effective_classes: [public]
+  - id: booking-confirm
+    effect: allow
+    roles: [student]
+    tools: [confirm_booking]
+    effective_classes: [public]
+    required_scopes: ["rooms:book"]
+  - id: sensitive-approved-student
+    effect: allow
+    roles: [student]
+    tools: [my_deadlines]
+    effective_classes: [sensitive]
+    client_trust: approved
+  - id: sensitive-self-registered-student
+    effect: allow
+    roles: [student]
+    tools: [my_deadlines]
+    effective_classes: [sensitive]
+    client_trust: self_registered
+  - id: sensitive-unapproved-deny
+    effect: deny
+    roles: [student, faculty, staff, guest]
+    tools: ["*"]
+    effective_classes: [sensitive, confidential]
+    client_trust: unapproved_other
+
+audit:
+  retention_hours: 24
+  salt_env: KAMPUS_SJU_AUDIT_SALT
+
+limits:
+  user_reads_per_minute: 60
+  guest_reads_per_minute: 30
+  booking_proposals_per_minute: 5
+  booking_confirms_per_minute: 2
+  device_binds_per_minute: 6
+  device_binds_per_source_per_minute: 30
+
