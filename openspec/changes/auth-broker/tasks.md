@@ -75,7 +75,7 @@ Branch `change/auth-broker`, created after `standard-token-profile` is merged an
 
 ## 8. Docs, review and integration (checkpoint: merged) — 6.5 h
 
-- [ ] 8.1 Rewrite `docs/auth/README.md` as the operator overview (RS + broker, lazy auth, client classes, personal switch, audit rule IDs) linking `broker.md`, `school-idp.md` and `qualification.md`. Evidence: link check; every command shown was run during groups 2–7. (90 min)
+- [x] 8.1 Rewrite `docs/auth/README.md` as the operator overview (RS + broker, lazy auth, client classes, personal switch, audit rule IDs) linking `broker.md`, `school-idp.md` and `qualification.md`. Evidence: link check; every command shown was run during groups 2–7. (90 min)
 - [ ] 8.2 Write `docs/auth/student-assistants.md`, "Add kampus to your own Claude or ChatGPT": paste the URL, sign in, consent, try a public question, what a refusal looks like, connected assistants and revoke. Never ask for client IDs, secrets or tokens. Evidence: walked through once by following only the doc. (60 min)
 - [ ] 8.3 Update `README.md` (how it works, quickstart with the broker, deploy pointer), `CONTRIBUTING.md` and `docs/demo/script.md`; integrator updates the `AGENTS.md` architecture block and gate commands for `kampus-auth` and the `broker` feature. Evidence: the quickstart runs as written. (60 min)
 - [ ] 8.4 Security review: re-walk the STRIDE table against the code, plus the 12 forbidden patterns, plus privacy evidence (tokens carry no PII; audit, logs and error pages carry no tokens, codes or arguments; tool `outputSchema` unchanged). Evidence: a checklist in the merge note, and any finding fixed or recorded. (60 min)
