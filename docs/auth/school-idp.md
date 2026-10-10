@@ -69,6 +69,7 @@ Examples (check the claim names in a real ID token from your IdP):
 | Microsoft Entra ID, app roles | `roles` (array of app-role values) | `{ claim: roles, value: Kampus.Student, role: student }` |
 | Okta, groups claim | `groups` (array) | `{ claim: groups, value: kampus-faculty, role: faculty }` |
 | Keycloak, realm roles | `realm_access.roles` (nested) | `{ claim: realm_access.roles, value: student, role: student }` |
+| Google Workspace (Internal app) | `hd` (the Workspace domain; Google releases it only with the `email` scope) | `{ claim: hd, value: school.example, role: student }` with `scopes: [openid, email]` |
 | Auth0, namespaced claim | `https://school.example/roles` | `{ claim: "https://school.example/roles", value: staff, role: staff }` |
 
 ## 4. Keep the subject key forever
