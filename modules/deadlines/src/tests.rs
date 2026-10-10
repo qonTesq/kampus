@@ -158,7 +158,12 @@ async fn only_mapped_student_users_reach_the_provider() {
     }
     assert_eq!(provider.calls.load(Ordering::SeqCst), 0);
 
-    call(&m, json!({}), student(SUBJECT_A)).await.unwrap();
+    let out = call(&m, json!({}), student(SUBJECT_A)).await.unwrap();
+    // 16:00 UTC, in the school's own offset (EDT).
+    assert_eq!(
+        out.data["deadlines"][0]["due_at"],
+        "2026-09-23T12:00:00-04:00"
+    );
     let queries = provider.queries.lock().unwrap();
     // The provider sees the registered synthetic user, never the subject.
     assert_eq!(queries[0].synthetic_user_id, "synthetic-a");

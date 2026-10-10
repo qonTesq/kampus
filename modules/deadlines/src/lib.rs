@@ -116,7 +116,19 @@ impl Deadlines {
             limit,
         };
         let sourced = source.provider.list(&query).await?;
-        ToolSuccess::new(&sourced.value, sourced.provenance)
+        let mut data =
+            serde_json::to_value(&sourced.value).map_err(|_| ToolError::configuration_error())?;
+        // Contract times are UTC; answers use the school's local offset.
+        if let Some(items) = data.get_mut("deadlines").and_then(Value::as_array_mut) {
+            for (item, deadline) in items.iter_mut().zip(&sourced.value.deadlines) {
+                item["due_at"] = deadline
+                    .due_at
+                    .with_timezone(&self.timezone)
+                    .to_rfc3339()
+                    .into();
+            }
+        }
+        ToolSuccess::new(&data, sourced.provenance)
     }
 }
 
