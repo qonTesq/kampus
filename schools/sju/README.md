@@ -1,6 +1,29 @@
 # SJU instance
 
-SJU runs the same Kampus executable as Temple. The checked-in settings use local OAuth, public vendor data and no sandbox providers. Both campuses use `sju.libcal.com`: Hawk Hill `20094`, University City `20098`. All seven tools remain listed. Courses and hours return `unsupported_source`; deadlines are denied by the default Sensitive policy. Booking requires a separate sandbox config with both `sandbox.enabled: true` and `libcal.booking_simulation: true` plus a sandbox build. No real booking is submitted.
+SJU runs the same Kampus executable as Temple. The checked-in settings use local OAuth, public vendor data and no sandbox providers. Both campuses use `sju.libcal.com`: Hawk Hill `20094`, University City `20098`. All seven tools remain listed. Library hours are live from LibCal's public hours JSON (the data behind `sju.libcal.com/hours`; hours location IDs `22788` Hawk Hill and `22789` University City). Courses return `unsupported_source`: SJU's public class schedule is Banner 8 HTML at `ssb.sju.edu/pls/PRODSSB/bwckschd.p_disp_dyn_sched`, not the Banner 9 SSB the banner adapter reads (`openspec/changes/sju-parity/design.md`). Deadlines are denied by the default Sensitive policy and have no source in this file. Booking and synthetic deadlines need the demo profile below. No real booking is submitted.
+
+## Demo profile
+
+`demo/school.yaml` and `demo/policy.yaml` are a complete sandbox configuration for showing all seven tools with a real Google sign-in. They need a binary built with `--features sandbox,broker`; a production binary refuses them.
+
+| Tool | Demo source |
+|---|---|
+| `find_study_room` | live, `sju.libcal.com` public booking page |
+| `book_study_room`, `confirm_booking` | booking simulation (`libcal.booking_simulation: true`); a simulated receipt, nothing is booked |
+| `library_hours` | live, LibCal hours JSON |
+| `next_departures` | live, SEPTA Overbrook |
+| `my_deadlines` | synthetic Canvas fake; every result has `meta.sandbox: true`, `source_kind: sandbox` and `SYN-*` course codes |
+| `search_courses` | `unsupported_source` (see above) |
+
+A real sign-in gets a pseudonymous `k1.…` subject that the synthetic seed doesn't know. `canvas.fallback_synthetic_user` (sandbox only) shows such a signed-in student the seed's `synthetic-student-a` profile instead of "no synthetic demo profile". Guests and devices never reach it. The demo policy turns on `sensitive_enabled` and `allow_self_registered_sensitive`, so a student's own Claude or ChatGPT (self-registered CIMD clients) may read those synthetic deadlines. Every other rule is the checked-in policy.
+
+1. Copy both files outside the checkout (for example to a git-ignored `data/` folder): `serve` writes policy changes from the admin page back to the policy file, and creates the broker's key file.
+2. Replace `YOUR-GOOGLE-CLIENT-ID.apps.googleusercontent.com` with your own Google OAuth web client, and register `{issuer}/callback` at Google. Never commit a real client ID or secret.
+3. For a public hostname, change `server.resource_url` and `auth.issuer` and add `server.trusted_proxy` as the comment at the top of `demo/school.yaml` says. Routing: `deploy/cloudflare-tunnel/README.md`.
+4. Set `KAMPUS_SJU_AUDIT_SALT`, `KAMPUS_SJU_SUBJECT_KEY` (at least 32 random bytes, hex; keep it forever) and `KAMPUS_SJU_OIDC_SECRET` (the Google client secret).
+5. `kampus check --school <copy>/school.yaml --policy <copy>/policy.yaml`, then `serve` with the same arguments.
+
+The role mapping makes every `sju.edu` Google Workspace account a student. After the demo, turn the two Sensitive switches off on the local admin page (`http://127.0.0.1:8091`).
 
 ## Run side by side
 
