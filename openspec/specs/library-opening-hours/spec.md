@@ -21,7 +21,7 @@ library_hours SHALL declare Public, readOnlyHint=true and destructiveHint=false,
 
 ### Requirement: Scraping distinguishes closed from unavailable
 
-The tool SHALL scrape the configured library-hours page and SHALL require explicit source evidence to report closed. Empty LibCal hours, missing selectors and parse failures SHALL NOT become closed or empty-success responses.
+The tool SHALL read the configured library-hours source, either a scraped page or LibCal's public hours-widget JSON, and SHALL require explicit source evidence to report closed. Empty LibCal hours, missing selectors or locations, and parse failures SHALL NOT become closed or empty-success responses. A date outside the published range SHALL be unsupported_source.
 
 #### Scenario: Empty LibCal API
 
@@ -37,6 +37,11 @@ The tool SHALL scrape the configured library-hours page and SHALL require explic
 
 - **WHEN** the page provides both regular hours and a dated closure
 - **THEN** the date-specific closure wins
+
+#### Scenario: LibCal hours JSON
+
+- **WHEN** the configured LibCal hours JSON lists the configured location and date
+- **THEN** open, closed and 24-hour days are returned as stated, other statuses are unknown, and a missing location or date never becomes closed
 
 ### Requirement: Safe and polite hours retrieval
 
