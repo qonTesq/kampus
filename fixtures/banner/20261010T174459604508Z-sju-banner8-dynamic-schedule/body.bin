@@ -1,0 +1,180 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML lang="en">
+<head>
+<META http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<meta http-equiv="Pragma" name="Cache-Control" content="no-cache">
+<meta http-equiv="Cache-Control" name="Cache-Control" content="no-cache">
+<meta http-equiv="" name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="X-UA-Compatible" name="" content="IE=edge">
+<LINK REL="stylesheet" HREF="/css/web_defaultapp.css" TYPE="text/css">
+<LINK REL="stylesheet" HREF="/css/web_defaultprint.css" TYPE="text/css" media="print">
+<title>Dynamic Schedule</title>
+<meta http-equiv="Content-Script-Type" name="Default_Script_Language" content="text/javascript">
+<SCRIPT LANGUAGE="JavaScript" TYPE="text/javascript">
+<!-- Hide JavaScript from older browsers 
+window.onunload = function() {submitcount=0;}
+var submitcount=0;
+function checkSubmit() {
+if (submitcount == 0)
+   {
+   submitcount++;
+   return true;
+   }
+else
+   {
+alert("Your changes have already been submitted.");
+   return false;
+   }
+}
+//  End script hiding -->
+</SCRIPT>
+<SCRIPT LANGUAGE="JavaScript" TYPE="text/javascript">
+<!-- Hide JavaScript from older browsers 
+//  Function to open a window
+function windowOpen(window_url) {
+   helpWin = window.open(window_url,'','toolbar=yes,status=no,scrollbars=yes,menubar=yes,resizable=yes,directories=no,location=no,width=350,height=400');
+   if (document.images) { 
+       if (helpWin) helpWin.focus()
+   }
+}
+//  End script hiding -->
+</SCRIPT>
+</head>
+<body>
+<div class="headerwrapperdiv">
+<div class="pageheaderdiv1">
+<a href="#main_content" onMouseover="window.status='Go to Main Content'; return true" onMouseout="window.status=''; return true" OnFocus="window.status='Go to Main Content'; return true" onBlur="window.status=''; return true" class="skiplinks">Go to Main Content</a>
+<h1>Saint Joseph's University</h1></DIV><div class="headerlinksdiv">
+</DIV>
+<table  CLASS="plaintable" SUMMARY="This table displays Menu Items and Banner Search textbox." WIDTH="100%">
+<tr>
+<TD CLASS="pldefault">
+<div class="headerlinksdiv2">
+&nbsp;
+</div>
+</TD>
+<TD CLASS="pldefault"><p class="rightaligntext" /p>
+<SPAN class="pageheaderlinks">
+<a href="/pls/PRODSSB/hzgkpswd.p_reset_password" accesskey="H" onClick="popup = window.open('/pls/PRODSSB/hzgkpswd.p_reset_password', 'PopupPage','height=500,width=450,scrollbars=yes,resizable=yes'); return false" target="_blank" onMouseOver="window.status='';  return true" onMouseOut="window.status=''; return true"onFocus="window.status='';  return true" onBlur="window.status=''; return true"  class="submenulinktext2">HELP</a>
+|
+<a href="twbkwbis.P_Logout" accesskey="3" class="submenulinktext2">EXIT</a>
+</span>
+</TD>
+</tr>
+</table>
+</DIV>
+<div class="pagetitlediv">
+<table  CLASS="plaintable" SUMMARY="This table displays title and static header displays." WIDTH="100%">
+<tr>
+<TD CLASS="pldefault">
+<h2>Dynamic Schedule</h2>
+</TD>
+<TD CLASS="pldefault">
+&nbsp;
+</TD>
+<TD CLASS="pldefault"><p class="rightaligntext" /p>
+<div class="staticheaders">
+</div>
+</TD>
+</tr>
+<tr>
+<TD class="bg3" width="100%" colSpan=3><img src="/wtlgifs/web_transparent.gif" alt="Transparent Image" CLASS="headerImg" TITLE="Transparent Image"  NAME="web_transparent" HSPACE=0 VSPACE=0 BORDER=0 HEIGHT=3 WIDTH=10 /></TD>
+</tr>
+</table>
+<a name="main_content"></a>
+</DIV>
+<div class="pagebodydiv">
+<!--  ** END OF twbkwbis.P_OpenDoc **  -->
+
+<form action="/pls/PRODSSB/bwckgens.p_proc_term_date" method="post" onSubmit="return checkSubmit()">
+<input type="hidden" name="p_calling_proc" value="bwckschd.p_disp_dyn_sched" />
+<table  CLASS="dataentrytable" summary="This layout table is used for term selection." width="100%"><caption class="captiontext">Search by Term: </caption>
+<tr>
+<TD CLASS="dedefault"><LABEL for=term_input_id><SPAN class="fieldlabeltextinvisible">Term</SPAN></LABEL>
+<select name="p_term" size="1"  BYPASS_ESC=>"Y" ID="term_input_id">
+<OPTION VALUE="">None</OPTION>
+<OPTION VALUE="202640">Fall 2026</OPTION>
+<OPTION VALUE="202620">Summer 2026 (View only)</OPTION>
+<OPTION VALUE="202610">Spring 2026 (View only)</OPTION>
+<OPTION VALUE="202600">Intersession 2026 (View only)</OPTION>
+<OPTION VALUE="202540">Fall 2025 (View only)</OPTION>
+<OPTION VALUE="202520">Summer 2025 (View only)</OPTION>
+<OPTION VALUE="202510">Spring 2025 (View only)</OPTION>
+<OPTION VALUE="202500">Intersession 2025 (View only)</OPTION>
+<OPTION VALUE="202440">Fall 2024 (View only)</OPTION>
+<OPTION VALUE="202420">Summer 2024 (View only)</OPTION>
+<OPTION VALUE="202410">Spring 2024 (View only)</OPTION>
+<OPTION VALUE="202400">Intersession 2024 (View only)</OPTION>
+<OPTION VALUE="202340">Fall 2023 (View only)</OPTION>
+<OPTION VALUE="202320">Summer 2023 (View only)</OPTION>
+<OPTION VALUE="202310">Spring 2023 (View only)</OPTION>
+<OPTION VALUE="202300">Intersession 2023 (View only)</OPTION>
+<OPTION VALUE="202240">Fall 2022 (View only)</OPTION>
+<OPTION VALUE="202220">Summer 2022 (View only)</OPTION>
+<OPTION VALUE="202210">Spring 2022 (View only)</OPTION>
+<OPTION VALUE="202200">Intersession 2022 (View only)</OPTION>
+<OPTION VALUE="202140">Fall 2021 (View only)</OPTION>
+<OPTION VALUE="202120">Summer 2021 (View only)</OPTION>
+<OPTION VALUE="202110">Spring 2021 (View only)</OPTION>
+<OPTION VALUE="202100">Intersession 2021 (View only)</OPTION>
+<OPTION VALUE="202040">Fall 2020 (View only)</OPTION>
+<OPTION VALUE="202020">Summer 2020 (View only)</OPTION>
+<OPTION VALUE="202010">Spring 2020 (View only)</OPTION>
+<OPTION VALUE="202000">Intersession 2020 (View only)</OPTION>
+<OPTION VALUE="201940">Fall 2019 (View only)</OPTION>
+<OPTION VALUE="201920">Summer 2019 (View only)</OPTION>
+<OPTION VALUE="201910">Spring 2019 (View only)</OPTION>
+<OPTION VALUE="201900">Intersession 2019 (View only)</OPTION>
+<OPTION VALUE="201840">Fall 2018 (View only)</OPTION>
+<OPTION VALUE="201820">Summer 2018 (View only)</OPTION>
+<OPTION VALUE="201810">Spring 2018 (View only)</OPTION>
+<OPTION VALUE="201800">Intersession 2018 (View only)</OPTION>
+<OPTION VALUE="201740">Fall 2017 (View only)</OPTION>
+<OPTION VALUE="201720">Summer 2017 (View only)</OPTION>
+<OPTION VALUE="201710">Spring 2017 (View only)</OPTION>
+<OPTION VALUE="201700">Intersession 2017 (View only)</OPTION>
+<OPTION VALUE="201640">Fall 2016 (View only)</OPTION>
+<OPTION VALUE="201620">Summer 2016 (View only)</OPTION>
+<OPTION VALUE="201610">Spring 2016 (View only)</OPTION>
+<OPTION VALUE="201600">Intersession 2016 (View only)</OPTION>
+<OPTION VALUE="201540">Fall 2015 (View only)</OPTION>
+</select>
+</TD>
+</tr>
+</table>
+<br />
+<br />
+<input type="submit" value="Submit" />
+<input type="reset" VALUE="Reset" />
+</form>
+
+<!--  ** START OF twbkwbis.P_CloseDoc **  -->
+<table  CLASS="plaintable" SUMMARY="This is table displays line separator at end of the page." WIDTH="100%" cellSpacing=0 cellPadding=0 border=0><tr><TD class="bgtabon" width="100%" colSpan=2><img src="/wtlgifs/web_transparent.gif" alt="Transparent Image" CLASS="headerImg" TITLE="Transparent Image"  NAME="web_transparent" HSPACE=0 VSPACE=0 BORDER=0 HEIGHT=3 WIDTH=10 /></TD></tr></table>
+<a href="#top" onMouseover="window.status='Skip to top of page'; return true" onMouseout="window.status=''; return true" OnFocus="window.status='Skip to top of page'; return true" onBlur="window.status=''; return true" class="skiplinks">Skip to top of page</a>
+</DIV>
+<div class="footerbeforediv">
+
+</DIV>
+<div class="footerafterdiv">
+
+</DIV>
+<div class="globalafterdiv">
+
+</DIV>
+<div class="globalfooterdiv">
+
+</DIV>
+<div class="pagefooterdiv">
+<SPAN class="releasetext">Release: 8.7.2.6</SPAN>
+</DIV>
+<div class="poweredbydiv">
+</DIV>
+<DIV class="div1"></DIV>
+<DIV class="div2"></DIV>
+<DIV class="div3"></DIV>
+<DIV class="div4"></DIV>
+<DIV class="div5"></DIV>
+<DIV class="div6"></DIV>
+<div class="banner_copyright"> <br><h5>© 2026 Ellucian Company L.P. and its affiliates.<br></h5></div>
+</body>
+</html>
