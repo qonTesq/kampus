@@ -465,8 +465,14 @@ async fn is_free_rejects_booked_unaligned_unlisted_and_unknown_rooms() {
     };
     assert!(check("58701", "14:00", "16:00").await.unwrap());
     assert!(check("58701", "08:00", "09:30").await.unwrap());
-    assert!(!check("58701", "14:00", "14:45").await.unwrap(), "unaligned");
-    assert!(!check("58701", "10:00", "11:00").await.unwrap(), "checked out");
+    assert!(
+        !check("58701", "14:00", "14:45").await.unwrap(),
+        "unaligned"
+    );
+    assert!(
+        !check("58701", "10:00", "11:00").await.unwrap(),
+        "checked out"
+    );
     assert!(
         !check("58701", "09:00", "10:00").await.unwrap(),
         "09:30 unavailable"
@@ -476,7 +482,11 @@ async fn is_free_rejects_booked_unaligned_unlisted_and_unknown_rooms() {
     for (room, why) in [("58703", "not on the directory"), ("99999", "unknown room")] {
         let err = check(room, "08:00", "08:30").await.unwrap_err();
         assert_eq!(err.code, ErrorCode::InvalidArguments, "{why}");
-        assert!(err.message.starts_with("Unknown room"), "{why}: {}", err.message);
+        assert!(
+            err.message.starts_with("Unknown room"),
+            "{why}: {}",
+            err.message
+        );
         assert!(err.message.contains("find_study_room"), "{why}");
     }
 }

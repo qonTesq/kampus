@@ -314,7 +314,9 @@ async fn login_names_the_school_and_skips_a_one_option_page() {
             login.location.as_deref(),
             Some(format!("{}/login/upstream?pending={pending}", h.issuer).as_str())
         );
-        let upstream = h.get(&format!("/login/upstream?pending={pending}"), None, None).await;
+        let upstream = h
+            .get(&format!("/login/upstream?pending={pending}"), None, None)
+            .await;
         assert_eq!(upstream.status, 303, "{upstream:?}");
     }
     // An expired or unknown pending ID still gets the error page.
@@ -330,7 +332,11 @@ async fn signed_in_pages_name_the_school_account_not_the_idp_host() {
     let reply = callback(&h, &url, Some(&started.cookie)).await;
     let session = set_cookie(&reply, COOKIE).unwrap();
     let consent = h
-        .get(&format!("/consent?pending={}", started.pending), Some(&session), None)
+        .get(
+            &format!("/consent?pending={}", started.pending),
+            Some(&session),
+            None,
+        )
         .await;
     let connections = h.get("/connections", Some(&session), None).await;
     for page in [&consent, &connections] {

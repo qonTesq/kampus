@@ -67,25 +67,26 @@ pub struct Transit {
 /// Registration entry point, called once from `crates/server/src/registry.rs`.
 pub fn module(init: &ModuleInit) -> Result<Arc<dyn Module>, RegistryError> {
     let descriptor = ModuleDescriptor::from_yaml(MODULE_ID, MODULE_YAML)?;
-    let enabled = match init.school.transit.as_ref() {
-        Some(t) if t.enabled && init.is_enabled(MODULE_ID) => Some(Enabled {
-            stops: t.stops.clone(),
-            routes: t.routes.clone(),
-            timezone: init.school.school.timezone.parse().map_err(|_| {
-                RegistryError::Module {
-                    module: MODULE_ID.to_owned(),
-                    message: "school.timezone is not an IANA timezone".to_owned(),
-                }
-            })?,
-            providers: kampus_transit::providers(&init.school, &init.runtime).map_err(|e| {
-                RegistryError::Module {
-                    module: MODULE_ID.to_owned(),
-                    message: e.to_string(),
-                }
-            })?,
-        }),
-        _ => None,
-    };
+    let enabled =
+        match init.school.transit.as_ref() {
+            Some(t) if t.enabled && init.is_enabled(MODULE_ID) => Some(Enabled {
+                stops: t.stops.clone(),
+                routes: t.routes.clone(),
+                timezone: init.school.school.timezone.parse().map_err(|_| {
+                    RegistryError::Module {
+                        module: MODULE_ID.to_owned(),
+                        message: "school.timezone is not an IANA timezone".to_owned(),
+                    }
+                })?,
+                providers: kampus_transit::providers(&init.school, &init.runtime).map_err(|e| {
+                    RegistryError::Module {
+                        module: MODULE_ID.to_owned(),
+                        message: e.to_string(),
+                    }
+                })?,
+            }),
+            _ => None,
+        };
     Ok(Arc::new(Transit {
         descriptor,
         enabled,

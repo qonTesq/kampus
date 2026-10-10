@@ -15,7 +15,7 @@
 //! the RS classifies the client as self-registered, exactly as for a CIMD
 //! client; only rmcp's own CIMD branch selection is not exercised here.
 //!
-//! rmcp is given no scopes, so like Claude and ChatGPT it seeds the first
+//! rmcp is given no scopes, so like Claude and `ChatGPT` it seeds the first
 //! request from the AS `scopes_supported`, which lists `offline_access`
 //! only; `rooms:book` comes from the step-up this file tests.
 

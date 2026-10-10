@@ -632,9 +632,7 @@ mod sandbox {
     #[tokio::test]
     async fn wrong_ids_are_unknown_and_only_a_taken_slot_is_not_free() {
         let h = harness(true, true).await;
-        let slot = |room: &str, location: &str, start: &str, end: &str| {
-            json!({ "room_id": room, "location_id": location, "start": format!("2026-10-12T{start}:00-04:00"), "end": format!("2026-10-12T{end}:00-04:00") })
-        };
+        let slot = |room: &str, location: &str, start: &str, end: &str| json!({ "room_id": room, "location_id": location, "start": format!("2026-10-12T{start}:00-04:00"), "end": format!("2026-10-12T{end}:00-04:00") });
         for (i, (args, expected)) in [
             (slot("99999", "8404", "14:00", "15:00"), "Unknown room"),
             (slot("58701", "9999", "14:00", "15:00"), "Unknown location"),

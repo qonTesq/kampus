@@ -35,5 +35,5 @@
 
 ## 8. Gate
 
-- [ ] 8.1 `openspec validate demo-ux --strict`
-- [ ] 8.2 Full gate from `AGENTS.md` plus the broker tests
+- [x] 8.1 `openspec validate demo-ux --strict`
+- [x] 8.2 Full gate from `AGENTS.md` plus the broker tests
