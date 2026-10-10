@@ -10,8 +10,9 @@ server:
   admin_listen: 127.0.0.1:8091
 auth:
   mode: oauth
-  # SJU's own kampus authorization broker (auth-broker change). Until it
-  # lands, public tools work without a token and protected calls get 401.
+  # SJU's kampus authorization broker. This checked-in file has no
+  # auth.broker section: public tools work without a token and protected
+  # calls get 401. Add one per docs/auth/broker.md and school-idp.md.
   issuer: http://127.0.0.1:8092/auth
 modules: [rooms, transit]
 sandbox:

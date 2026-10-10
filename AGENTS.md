@@ -13,10 +13,12 @@ crates/kampus-core   contracts/ (FROZEN), config/, output/, runtime/  (foundatio
                      auth/, policy/, audit/, admin/, dispatch/          (auth-policy-audit)
 crates/kampus-{libcal,banner,transit,hours,canvas}   vendor adapters (per vendor, never per school)
 crates/kampus-device POST /device/bind + IdentityResolver
+crates/kampus-auth   OAuth 2.1 broker on its own listener (CIMD + pre-registered clients, upstream OIDC, consent), `broker` feature
 modules/{rooms,courses,transit,library-hours,deadlines}  module.yaml + small crate
 schools/<id>/school.yaml, policy.yaml     everything school-specific
 ```
 
+- The resource server verifies broker tokens only through RFC 8414 discovery on the public issuer, like any other issuer. `kampus-auth` never sees MCP types; modules never see broker types.
 - MCP is the thin outer layer: only `crates/kampus` uses rmcp. Modules and adapters exchange the plain types in `kampus_core::contracts` and never see tokens.
 - Call pipeline (dispatch): verify credential → resolve identity → validate tool/arguments → **policy** → caller limits → cache/provider → sanitize + project to the envelope → one metadata-only audit row → emit. Policy runs before any cache or provider access.
 - The seven tools: `find_study_room`, `book_study_room` (read-only proposal), `confirm_booking` (destructive, `rooms:book`), `search_courses`, `next_departures`, `my_deadlines` (Sensitive, synthetic), `library_hours`. Every tool is listed for every caller; policy refuses calls, it never hides tools.
@@ -57,10 +59,11 @@ schools/<id>/school.yaml, policy.yaml     everything school-specific
   cargo fmt --all
   cargo clippy --workspace --all-targets -- -D warnings
   cargo test --workspace
-  cargo clippy --workspace --all-targets --features kampus/sandbox -- -D warnings   # demo build
+  cargo clippy --workspace --all-targets --features kampus/sandbox,kampus/broker -- -D warnings   # demo build
+  cargo test --workspace --features kampus/sandbox,kampus/broker
   ```
   The dev hello-world tool is `--features kampus/acceptance`; it never goes in the demo build.
-- Builds: production `cargo build --release -p kampus`; demo `cargo build --release -p kampus --features sandbox`.
+- Builds: production `cargo build --release -p kampus` (add `--features broker` for the built-in authorization broker); demo `cargo build --release -p kampus --features sandbox,broker`.
 - Run: `kampus serve --school schools/temple/school.yaml --policy schools/temple/policy.yaml` (`kampus check …` only validates). Secrets come from environment variables named by `*_env` fields, e.g. `KAMPUS_TEMPLE_AUDIT_SALT`.
 
 ## Shared build cache (worktrees)
