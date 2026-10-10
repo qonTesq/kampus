@@ -60,3 +60,21 @@ Before the runs, through the tunnel: both metadata documents and the JWKS answer
 | Create a connector with only the MCP URL, OAuth | Pass. ChatGPT registered through CIMD as `https://chatgpt.com/oauth/client.json` and redeemed its code with no client secret (the broker accepts only `none` for CIMD clients); kampus callbacks always carry `iss`. |
 | Sign-in and consent | Pass, through the existing kampus session. ChatGPT also requested `rooms:book` at first sign-in. |
 | Public tool (`next_departures`) | Live SEPTA departures with delays, shown in local time. Pass. |
+| Refresh after expiry | Pass. With the first access token expired, the next call refreshed in the background (`refresh token rotated`, 16:18:30) and answered without asking the user to reconnect. |
+| Revoke | Not run separately; the same server path passed with Claude. |
+
+Claude's refresh after expiry also passed after reconnecting (`refresh token rotated`, 16:17:55, no prompt to reconnect).
+
+### Restart and key rotation (task 7.4)
+
+kampus was restarted at 16:19 with both assistants connected; the signing key file persisted. The assistants' recovery after their refresh tokens were lost was not observed live, by the owner's choice. The server behaviour is covered by automated tests: `discovery_verifies_broker_tokens_across_rotation_and_restart` and `rs_refuses_a_dropped_kid_after_two_rotations` (`crates/kampus/tests/broker.rs`) for tokens across `rotate-key` and restart, and the rmcp end-to-end tests (`crates/kampus/tests/broker/e2e.rs`) for refresh rotation, reuse and revocation.
+
+### Findings and owner decisions (task 7.7)
+
+- **Scopes up front.** Claude and ChatGPT both requested every scope in `scopes_supported` (here `rooms:book`) at first sign-in, so the `confirm_booking` step-up never ran live. Candidate fix: put a minimal `scope` in the tokenless 401 challenge so clients start small and step up on 403. Owner decision pending.
+- **No ChatGPT `_meta` lazy-auth or `private_key_jwt` need appeared**: ChatGPT connected through CIMD with `none`, and the standard 401 challenge was enough.
+- **Times in UTC.** `next_departures` returns UTC; Claude converted visibly, ChatGPT silently. Return the school's local time with an offset.
+- **LibCal API 1.1 refuses anonymous reads** for SJU and Temple since the fixtures were recorded; the public booking page's endpoint still works. Planned: use that public endpoint (documented as best-effort), fix the "drexel" alias and the 403 error code.
+- **Sign-in page wording.** One "Sign in with accounts.google.com" link and "Signed in as your accounts.google.com account": go straight to the school's IdP when it is the only option, and name the school.
+- **Refused refresh not logged.** A refresh against a revoked grant leaves no log line; add a reason-only line.
+- Claude's own "Needs approval" prompt for the destructive tool did not appear when `confirm_booking` was called.
