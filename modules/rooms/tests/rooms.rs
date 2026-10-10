@@ -5,7 +5,7 @@
 // clippy.toml allows unwrap inside #[test] fns only, not in shared helpers.
 #![allow(clippy::unwrap_used)]
 
-#[path = "../../../crates/kampus-libcal/tests/support/mod.rs"]
+#[path = "../../../adapters/libcal/tests/support/mod.rs"]
 mod support;
 
 use std::collections::BTreeSet;

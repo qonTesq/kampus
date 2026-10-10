@@ -50,7 +50,7 @@ struct FoundRoom<'a> {
     location_id: &'a str,
 }
 
-/// Registration entry point, called once from `crates/kampus/src/registry.rs`.
+/// Registration entry point, called once from `crates/server/src/registry.rs`.
 pub fn module(init: &ModuleInit) -> Result<Arc<dyn Module>, RegistryError> {
     let descriptor = ModuleDescriptor::from_yaml(MODULE_ID, MODULE_YAML)?;
     let config = init

@@ -49,12 +49,12 @@ Audit failure prevents binding. Tool calls retain one audit row per call.
 
 ## Integrator changes
 
-`crates/kampus/src/app.rs` constructs one `DeviceBindings`, supplies it through
+`crates/server/src/app.rs` constructs one `DeviceBindings`, supplies it through
 `Security.identity`, and layers that same Arc onto registry routes. The public
 listener now supplies `ConnectInfo<SocketAddr>` for peer limiting.
 No core auth, policy, audit, dispatch, or frozen contracts were changed.
 
-In `crates/kampus/src/registry.rs`, replace the empty routes body with:
+In `crates/server/src/registry.rs`, replace the empty routes body with:
 
 ```rust
 Router::new().merge(kampus_device::routes())

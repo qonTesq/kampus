@@ -30,8 +30,8 @@ If the school uses a vendor kampus already supports (LibCal, Banner 9, GTFS), no
 
 ## Add a vendor adapter or a capability
 
-- **Adapter** (`crates/kampus-<vendor>`): implements a provider trait from `kampus_core::contracts`, for example `RoomProvider`. One adapter per vendor, never per school.
-- **Capability** (`modules/<name>`): a `module.yaml` (tools, data class, roles, annotations, input and output schemas) plus a small crate, registered with one line in `crates/kampus/src/registry.rs`.
+- **Adapter** (`adapters/<vendor>`): implements a provider trait from `kampus_core::contracts`, for example `RoomProvider`. One adapter per vendor, never per school.
+- **Capability** (`modules/<name>`): a `module.yaml` (tools, data class, roles, annotations, input and output schemas) plus a small crate, registered with one line in `crates/server/src/registry.rs`.
 
 Larger changes start as an [OpenSpec](https://github.com/Fission-AI/OpenSpec) change in `openspec/changes/<name>/` (proposal, design, specs, tasks). The living specs are in `openspec/specs/`.
 
@@ -54,7 +54,7 @@ cargo clippy --workspace --all-targets --features kampus/sandbox,kampus/broker -
 cargo test --workspace --features kampus/sandbox,kampus/broker
 ```
 
-The second pair covers the sandbox and the sign-in broker (`crates/kampus-auth`) together. A production build without the broker is `cargo build --release -p kampus`; with it, add `--features broker`.
+The second pair covers the sandbox and the sign-in broker (`crates/auth`) together. A production build without the broker is `cargo build --release -p kampus`; with it, add `--features broker`.
 
 Keep commits small, with an imperative subject line of at most 72 characters.
 

@@ -19,7 +19,7 @@ cargo-fuzz = true
 
 [dependencies]
 libfuzzer-sys = "0.4"
-kampus-auth = { path = "../crates/kampus-auth", features = ["fuzzing"] }
+kampus-auth = { path = "../crates/auth", features = ["fuzzing"] }
 
 [[bin]]
 name = "authorize_query"

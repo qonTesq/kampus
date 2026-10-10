@@ -8,18 +8,18 @@ This is the only agent instruction file. **Never create `CLAUDE.md`** or any too
 
 ```
 assistants (Claude, ChatGPT, mascot) --MCP Streamable HTTP (2026-07-28 + 2025-11-25)-->
-crates/kampus        binary: rmcp mapping, axum router, registry.rs (one line per module)
-crates/kampus-core   contracts/ (FROZEN), config/, output/, runtime/  (foundation)
+crates/server        binary: rmcp mapping, axum router, registry.rs (one line per module)
+crates/core          contracts/ (FROZEN), config/, output/, runtime/  (foundation)
                      auth/, policy/, audit/, admin/, dispatch/          (auth-policy-audit)
-crates/kampus-{libcal,banner,transit,hours,canvas}   vendor adapters (per vendor, never per school)
-crates/kampus-device POST /device/bind + IdentityResolver
-crates/kampus-auth   OAuth 2.1 broker on its own listener (CIMD + pre-registered clients, upstream OIDC, consent), `broker` feature
+adapters/{libcal,banner,transit,hours,canvas}   vendor adapters (per vendor, never per school)
+crates/device        POST /device/bind + IdentityResolver
+crates/auth          OAuth 2.1 broker on its own listener (CIMD + pre-registered clients, upstream OIDC, consent), `broker` feature
 modules/{rooms,courses,transit,library-hours,deadlines}  module.yaml + small crate
 schools/<id>/school.yaml, policy.yaml     everything school-specific
 ```
 
 - The resource server verifies broker tokens only through RFC 8414 discovery on the public issuer, like any other issuer. `kampus-auth` never sees MCP types; modules never see broker types.
-- MCP is the thin outer layer: only `crates/kampus` uses rmcp. Modules and adapters exchange the plain types in `kampus_core::contracts` and never see tokens.
+- MCP is the thin outer layer: only `crates/server` uses rmcp. Modules and adapters exchange the plain types in `kampus_core::contracts` and never see tokens.
 - Call pipeline (dispatch): verify credential → resolve identity → validate tool/arguments → **policy** → caller limits → cache/provider → sanitize + project to the envelope → one metadata-only audit row → emit. Policy runs before any cache or provider access.
 - The seven tools: `find_study_room`, `book_study_room` (read-only proposal), `confirm_booking` (destructive, `rooms:book`), `search_courses`, `next_departures`, `my_deadlines` (Sensitive, synthetic), `library_hours`. Every tool is listed for every caller; policy refuses calls, it never hides tools.
 - Every result is the shared envelope (`status: ok` + `data` + `meta`, or `status: error` + `error`), published as `outputSchema` and returned as `structuredContent`.
@@ -29,7 +29,7 @@ schools/<id>/school.yaml, policy.yaml     everything school-specific
 
 1. **No `unsafe` Rust, anywhere.** `unsafe_code = "forbid"` is a workspace lint, and every crate has `[lints] workspace = true`. Don't add `allow` for it.
 2. Idiomatic Rust: `thiserror` for library errors; no `unwrap`/`expect`/`panic!` in library code (clippy warns; tests are exempt); small, focused modules; no needless abstraction.
-3. `rmcp` stays pinned at `=3.5.0`. The root manifest, `Cargo.lock`, `crates/kampus/src/registry.rs` and `docs/contracts/` belong to the integrator. Ask for changes; don't make them.
+3. `rmcp` stays pinned at `=3.5.0`. The root manifest, `Cargo.lock`, `crates/server/src/registry.rs` and `docs/contracts/` belong to the integrator. Ask for changes; don't make them.
 4. Nothing school-specific in code: hosts, IDs, terms, aliases and timezones live in `school.yaml`; access rules live in `policy.yaml`.
 5. Sandbox code (Canvas fake, booking simulation, Flight replay) sits behind the `sandbox` cargo feature **and** `sandbox.enabled: true`. A production build must not contain it.
 6. Real public vendor responses are required fixtures (`fixtures/<vendor>/`); student data is always synthetic.
@@ -81,7 +81,7 @@ The toolchain is pinned in `rust-toolchain.toml`, so artifacts stay compatible a
 
 - **One agent per module, in its own worktree and branch, touching only its own crate(s), its fixtures and the single registration line.** Example: `git worktree add ../kampus-wt/public-rooms -b change/public-rooms`.
 - Ownership is listed in `openspec/changes/archive/2026-09-28-foundation/design.md` (Layout and ownership) and in each change's design.
-- **Contracts are frozen:** `crates/kampus-core/src/contracts/`, the `module.yaml` schema, the `school.yaml`/`policy.yaml` schemas and `docs/contracts/`. Changing them needs a human. If yours doesn't fit, stop and ask; don't work around it.
+- **Contracts are frozen:** `crates/core/src/contracts/`, the `module.yaml` schema, the `school.yaml`/`policy.yaml` schemas and `docs/contracts/`. Changing them needs a human. If yours doesn't fit, stop and ask; don't work around it.
 - Implement first against recorded real responses, then write the tests in the same branch before merge. The auth change's bad-token tests come right after login works.
 - Tick your change's `tasks.md` boxes as you finish them. Merges happen locally through the integrator. Never push and never add a remote.
 

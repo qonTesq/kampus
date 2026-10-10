@@ -29,7 +29,7 @@ The HTML has a printed September 21–27 range, seven weekday/day-number headers, 
 
 Optional `note` selects a single source-provided exception note inside the library row, capped at 500 characters. It is omitted from the Charles configuration because no necessary exception note was observed. Optional `exceptions` selects date-specific override elements inside the library row with ISO `data-date` attributes. A matching override takes precedence. This extension is tested only with a labeled mutation, not claimed as observed vendor markup. The parser does not infer holiday exceptions or extrapolate a recurring weekly schedule.
 
-Tests in `crates/kampus-hours/tests/recorded.rs` use the unmodified recording first. In-memory derived mutations remove selectors, misalign dates, erase/mangle times, inject scripts/styles/oversized notes, add explicit unknowns and dated closures. These mutations are identified as derived in test names and are never saved as vendor recordings. Equal opening/closing times, overlapping intervals and ambiguous/nonexistent local DST times fail; explicit 24 hours spans local midnight to the next midnight. Up to ten semicolon-separated intervals are accepted.
+Tests in `adapters/hours/tests/recorded.rs` use the unmodified recording first. In-memory derived mutations remove selectors, misalign dates, erase/mangle times, inject scripts/styles/oversized notes, add explicit unknowns and dated closures. These mutations are identified as derived in test names and are never saved as vendor recordings. Equal opening/closing times, overlapping intervals and ambiguous/nonexistent local DST times fail; explicit 24 hours spans local midnight to the next midnight. Up to ten semicolon-separated intervals are accepted.
 
 ## Operational behavior
 

@@ -551,7 +551,7 @@ async fn repeated_calls_resolve_live_identity_and_deny_sensitive_before_provider
 }
 
 #[cfg(feature = "sandbox")]
-#[path = "../../kampus-libcal/tests/support/mod.rs"]
+#[path = "../../../adapters/libcal/tests/support/mod.rs"]
 mod support;
 
 #[cfg(feature = "sandbox")]

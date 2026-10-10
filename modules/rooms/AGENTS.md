@@ -8,7 +8,7 @@ Owner: the `public-rooms` change. Tools: `find_study_room`, `book_study_room` (r
 - Arguments never carry identity, roles or URLs. Get identity from `ctx.principal` only.
 
 ## Boundaries
-- Touch only this folder, your fixture folders and (via the integrator) the one registration line in `crates/kampus/src/registry.rs`.
+- Touch only this folder, your fixture folders and (via the integrator) the one registration line in `crates/server/src/registry.rs`.
 - Contracts in `kampus_core::contracts` are frozen. Need a change? Stop and ask a human.
 - No `unsafe`, no `unwrap`/`expect`/`panic!` outside tests, `thiserror` errors, no school-specific values in code.
 - While working: `cargo check -p kampus-rooms` (and `--features sandbox`). Full gate only before committing a major chunk or merging (root `AGENTS.md`).

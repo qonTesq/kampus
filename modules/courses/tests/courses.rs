@@ -1,5 +1,5 @@
 #![allow(clippy::unwrap_used)]
-#[path = "../../../crates/kampus-banner/tests/support/mod.rs"]
+#[path = "../../../adapters/banner/tests/support/mod.rs"]
 #[allow(dead_code)]
 mod support;
 use kampus_core::{

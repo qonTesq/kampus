@@ -67,7 +67,7 @@ Claude's refresh after expiry also passed after reconnecting (`refresh token rot
 
 ### Restart and key rotation (task 7.4)
 
-kampus was restarted at 16:19 with both assistants connected; the signing key file persisted. The assistants' recovery after their refresh tokens were lost was not observed live, by the owner's choice. The server behaviour is covered by automated tests: `discovery_verifies_broker_tokens_across_rotation_and_restart` and `rs_refuses_a_dropped_kid_after_two_rotations` (`crates/kampus/tests/broker.rs`) for tokens across `rotate-key` and restart, and the rmcp end-to-end tests (`crates/kampus/tests/broker/e2e.rs`) for refresh rotation, reuse and revocation.
+kampus was restarted at 16:19 with both assistants connected; the signing key file persisted. The assistants' recovery after their refresh tokens were lost was not observed live, by the owner's choice. The server behaviour is covered by automated tests: `discovery_verifies_broker_tokens_across_rotation_and_restart` and `rs_refuses_a_dropped_kid_after_two_rotations` (`crates/server/tests/broker.rs`) for tokens across `rotate-key` and restart, and the rmcp end-to-end tests (`crates/server/tests/broker/e2e.rs`) for refresh rotation, reuse and revocation.
 
 ### Findings and owner decisions (task 7.7)
 
