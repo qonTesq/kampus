@@ -23,7 +23,7 @@
 
 ## 5. Booking errors
 
-- [ ] 5.1 Unknown room or location is `invalid_arguments` pointing to `find_study_room`; tests
+- [x] 5.1 Unknown room or location is `invalid_arguments` pointing to `find_study_room`; tests
 
 ## 6. SJU names
 

@@ -169,6 +169,8 @@ impl LibCal {
     /// Whether `room_id` at `location_id` is free for exactly `slot`.
     ///
     /// Stale data is never accepted here: an outage is `upstream_unavailable`.
+    /// A room the location's directory doesn't list is `invalid_arguments`,
+    /// so a wrong ID is never reported as a taken slot.
     pub async fn is_free(
         &self,
         location_id: &str,
@@ -182,12 +184,17 @@ impl LibCal {
         if rooms.provenance.stale {
             return Err(ToolError::upstream_unavailable());
         }
-        let free = rooms
+        let room = rooms
             .value
             .iter()
-            .any(|r| r.room_id == room_id && covers(&r.slots, slot));
+            .find(|r| r.room_id == room_id)
+            .ok_or_else(|| {
+                ToolError::invalid_arguments(
+                    "Unknown room at that location. Use find_study_room for valid room_id and location_id values.",
+                )
+            })?;
         Ok(Sourced {
-            value: free,
+            value: covers(&room.slots, slot),
             provenance: rooms.provenance,
         })
     }

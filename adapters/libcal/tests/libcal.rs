@@ -458,20 +458,25 @@ async fn is_free_rejects_booked_unaligned_unlisted_and_unknown_rooms() {
             provider
                 .is_free("8404", room, &wanted, Freshness::Cached)
                 .await
-                .unwrap()
-                .value
+                .map(|free| free.value)
         }
     };
-    assert!(check("58701", "14:00", "16:00").await);
-    assert!(check("58701", "08:00", "09:30").await);
-    assert!(!check("58701", "14:00", "14:45").await, "unaligned");
-    assert!(!check("58701", "10:00", "11:00").await, "checked out");
-    assert!(!check("58701", "09:00", "10:00").await, "09:30 unavailable");
+    assert!(check("58701", "14:00", "16:00").await.unwrap());
+    assert!(check("58701", "08:00", "09:30").await.unwrap());
+    assert!(!check("58701", "14:00", "14:45").await.unwrap(), "unaligned");
+    assert!(!check("58701", "10:00", "11:00").await.unwrap(), "checked out");
     assert!(
-        !check("58703", "08:00", "08:30").await,
-        "not on the directory"
+        !check("58701", "09:00", "10:00").await.unwrap(),
+        "09:30 unavailable"
     );
-    assert!(!check("99999", "14:00", "15:00").await, "unknown room");
+    // A room the directory doesn't list is a wrong ID, not a taken slot,
+    // even when the grid has free slots for it.
+    for (room, why) in [("58703", "not on the directory"), ("99999", "unknown room")] {
+        let err = check(room, "08:00", "08:30").await.unwrap_err();
+        assert_eq!(err.code, ErrorCode::InvalidArguments, "{why}");
+        assert!(err.message.starts_with("Unknown room"), "{why}: {}", err.message);
+        assert!(err.message.contains("find_study_room"), "{why}");
+    }
 }
 
 #[tokio::test]
