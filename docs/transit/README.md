@@ -8,7 +8,7 @@ Public, `readOnlyHint: true`, `destructiveHint: false`. It is called after polic
 
 Input: `stop` (1–160 characters: a configured stop ID, name or alias), optional `route` (1–80: a configured route ID or alias), optional `at` (RFC 3339, default now), `limit` (1–20, default 5). Matching ignores case, periods and extra spaces. An unknown or ambiguous name, a route from a different provider than the stop, or a route that never serves the stop returns `invalid_arguments`. The message lists at most five configured choices and never echoes the input.
 
-Output `data`: `stop_id`, `stop_name` (from `school.yaml`), `route_id`, `service_status` (`running | no_service | unknown`) and `departures[]` with `trip_id`, `route_id`, `destination`, `departure_at` (UTC, or null when the source has none), `timing` (`live | scheduled | replay`) and `delay_seconds` (only when the source reports it). `meta` carries `source_kind`, `as_of`, `fetched_at`, `stale` and, for replay, `replay_captured_at`.
+Output `data`: `stop_id`, `stop_name` (from `school.yaml`), `route_id`, `service_status` (`running | no_service | unknown`) and `departures[]` with `trip_id`, `route_id`, `destination`, `departure_at` (RFC 3339 with the school's local offset from `school.timezone`, e.g. `2026-10-12T14:00:00-04:00`, or null when the source has none), `timing` (`live | scheduled | replay`) and `delay_seconds` (only when the source reports it). `meta` carries `source_kind`, `as_of`, `fetched_at`, `stale` and, for replay, `replay_captured_at`.
 
 ## Sources (by provider `kind` in `school.yaml`)
 

@@ -2,7 +2,8 @@
 //!
 //! Resolves configured stop/route aliases, routes the call to the stop's
 //! provider (live rail, scheduled GTFS, Flight live or sandbox replay) and
-//! returns the provider's honest labels. Runs after policy; public data only.
+//! returns the provider's honest labels with school-local times. Runs after
+//! policy; public data only.
 
 mod resolve;
 
@@ -16,7 +17,7 @@ use kampus_core::contracts::{
     ToolSuccess, parse_args,
 };
 use kampus_core::output::{clean_text, limits::TITLE_MAX};
-use kampus_transit::Providers;
+use kampus_transit::{Providers, Tz};
 use serde::Deserialize;
 use serde_json::Value;
 
@@ -42,6 +43,7 @@ struct Enabled {
     stops: Vec<TransitStop>,
     routes: Vec<TransitRoute>,
     providers: Providers,
+    timezone: Tz,
 }
 
 impl std::fmt::Debug for Enabled {
@@ -50,6 +52,7 @@ impl std::fmt::Debug for Enabled {
             .field("stops", &self.stops.len())
             .field("routes", &self.routes.len())
             .field("providers", &self.providers.keys().collect::<Vec<_>>())
+            .field("timezone", &self.timezone)
             .finish()
     }
 }
@@ -68,6 +71,12 @@ pub fn module(init: &ModuleInit) -> Result<Arc<dyn Module>, RegistryError> {
         Some(t) if t.enabled && init.is_enabled(MODULE_ID) => Some(Enabled {
             stops: t.stops.clone(),
             routes: t.routes.clone(),
+            timezone: init.school.school.timezone.parse().map_err(|_| {
+                RegistryError::Module {
+                    module: MODULE_ID.to_owned(),
+                    message: "school.timezone is not an IANA timezone".to_owned(),
+                }
+            })?,
             providers: kampus_transit::providers(&init.school, &init.runtime).map_err(|e| {
                 RegistryError::Module {
                     module: MODULE_ID.to_owned(),
@@ -149,5 +158,15 @@ async fn next_departures(
     value.stop_name = clean_text(&stop.name, TITLE_MAX);
     value.route_id = query.route_id;
     value.departures.truncate(limit);
-    ToolSuccess::new(&value, provenance)
+    let mut data = serde_json::to_value(&value).map_err(|_| ToolError::configuration_error())?;
+    // Contract times are UTC; answers use the school's local offset.
+    if let Some(items) = data.get_mut("departures").and_then(Value::as_array_mut) {
+        for (item, departure) in items.iter_mut().zip(&value.departures) {
+            item["departure_at"] = departure
+                .departure_at
+                .map(|at| at.with_timezone(&enabled.timezone).to_rfc3339())
+                .into();
+        }
+    }
+    ToolSuccess::new(&data, provenance)
 }

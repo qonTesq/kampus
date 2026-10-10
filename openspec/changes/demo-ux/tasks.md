@@ -14,7 +14,7 @@
 
 ## 3. Local times
 
-- [ ] 3.1 `next_departures` `departure_at` with the school offset
+- [x] 3.1 `next_departures` `departure_at` with the school offset
 - [ ] 3.2 `my_deadlines` `due_at` with the school offset
 
 ## 4. Deadline titles
