@@ -61,7 +61,7 @@ Before the runs, through the tunnel: both metadata documents and the JWKS answer
 | Sign-in and consent | Pass, through the existing kampus session. ChatGPT also requested `rooms:book` at first sign-in. |
 | Public tool (`next_departures`) | Live SEPTA departures with delays, shown in local time. Pass. |
 | Refresh after expiry | Pass. With the first access token expired, the next call refreshed in the background (`refresh token rotated`, 16:18:30) and answered without asking the user to reconnect. |
-| Revoke | Not run separately; the same server path passed with Claude. |
+| Revoke | Pass. After disconnecting both assistants on the connected-assistants page, neither Claude nor ChatGPT could call kampus anymore (owner-observed, 2026-10-10). |
 
 Claude's refresh after expiry also passed after reconnecting (`refresh token rotated`, 16:17:55, no prompt to reconnect).
 
