@@ -1,0 +1,20 @@
+# The trial's only public entry point. Caddy and kampus share the host
+# network, so upstreams are loopback. Exactly these paths are proxied; every
+# other path gets 404. The admin listener (127.0.0.1:8081) is never routed.
+{
+	email {$ACME_EMAIL}
+}
+
+{$KAMPUS_DOMAIN} {
+	@mcp path /mcp /.well-known/oauth-protected-resource /.well-known/oauth-protected-resource/mcp
+	handle @mcp {
+		reverse_proxy 127.0.0.1:8080
+	}
+	@broker path /auth/* /.well-known/oauth-authorization-server/auth
+	handle @broker {
+		reverse_proxy 127.0.0.1:8082
+	}
+	handle {
+		respond 404
+	}
+}

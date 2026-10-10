@@ -1,0 +1,68 @@
+# Kampus Trial University: a fictional school for the one-command trial.
+# up.sh renders this file to data/school.yaml with your KAMPUS_DOMAIN in place
+# of trial.kampus.invalid (kampus refuses *.invalid hosts as unfilled).
+# Sandbox only: synthetic demo users and the synthetic Canvas. No real
+# student data and no real school's systems. Trains are live public SEPTA data.
+version: 1
+
+school:
+  id: trial
+  display_name: Kampus Trial University
+  timezone: America/New_York
+
+server:
+  resource_url: https://trial.kampus.invalid/mcp
+  listen: 127.0.0.1:8080
+  admin_listen: 127.0.0.1:8081
+  trusted_proxy: { header: x_forwarded_for, peers: ["127.0.0.1", "::1"] }
+
+auth:
+  mode: oauth
+  issuer: https://trial.kampus.invalid/auth
+  broker:
+    listen: 127.0.0.1:8082
+    key_file: data/auth/trial-signing-keys.json
+    subject_key_env: KAMPUS_TRIAL_SUBJECT_KEY
+    scopes: ["rooms:book"]
+    cimd_clients:
+      - https://claude.ai/oauth/mcp-oauth-client-metadata
+      - https://chatgpt.com/oauth/client.json
+    clients:
+      - client_id: kampus-claude
+        label: Claude (trial workspace)
+        secret_env: KAMPUS_TRIAL_CLAUDE_SECRET
+        redirect_uris: [https://claude.ai/api/mcp/auth_callback]
+      - client_id: kampus-chatgpt
+        label: ChatGPT (trial workspace)
+        secret_env: KAMPUS_TRIAL_CHATGPT_SECRET
+        redirect_uris: [https://chatgpt.com/connector_platform_oauth_redirect]
+    demo_users:
+      - { label: Student A, subject: "synthetic:student-a", roles: [student] }
+      - { label: Student B, subject: "synthetic:student-b", roles: [student] }
+      - { label: Faculty A, subject: "synthetic:faculty-a", roles: [faculty] }
+
+# Rooms, courses and library hours answer unsupported_source: the trial
+# school has no LibCal, Banner or hours page.
+modules: [transit, deadlines]
+
+sandbox:
+  enabled: true
+
+canvas:
+  enabled: true
+  base_url: http://127.0.0.1:8083
+
+transit:
+  enabled: true
+  providers:
+    - id: septa_rail
+      kind: septa_arrivals
+      base_url: https://www3.septa.org
+  stops:
+    - id: Cynwyd
+      name: Cynwyd Station
+      provider: septa_rail
+      aliases: [Cynwyd Station]
+  routes: []
+
+devices: []
