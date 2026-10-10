@@ -489,6 +489,10 @@ pub struct CanvasConfig {
     /// Dedicated synthetic service credential for the fake.
     #[serde(default)]
     pub service_token_env: Option<String>,
+    /// Seed `synthetic_user_id` shown to a signed-in student whose subject
+    /// the seed does not map (a real demo sign-in). Sandbox only.
+    #[serde(default)]
+    pub fallback_synthetic_user: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -606,14 +610,39 @@ pub(super) fn validate(c: &SchoolConfig, env: &Env<'_>) -> Vec<super::ConfigIssu
         validate_transit(&mut v, t);
     }
     if let Some(cv) = &c.canvas {
-        v.loopback_url("canvas.base_url", &cv.base_url);
-        if let Some(name) = &cv.service_token_env {
-            v.secret_env("canvas.service_token_env", name, env);
-        }
+        validate_canvas(&mut v, cv, env, sandbox_on);
     }
     validate_devices(&mut v, &c.devices, env);
     validate_broker(&mut v, c, env, sandbox_on);
     v.0
+}
+
+fn validate_canvas(v: &mut Issues, cv: &CanvasConfig, env: &Env<'_>, sandbox_on: bool) {
+    v.loopback_url("canvas.base_url", &cv.base_url);
+    if let Some(name) = &cv.service_token_env {
+        v.secret_env("canvas.service_token_env", name, env);
+    }
+    if let Some(user) = &cv.fallback_synthetic_user {
+        if !sandbox_on {
+            v.push(
+                "canvas.fallback_synthetic_user",
+                "requires a sandbox build with sandbox.enabled: true",
+            );
+        }
+        v.id("canvas.fallback_synthetic_user", user);
+        if !user.starts_with("synthetic-") {
+            v.push(
+                "canvas.fallback_synthetic_user",
+                "must be a synthetic seed user (synthetic-…)",
+            );
+        }
+        if !cv.enabled {
+            v.push(
+                "canvas.fallback_synthetic_user",
+                "requires canvas.enabled: true",
+            );
+        }
+    }
 }
 
 /// Longest access-token lifetime the broker may configure: the resource

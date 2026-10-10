@@ -1,0 +1,90 @@
+# SJU demo profile (sandbox build only: --features sandbox,broker).
+# Same live public sources as ../school.yaml, plus Google sign-in through the
+# Kampus broker, the booking simulation and the synthetic Canvas. Deadlines
+# are synthetic and labelled (meta.sandbox: true, SYN-* course codes); no
+# real Canvas or student record is read. Setup: ../README.md "Demo profile".
+#
+# Loopback values pass `kampus check` as is. For a public hostname, change
+# resource_url and issuer to https://<host>/mcp and https://<host>/auth, add
+#   trusted_proxy: { header: cf_connecting_ip, peers: ["127.0.0.1", "::1"] }
+# under server, and register https://<host>/auth/callback at Google.
+version: 1
+school:
+  id: sju
+  display_name: Saint Joseph's University
+  timezone: America/New_York
+server:
+  resource_url: http://127.0.0.1:8090/mcp
+  listen: 127.0.0.1:8090
+  admin_listen: 127.0.0.1:8091
+auth:
+  mode: oauth
+  issuer: http://127.0.0.1:8092/auth
+  broker:
+    listen: 127.0.0.1:8092
+    key_file: data/auth/sju-signing-keys.json
+    subject_key_env: KAMPUS_SJU_SUBJECT_KEY
+    scopes: ["rooms:book"]
+    cimd_clients:
+      - https://claude.ai/oauth/mcp-oauth-client-metadata
+      - https://chatgpt.com/oauth/client.json
+    upstream:
+      issuer: https://accounts.google.com
+      # Placeholder: your own Google OAuth web client (never commit a real one).
+      client_id: YOUR-GOOGLE-CLIENT-ID.apps.googleusercontent.com
+      client_secret_env: KAMPUS_SJU_OIDC_SECRET
+      scopes: [openid, email]   # Google releases `hd` only with `email`
+      role_mapping:
+        # Every account of the Workspace domain signs in as a student.
+        - { claim: hd, value: sju.edu, role: student }
+modules: [rooms, transit, library_hours, deadlines]
+sandbox:
+  enabled: true
+libcal:
+  enabled: true
+  base_url: https://sju.libcal.com
+  locations:
+    - id: "20094"
+      name: Hawk Hill Campus
+      aliases: [Hawk Hill, Drexel Library, Post Learning Commons]
+    - id: "20098"
+      name: University City Campus
+      aliases: [University City]
+  default_location: "20094"
+  booking_simulation: true   # simulated receipt; no real booking is submitted
+hours:
+  enabled: true
+  libraries:
+    - id: hawk-hill
+      name: Hawk Hill Campus library
+      url: https://sju.libcal.com/widget/hours/grid?iid=6480&format=json&weeks=8&systemTime=0
+      parser:
+        profile: libcal-hours-grid
+        selectors: { lid: "22788" }
+      aliases: [Hawk Hill, Drexel Library, Post Learning Commons]
+    - id: university-city
+      name: University City Campus library
+      url: https://sju.libcal.com/widget/hours/grid?iid=6480&format=json&weeks=8&systemTime=0
+      parser:
+        profile: libcal-hours-grid
+        selectors: { lid: "22789" }
+      aliases: [University City]
+  default_library: hawk-hill
+canvas:
+  enabled: true
+  base_url: http://127.0.0.1:8093
+  # A real signed-in student sees this synthetic seed profile (sandbox only).
+  fallback_synthetic_user: synthetic-student-a
+transit:
+  enabled: true
+  providers:
+    - id: septa_rail
+      kind: septa_arrivals
+      base_url: https://www3.septa.org
+  stops:
+    - id: Overbrook
+      name: Overbrook Station
+      provider: septa_rail
+      aliases: [Overbrook Station, Hawk Hill rail]
+  routes: []
+devices: []

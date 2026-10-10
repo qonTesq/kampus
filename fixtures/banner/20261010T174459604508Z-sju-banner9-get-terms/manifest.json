@@ -1,0 +1,21 @@
+{
+  "format_version": 1,
+  "kind": "recorded",
+  "captured_at": "2026-10-10T17:45:00.743562+00:00",
+  "source_url": "https://ssb.sju.edu/StudentRegistrationSsb/ssb/classSearch/getTerms?searchTerm=&offset=1&max=10",
+  "request": {
+    "method": "GET",
+    "form": null,
+    "headers": {
+      "Accept-Encoding": "identity"
+    },
+    "cookies": "omitted"
+  },
+  "license_provenance": "Public vendor response recorded for offline interoperability tests. Upstream retains rights; no additional license is asserted.",
+  "source_note": "Banner 9 Student Registration SSB path probed anonymously as evidence that SJU does not serve it.",
+  "http_status": 404,
+  "content_type": "text/html; charset=iso-8859-1",
+  "body_file": "body.bin",
+  "sha256": "f21acfef2649c7687e0b2392d9c17822b358b92b93b92004a7bc1a897b31f1db",
+  "byte_length": 230
+}

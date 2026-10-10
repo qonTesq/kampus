@@ -294,6 +294,38 @@ fn production_rejects_mocks_and_replay() {
 }
 
 #[test]
+fn canvas_fallback_user_is_sandbox_only_and_synthetic() {
+    let mut s = school();
+    s.canvas = Some(CanvasConfig {
+        enabled: true,
+        base_url: "http://127.0.0.1:8290/".parse().unwrap(),
+        service_token_env: None,
+        fallback_synthetic_user: Some("synthetic-student-a".into()),
+    });
+    // Production build, or a sandbox build without the runtime opt-in.
+    let issues = school_issues(&s, &env(false));
+    assert!(issues.contains(&"canvas.fallback_synthetic_user".to_owned()));
+    let issues = school_issues(&s, &env(true));
+    assert!(issues.contains(&"canvas.fallback_synthetic_user".to_owned()));
+    s.sandbox.enabled = true;
+    s.validate(&env(true)).unwrap();
+    // Never a real identifier, and never without the fake itself.
+    let canvas = s.canvas.as_mut().unwrap();
+    canvas.fallback_synthetic_user = Some("tuj12345".into());
+    assert_eq!(
+        school_issues(&s, &env(true)),
+        ["canvas.fallback_synthetic_user"]
+    );
+    let canvas = s.canvas.as_mut().unwrap();
+    canvas.fallback_synthetic_user = Some("synthetic-student-a".into());
+    canvas.enabled = false;
+    assert_eq!(
+        school_issues(&s, &env(true)),
+        ["canvas.fallback_synthetic_user"]
+    );
+}
+
+#[test]
 fn sandbox_build_still_needs_runtime_opt_in() {
     let mut s = school();
     s.libcal.as_mut().unwrap().booking_simulation = true;

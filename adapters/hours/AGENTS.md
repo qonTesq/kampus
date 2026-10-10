@@ -3,7 +3,7 @@
 Owner: the `public-library-hours` change (`openspec/changes/archive/2026-09-28-public-library-hours/`).
 
 ## Contract
-Implements `HoursProvider` by scraping the configured hours page with `scraper`.
+Implements `HoursProvider` from the configured hours page. Profiles: `dated-week-grid` (HTML, `scraper`) and `libcal-hours-grid` (LibCal's public `/widget/hours/grid?…&format=json` JSON; `selectors.lid` picks the hours location).
 
 Parser profile and selectors come from `school.yaml` `hours.libraries[].parser`. "Closed" requires explicit source text; missing selectors are `upstream_invalid_response`. The LibCal hours API returns `[]` for Temple: that doesn't mean closed. Fixtures: `fixtures/library-hours/`.
 

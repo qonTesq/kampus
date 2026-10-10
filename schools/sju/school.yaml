@@ -14,7 +14,11 @@ auth:
   # auth.broker section: public tools work without a token and protected
   # calls get 401. Add one per docs/auth/broker.md and school-idp.md.
   issuer: http://127.0.0.1:8092/auth
-modules: [rooms, transit]
+# No courses: SJU's public class schedule is Banner 8 HTML, not the Banner 9
+# SSB JSON the banner adapter reads (openspec/changes/sju-parity/design.md).
+# deadlines has no source here (no canvas section; production builds never
+# have one): it answers unsupported_source. Demo profile: README.md.
+modules: [rooms, transit, library_hours, deadlines]
 sandbox:
   enabled: false
 libcal:
@@ -29,7 +33,26 @@ libcal:
       aliases: [University City]
   default_location: "20094"
   booking_simulation: false
-# No verified Banner/hours source or synthetic Canvas service is configured.
+# LibCal's public hours-widget JSON, the data behind sju.libcal.com/hours
+# (iid 6480; hours location IDs differ from the space IDs above).
+hours:
+  enabled: true
+  libraries:
+    - id: hawk-hill
+      name: Hawk Hill Campus library
+      url: https://sju.libcal.com/widget/hours/grid?iid=6480&format=json&weeks=8&systemTime=0
+      parser:
+        profile: libcal-hours-grid
+        selectors: { lid: "22788" }
+      aliases: [Hawk Hill, Drexel Library, Post Learning Commons]
+    - id: university-city
+      name: University City Campus library
+      url: https://sju.libcal.com/widget/hours/grid?iid=6480&format=json&weeks=8&systemTime=0
+      parser:
+        profile: libcal-hours-grid
+        selectors: { lid: "22789" }
+      aliases: [University City]
+  default_library: hawk-hill
 transit:
   enabled: true
   providers:

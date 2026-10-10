@@ -109,6 +109,16 @@ def libcal(rec, cfg):
                         note="Documented LibCal API 1.1, recorded anonymously as evidence that it now refuses anonymous reads.")
 
 
+def sju(rec, cfg):
+    """SJU parity evidence: LibCal's public hours-widget JSON and the class-search probes."""
+    rec.capture("hours", "sju-libcal-hours-grid", cfg["sju_hours_grid"],
+                note="Public LibCal hours widget JSON (the data behind sju.libcal.com/hours). Undocumented by Springshare; best-effort.")
+    rec.capture("banner", "sju-banner9-get-terms", cfg["sju_banner9_probe"],
+                note="Banner 9 Student Registration SSB path probed anonymously as evidence that SJU does not serve it.")
+    rec.capture("banner", "sju-banner8-dynamic-schedule", cfg["sju_banner8_schedule"],
+                note="SJU's public Banner 8 dynamic class schedule term page: a different product and HTML format from Banner 9 SSB.")
+
+
 def gtfs(rec, cfg):
     body, release_folder = rec.capture("septa", "gtfs-release", cfg["gtfs_release_api"])
     if body is None:
@@ -211,7 +221,7 @@ def verify():
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("mode", choices=["public", "libcal", "gtfs", "flight", "verify"])
+    parser.add_argument("mode", choices=["public", "libcal", "sju", "gtfs", "flight", "verify"])
     parser.add_argument("--config", type=Path, default=ROOT / "sources.json")
     parser.add_argument("--date", default=datetime.now().date().isoformat())
     parser.add_argument("--gtfs-release", help="Release tag instead of latest, e.g. v202609061")
@@ -224,6 +234,8 @@ if __name__ == "__main__":
         public(recorder, cfg, args.date)
     elif args.mode == "libcal":
         libcal(recorder, cfg)
+    elif args.mode == "sju":
+        sju(recorder, cfg)
     elif args.mode == "gtfs":
         gtfs(recorder, cfg)
     elif args.mode == "flight":

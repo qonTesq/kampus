@@ -1,0 +1,21 @@
+{
+  "format_version": 1,
+  "kind": "recorded",
+  "captured_at": "2026-10-10T17:44:59.605696+00:00",
+  "source_url": "https://sju.libcal.com/widget/hours/grid?iid=6480&format=json&weeks=8&systemTime=0",
+  "request": {
+    "method": "GET",
+    "form": null,
+    "headers": {
+      "Accept-Encoding": "identity"
+    },
+    "cookies": "omitted"
+  },
+  "license_provenance": "Public vendor response recorded for offline interoperability tests. Upstream retains rights; no additional license is asserted.",
+  "source_note": "Public LibCal hours widget JSON (the data behind sju.libcal.com/hours). Undocumented by Springshare; best-effort.",
+  "http_status": 200,
+  "content_type": "application/json; charset=utf-8",
+  "body_file": "body.bin",
+  "sha256": "d89e1e078e20486733e785f415bfa76775fd31b0f75027096c2a02bee7999db2",
+  "byte_length": 15393
+}

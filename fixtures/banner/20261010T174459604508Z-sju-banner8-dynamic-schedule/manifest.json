@@ -1,0 +1,21 @@
+{
+  "format_version": 1,
+  "kind": "recorded",
+  "captured_at": "2026-10-10T17:45:01.837029+00:00",
+  "source_url": "https://ssb.sju.edu/pls/PRODSSB/bwckschd.p_disp_dyn_sched",
+  "request": {
+    "method": "GET",
+    "form": null,
+    "headers": {
+      "Accept-Encoding": "identity"
+    },
+    "cookies": "omitted"
+  },
+  "license_provenance": "Public vendor response recorded for offline interoperability tests. Upstream retains rights; no additional license is asserted.",
+  "source_note": "SJU's public Banner 8 dynamic class schedule term page: a different product and HTML format from Banner 9 SSB.",
+  "http_status": 200,
+  "content_type": "text/html; charset=UTF-8",
+  "body_file": "body.bin",
+  "sha256": "eb0f67dd743c844536349eebcdc865b2e7aa3a7d5f6f482855fba55c87546d92",
+  "byte_length": 7905
+}
