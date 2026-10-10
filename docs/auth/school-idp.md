@@ -80,7 +80,7 @@ A user's Kampus subject is `k1.` plus an HMAC-SHA-256 of the IdP's issuer and th
 
 ## 5. Try one sign-in
 
-- [ ] Restart Kampus, connect an assistant (or open an authorization request), choose **Sign in with login.school.example**, sign in at the IdP and approve the consent page.
+- [ ] Restart Kampus, connect an assistant (or open an authorization request), sign in at the IdP and approve the consent page.
 
 What the error pages mean:
 

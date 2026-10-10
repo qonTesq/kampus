@@ -555,10 +555,7 @@ pub(crate) async fn callback(
         return PageError::NoRole.into_response();
     }
     let subject = pseudonym(&inner.subject_key, &identity.issuer, &identity.subject);
-    let label = format!(
-        "your {} account",
-        upstream.issuer.host_str().unwrap_or("school")
-    );
+    let label = format!("your {} account", inner.school_name);
     let (id, _) = match inner.start_session(subject, roles, label) {
         Ok(started) => started,
         Err(SessionError::Full) => return PageError::Busy.into_response(),

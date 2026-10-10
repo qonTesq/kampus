@@ -83,11 +83,27 @@ mod demo {
         assert!(reply.body.contains("<strong>claude.ai</strong>"));
         assert_eq!(reply.headers["x-frame-options"], "DENY");
         assert_eq!(reply.headers["referrer-policy"], "no-referrer");
+        // The only inline style is allowed by its hash; nothing else changed.
+        let style = reply
+            .body
+            .split_once("<style>")
+            .and_then(|(_, rest)| rest.split_once("</style>"))
+            .unwrap()
+            .0;
+        assert_eq!(reply.body.matches("<style").count(), 1);
+        let hash = crate::util::b64(
+            aws_lc_rs::digest::digest(&aws_lc_rs::digest::SHA256, style.as_bytes()).as_ref(),
+        );
         assert_eq!(
             reply.headers["content-security-policy"],
-            "default-src 'self'; frame-ancestors 'none'; form-action 'self' https://claude.ai"
+            format!(
+                "default-src 'self'; style-src 'sha256-{hash}'; frame-ancestors 'none'; form-action 'self' https://claude.ai"
+            )
+            .as_str()
         );
+        assert!(style.contains(":focus-visible"));
         assert!(!reply.body.contains("<script"));
+        assert!(!reply.body.contains("unsafe-inline"));
     }
 
     #[tokio::test]

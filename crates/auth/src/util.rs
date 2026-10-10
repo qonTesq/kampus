@@ -4,9 +4,23 @@ use aws_lc_rs::digest;
 use aws_lc_rs::rand::{SecureRandom, SystemRandom};
 
 const URL_SAFE: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+const STANDARD: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 /// Base64url without padding (RFC 4648 section 5).
 pub(crate) fn b64url(bytes: &[u8]) -> String {
+    encode(bytes, URL_SAFE)
+}
+
+/// Base64 with padding (RFC 4648 section 4), as CSP hash sources need.
+pub(crate) fn b64(bytes: &[u8]) -> String {
+    let mut out = encode(bytes, STANDARD);
+    while !out.len().is_multiple_of(4) {
+        out.push('=');
+    }
+    out
+}
+
+fn encode(bytes: &[u8], alphabet: &[u8; 64]) -> String {
     let mut out = String::with_capacity(bytes.len().div_ceil(3) * 4);
     for chunk in bytes.chunks(3) {
         let n = chunk
@@ -14,7 +28,7 @@ pub(crate) fn b64url(bytes: &[u8]) -> String {
             .enumerate()
             .fold(0u32, |acc, (i, b)| acc | u32::from(*b) << (16 - 8 * i));
         for i in 0..=chunk.len() {
-            out.push(char::from(URL_SAFE[(n >> (18 - 6 * i) & 63) as usize]));
+            out.push(char::from(alphabet[(n >> (18 - 6 * i) & 63) as usize]));
         }
     }
     out
@@ -142,7 +156,9 @@ mod tests {
             let standard = encoded.replace('-', "+").replace('_', "/");
             let padded = format!("{standard}{}", "=".repeat((4 - standard.len() % 4) % 4));
             assert_eq!(b64_decode(&padded).unwrap(), bytes);
+            assert_eq!(b64(&bytes), padded);
         }
+        assert_eq!(b64(&[0xfb, 0xff]), "+/8=");
         assert_eq!(b64_decode("a").as_deref(), None);
         assert_eq!(b64_decode("ab*c").as_deref(), None);
         assert_eq!(b64_decode("YQ===").as_deref(), None);

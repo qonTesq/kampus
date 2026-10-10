@@ -3,10 +3,21 @@
 //! and the security headers every page carries. Pages never echo request
 //! parameters; the only request value placed in a client redirect is `state`.
 
+use std::sync::LazyLock;
+
 use askama::Template;
 use axum::http::{HeaderValue, StatusCode, header};
 use axum::response::{IntoResponse, Response};
 use url::Url;
+
+/// The pages' only stylesheet, inlined by `base.html`.
+pub(crate) const STYLE: &str = include_str!("../templates/style.css");
+
+/// The CSP hash source that allows [`STYLE`] and no other inline style.
+static STYLE_SRC: LazyLock<String> = LazyLock::new(|| {
+    let digest = aws_lc_rs::digest::digest(&aws_lc_rs::digest::SHA256, STYLE.as_bytes());
+    format!("'sha256-{}'", crate::util::b64(digest.as_ref()))
+});
 
 /// A fixed-text error page (no redirect).
 #[derive(Template)]
@@ -24,7 +35,7 @@ struct ErrorPage<'a> {
 pub(crate) struct LoginPage<'a> {
     pub(crate) school: &'a str,
     pub(crate) client: &'a str,
-    pub(crate) upstream_host: Option<&'a str>,
+    pub(crate) upstream: bool,
     pub(crate) upstream_action: &'a str,
     pub(crate) action: &'a str,
     pub(crate) pending: &'a str,
@@ -182,7 +193,10 @@ pub(crate) fn html_page(status: StatusCode, html: String, form_target: Option<&U
         .map(|u| u.origin().ascii_serialization())
         .filter(|o| o != "null")
         .map_or_else(|| "'self'".to_owned(), |o| format!("'self' {o}"));
-    let csp = format!("default-src 'self'; frame-ancestors 'none'; form-action {form_action}");
+    let csp = format!(
+        "default-src 'self'; style-src {}; frame-ancestors 'none'; form-action {form_action}",
+        *STYLE_SRC
+    );
     if let Ok(value) = HeaderValue::from_str(&csp) {
         headers.insert(header::CONTENT_SECURITY_POLICY, value);
     }
