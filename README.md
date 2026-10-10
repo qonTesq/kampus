@@ -10,13 +10,6 @@ Kampus is an open-source [MCP](https://modelcontextprotocol.io) server that conn
 ![Rust 1.99](https://img.shields.io/badge/rust-1.99-orange.svg)
 ![MCP 2026-07-28 + 2025-11-25](https://img.shields.io/badge/MCP-2026--07--28%20%2B%202025--11--25-purple.svg)
 
-<p align="center">
-  <img src="docs/images/claude-deadlines.png" alt="Claude answering &quot;What's due this week?&quot; with deadlines from Kampus, labelled as sandbox data" width="49%">
-  <img src="docs/images/claude-booking.png" alt="Claude confirming a simulated study-room booking through Kampus" width="49%">
-</p>
-
-*Claude, signed in with a real Saint Joseph's University account, asking Kampus what's due (synthetic coursework, labelled as such) and booking a library study room (simulated). Recorded live on 2026-10-10.*
-
 ---
 
 ## Why
@@ -139,7 +132,7 @@ clients/owl/           the talking mascot (Python, Raspberry Pi)
 hardware/owl/          the mascot's CAD, print files, wiring and parts list
 deploy/                the one-command trial, Caddy and Cloudflare Tunnel notes, and the owl's Pi setup
 openspec/              the living specification and the change history
-docs/                  contracts, auth, transit, device API, research, screenshots
+docs/                  contracts, auth, transit, device API, research
 ```
 
 Each part has its own CI (`.github/workflows/server.yml`, `owl.yml`), so a change in one doesn't rebuild the others.
@@ -158,12 +151,7 @@ House rules (from [AGENTS.md](AGENTS.md)): no `unsafe` (the workspace forbids it
 
 ## See it working
 
-<p align="center">
-  <img src="docs/images/claude-tool-permissions.png" alt="Claude's connector settings for Kampus: six read-only tools always allowed, the booking confirmation needs approval" width="49%">
-  <img src="docs/images/connected-assistants.png" alt="Kampus connected-assistants page: signed in with a Saint Joseph's University account, Claude listed with a disconnect button" width="49%">
-</p>
-
-Claude groups Kampus's tools by their MCP hints (read-only versus the one write). Students see and disconnect their assistants on Kampus's own page. Every live run, including what failed, is written down in [docs/auth/qualification.md](docs/auth/qualification.md): Claude and ChatGPT connecting by URL alone, SJU Google sign-in, refresh, revoke, and the findings.
+Every live run, including what failed, is written down in [docs/auth/qualification.md](docs/auth/qualification.md): Claude and ChatGPT connecting by URL alone, SJU Google sign-in, refresh, revoke, and the findings.
 
 ## Status and roadmap
 
