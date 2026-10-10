@@ -563,12 +563,6 @@ pub(super) fn validate(c: &SchoolConfig, env: &Env<'_>) -> Vec<super::ConfigIssu
         "canvas.enabled",
         c.canvas.as_ref().is_some_and(|x| x.enabled),
     );
-    needs_sandbox(
-        "canvas.fallback_synthetic_user",
-        c.canvas
-            .as_ref()
-            .is_some_and(|x| x.fallback_synthetic_user.is_some()),
-    );
 
     if let Some(l) = &c.libcal {
         v.url("libcal.base_url", &l.base_url);
@@ -616,29 +610,39 @@ pub(super) fn validate(c: &SchoolConfig, env: &Env<'_>) -> Vec<super::ConfigIssu
         validate_transit(&mut v, t);
     }
     if let Some(cv) = &c.canvas {
-        v.loopback_url("canvas.base_url", &cv.base_url);
-        if let Some(name) = &cv.service_token_env {
-            v.secret_env("canvas.service_token_env", name, env);
-        }
-        if let Some(user) = &cv.fallback_synthetic_user {
-            v.id("canvas.fallback_synthetic_user", user);
-            if !user.starts_with("synthetic-") {
-                v.push(
-                    "canvas.fallback_synthetic_user",
-                    "must be a synthetic seed user (synthetic-…)",
-                );
-            }
-            if !cv.enabled {
-                v.push(
-                    "canvas.fallback_synthetic_user",
-                    "requires canvas.enabled: true",
-                );
-            }
-        }
+        validate_canvas(&mut v, cv, env, sandbox_on);
     }
     validate_devices(&mut v, &c.devices, env);
     validate_broker(&mut v, c, env, sandbox_on);
     v.0
+}
+
+fn validate_canvas(v: &mut Issues, cv: &CanvasConfig, env: &Env<'_>, sandbox_on: bool) {
+    v.loopback_url("canvas.base_url", &cv.base_url);
+    if let Some(name) = &cv.service_token_env {
+        v.secret_env("canvas.service_token_env", name, env);
+    }
+    if let Some(user) = &cv.fallback_synthetic_user {
+        if !sandbox_on {
+            v.push(
+                "canvas.fallback_synthetic_user",
+                "requires a sandbox build with sandbox.enabled: true",
+            );
+        }
+        v.id("canvas.fallback_synthetic_user", user);
+        if !user.starts_with("synthetic-") {
+            v.push(
+                "canvas.fallback_synthetic_user",
+                "must be a synthetic seed user (synthetic-…)",
+            );
+        }
+        if !cv.enabled {
+            v.push(
+                "canvas.fallback_synthetic_user",
+                "requires canvas.enabled: true",
+            );
+        }
+    }
 }
 
 /// Longest access-token lifetime the broker may configure: the resource
