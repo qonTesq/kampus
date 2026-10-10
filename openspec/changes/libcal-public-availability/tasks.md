@@ -9,24 +9,24 @@
 
 ## 2. Adapter
 
-- [ ] 2.1 Grid and directory parsers with strict shapes, school-timezone conversion, free = no `className`, unlisted rooms dropped
-- [ ] 2.2 Bounded form POST with host budget, one retry and `Retry-After`; directory GET through `BoundedGet`; identifying `User-Agent`
-- [ ] 2.3 Day cache plus 1 h directory cache; fresh reads bypass only the day cache
-- [ ] 2.4 401/403 → `upstream_unavailable` (not retryable)
-- [ ] 2.5 Whole-word location resolution with ambiguity refusal; update the `modules/rooms` call sites
-- [ ] 2.6 Remove the API 1.1 parser and URL builder
+- [x] 2.1 Grid and directory parsers with strict shapes, school-timezone conversion, free = no `className`, unlisted rooms dropped
+- [x] 2.2 Bounded form POST with host budget, one retry and `Retry-After`; directory GET through `BoundedGet`; identifying `User-Agent`
+- [x] 2.3 Day cache plus 1 h directory cache; fresh reads bypass only the day cache
+- [x] 2.4 401/403 → `upstream_unavailable` (not retryable)
+- [x] 2.5 Whole-word location resolution with ambiguity refusal; update the `modules/rooms` call sites
+- [x] 2.6 Remove the API 1.1 parser and URL builder
 
 ## 3. Tests (recorded responses, independent assertions)
 
-- [ ] 3.1 Free/booked parsing and directory join against the Temple and SJU recordings
-- [ ] 3.2 No-slot day is an empty success
-- [ ] 3.3 Alias resolution: exact, whole word, no partial word, ambiguity with candidates, no upstream call
-- [ ] 3.4 Recorded 403 maps to `upstream_unavailable`
-- [ ] 3.5 Oversize and garbled grid/directory bodies are `upstream_invalid_response`
-- [ ] 3.6 Rooms module tests move to the new recordings; the sandbox booking simulation keeps working
+- [x] 3.1 Free/booked parsing and directory join against the Temple and SJU recordings
+- [x] 3.2 No-slot day is an empty success
+- [x] 3.3 Alias resolution: exact, whole word, no partial word, ambiguity with candidates, no upstream call
+- [x] 3.4 Recorded 403 maps to `upstream_unavailable`
+- [x] 3.5 Oversize and garbled grid/directory bodies are `upstream_invalid_response`
+- [x] 3.6 Rooms module tests move to the new recordings; the sandbox booking simulation keeps working
 
 ## 4. Gate and live check
 
-- [ ] 4.1 `openspec validate --all --strict`
-- [ ] 4.2 Full gate from `AGENTS.md`
+- [x] 4.1 `openspec validate --all --strict`
+- [x] 4.2 Full gate from `AGENTS.md`
 - [ ] 4.3 Live `find_study_room` for SJU and Temple on Monday 2026-10-12

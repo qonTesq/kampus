@@ -2,7 +2,7 @@
 
 ### Requirement: Public room discovery
 
-find_study_room SHALL use configured LibCal settings and valid time/capacity filters, return bounded sanitized availability in structuredContent matching outputSchema, and declare Public, readOnlyHint=true and destructiveHint=false. Availability SHALL come from the school's public LibCal booking page: its room directory and the availability grid that page itself requests, sent without caller credentials and with a User-Agent naming Kampus. Only rooms listed in the public directory SHALL be offered, and a slot SHALL count as free only when the grid marks it bookable. An upstream refusal of anonymous access (HTTP 401 or 403) SHALL return upstream_unavailable, never an empty list or upstream_invalid_response. location_id SHALL resolve a configured location by exact ID, name or alias, or by a unique case-insensitive whole-word match inside a name or alias; input matching several locations SHALL be refused with invalid_arguments naming the candidates.
+find_study_room SHALL use configured LibCal settings and valid time/capacity filters, return bounded sanitized availability in structuredContent matching outputSchema, and declare Public, readOnlyHint=true and destructiveHint=false. Availability SHALL come from the public LibCal booking page without caller credentials and SHALL offer only listed rooms and bookable slots. Anonymous refusal SHALL be upstream_unavailable. location_id SHALL also accept a unique whole-word part of a configured name.
 
 #### Scenario: Available room
 

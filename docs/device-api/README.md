@@ -104,8 +104,9 @@ hardware client code is supplied here.
 Synthetic fixture IDs: `synthetic:sticker-a`, `synthetic:sticker-b`,
 `synthetic:sticker-c`; users `synthetic:student-a`, `synthetic:student-b`,
 `synthetic:student-c`. Pi test secrets are generated at runtime.
-Booking tests reuse the unmodified public LibCal recording
-`20260926T210700940343Z-temple-next-day-availability` and its existing metadata.
+Booking tests reuse the unmodified public LibCal recordings
+`20261010T171030252035Z-temple-directory` and
+`20261010T171030252035Z-temple-grid-2026-10-12` and their existing metadata.
 
 Tests cover HTTP schema/credential/privacy failures, both limits, audit
 failure, exact monotonic expiry, wall-clock jump, failed-tap nonextension,

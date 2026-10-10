@@ -1,6 +1,9 @@
 //! Springshare `LibCal` adapter: `RoomProvider` (live) and `BookingProvider` (sandbox simulation only).
 //!
-//! Reads only the public space API. Base URL and location IDs come from
+//! Reads the school's public booking page: its room directory and the
+//! availability grid that page itself loads (`POST /spaces/availability/grid`).
+//! That endpoint is public but undocumented and best-effort; API 1.1 refuses
+//! anonymous reads since 2026-10. Base URL and location IDs come from
 //! `school.yaml` `libcal`; nothing here is specific to one school. No code path
 //! sends a booking request to `LibCal` in any build.
 
@@ -27,10 +30,18 @@ use url::Url;
 
 #[cfg(feature = "sandbox")]
 pub use booking::{SimulatedBooking, random_id};
-pub use parse::{covers, parse_availability};
+pub use parse::{covers, parse_directory, parse_grid};
 
 /// Provider name in cache keys.
 const PROVIDER: &str = "libcal";
+/// Room lists change rarely; availability keeps `defaults::ROOMS_TTL`.
+const DIRECTORY_TTL: Duration = Duration::from_hours(1);
+/// Identifies Kampus to the vendor.
+const USER_AGENT: &str = concat!(
+    "kampus/",
+    env!("CARGO_PKG_VERSION"),
+    " (campus AI bridge; public LibCal booking page)"
+);
 /// A query never spans more local days than this.
 const MAX_DAYS: usize = 8;
 
@@ -63,6 +74,8 @@ pub struct LibCal {
     locations: Vec<LibCalLocation>,
     default_location: String,
     upstream: BoundedGet,
+    /// The same client, for the grid POST.
+    client: reqwest::Client,
     runtime: Arc<SharedRuntime>,
 }
 
@@ -93,13 +106,15 @@ impl LibCal {
             .to_owned();
         let client = kampus_core::runtime::upstream_client_builder()
             .timeout(Duration::from_millis(config.limits.timeout_ms))
+            .user_agent(USER_AGENT)
             .build()
             .map_err(|_| LibCalError::Client)?;
         Ok(Self {
             school_id: school_id.to_owned(),
             base_url: config.base_url.clone(),
-            upstream: BoundedGet::new(client, host.clone(), fetch::MAX_BODY_BYTES)
-                .accept("application/json"),
+            upstream: BoundedGet::new(client.clone(), host.clone(), fetch::MAX_BODY_BYTES)
+                .accept("text/html"),
+            client,
             host,
             timezone,
             locations: config.locations.clone(),
@@ -112,15 +127,43 @@ impl LibCal {
         &self.default_location
     }
 
-    /// Resolve a configured location ID or alias (case-insensitive) to its ID.
-    pub fn resolve_location(&self, requested: &str) -> Option<&str> {
-        let requested = requested.trim();
-        self.locations
-            .iter()
-            .find(|l| {
-                l.id == requested || l.aliases.iter().any(|a| a.eq_ignore_ascii_case(requested))
-            })
-            .map(|l| l.id.as_str())
+    /// Resolve a location ID, name or alias to its configured ID.
+    ///
+    /// Case-insensitive. An exact match of the whole input wins; otherwise the
+    /// input's words must appear as a run of whole words in exactly one
+    /// location's name or alias ("drexel" finds "Drexel Library"). Several
+    /// matching locations are refused with their names.
+    pub fn resolve_location(&self, requested: &str) -> Result<&str, ToolError> {
+        fn words(text: &str) -> Vec<String> {
+            text.split_whitespace().map(str::to_lowercase).collect()
+        }
+        let wanted = words(requested);
+        let matching = |test: &dyn Fn(&[String]) -> bool| -> Vec<&LibCalLocation> {
+            self.locations
+                .iter()
+                .filter(|l| {
+                    [&l.id, &l.name]
+                        .into_iter()
+                        .chain(&l.aliases)
+                        .any(|term| test(&words(term)))
+                })
+                .collect()
+        };
+        let mut found = matching(&|term| term == wanted.as_slice());
+        if found.is_empty() && !wanted.is_empty() {
+            found = matching(&|term| term.windows(wanted.len()).any(|w| w == wanted.as_slice()));
+        }
+        match found.as_slice() {
+            [one] => Ok(one.id.as_str()),
+            [] => Err(ToolError::invalid_arguments("Unknown location.")),
+            many => {
+                let names: Vec<&str> = many.iter().map(|l| l.name.as_str()).collect();
+                Err(ToolError::invalid_arguments(format!(
+                    "That matches several locations: {}. Use one of them.",
+                    names.join(", ")
+                )))
+            }
+        }
     }
 
     /// Whether `room_id` at `location_id` is free for exactly `slot`.
@@ -223,7 +266,6 @@ impl LibCal {
         date: NaiveDate,
         freshness: Freshness,
     ) -> ProviderResult<Vec<Room>> {
-        let url = self.availability_url(location_id, date)?;
         let prefix = match freshness {
             Freshness::Cached => "",
             Freshness::Fresh => "fresh:",
@@ -235,8 +277,21 @@ impl LibCal {
             request: format!("{prefix}{location_id}/{date}"),
         };
         let fetch = async {
-            let body = self.get(url).await?;
-            let rooms = parse_availability(&body)?;
+            let directory = self.directory(location_id).await?;
+            let (start, end) = (
+                date.to_string(),
+                date.succ_opt().unwrap_or(date).to_string(),
+            );
+            let form = url::form_urlencoded::Serializer::new(String::new())
+                .append_pair("lid", location_id)
+                .extend_pairs([("gid", "0"), ("eid", "-1"), ("seat", "0"), ("seatId", "0")])
+                .extend_pairs([("zone", "0"), ("start", &start), ("end", &end)])
+                // Copied from the page; recorded grids return every room regardless.
+                .extend_pairs([("pageIndex", "0"), ("pageSize", "18")])
+                .finish();
+            let referer = self.directory_url(location_id)?;
+            let body = self.post_form(&self.grid_url()?, &referer, &form).await?;
+            let rooms = parse_grid(&body, self.timezone, &directory)?;
             serde_json::to_value(rooms).map_err(|_| ToolError::configuration_error())
         };
         let cache = &self.runtime.cache;
@@ -260,15 +315,49 @@ impl LibCal {
         })
     }
 
-    fn availability_url(&self, location_id: &str, date: NaiveDate) -> Result<Url, ToolError> {
+    /// The location's listed rooms (no slots), from the public cache.
+    async fn directory(&self, location_id: &str) -> Result<Vec<Room>, ToolError> {
+        let key = CacheKey {
+            school_id: self.school_id.clone(),
+            provider: PROVIDER.to_owned(),
+            config_version: self.base_url.as_str().to_owned(),
+            request: format!("directory:{location_id}"),
+        };
+        let fetch = async {
+            let body = self.get(&self.directory_url(location_id)?).await?;
+            let rooms = parse_directory(&body)?;
+            serde_json::to_value(rooms).map_err(|_| ToolError::configuration_error())
+        };
+        let cached = self
+            .runtime
+            .cache
+            .get_or_fetch(key, DIRECTORY_TTL, fetch)
+            .await?;
+        serde_json::from_value(cached.value).map_err(|_| ToolError::configuration_error())
+    }
+
+    /// The page's own "search by space" listing, submitted empty. Grid-mode
+    /// sites ignore `m=s` and return the grid page with the same rooms.
+    fn directory_url(&self, location_id: &str) -> Result<Url, ToolError> {
+        let mut url = self.endpoint(&["spaces"])?;
+        url.query_pairs_mut()
+            .append_pair("m", "s")
+            .append_pair("lid", location_id)
+            .append_pair("search", "");
+        Ok(url)
+    }
+
+    fn grid_url(&self) -> Result<Url, ToolError> {
+        self.endpoint(&["spaces", "availability", "grid"])
+    }
+
+    fn endpoint(&self, segments: &[&str]) -> Result<Url, ToolError> {
         let mut url = self.base_url.clone();
+        url.set_query(None);
         url.path_segments_mut()
             .map_err(|()| ToolError::configuration_error())?
             .pop_if_empty()
-            .extend(["api", "1.1", "space", "items", location_id]);
-        url.query_pairs_mut()
-            .clear()
-            .append_pair("availability", &date.to_string());
+            .extend(segments);
         Ok(url)
     }
 }

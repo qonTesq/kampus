@@ -1,7 +1,7 @@
 //! Rooms module against recorded `LibCal` responses served over loopback.
 //!
-//! `ctx.now` is pinned to 2026-09-27 08:00 New York time so the recorded
-//! 2026-09-27 availability (287 slots at location 8404) is in the future.
+//! `ctx.now` is pinned to 2026-10-12 07:00 New York time so the recorded
+//! 2026-10-12 availability at location 8404 is in the future.
 // clippy.toml allows unwrap inside #[test] fns only, not in shared helpers.
 #![allow(clippy::unwrap_used)]
 
@@ -20,7 +20,12 @@ use kampus_core::contracts::{
 use kampus_core::output::project;
 use kampus_core::runtime::SharedRuntime;
 use serde_json::{Value, json};
-use support::{FixtureServer, NEXT_DAY_PATH};
+use support::{FixtureServer, grid_route};
+
+/// The recorded Monday grid route for location 8404.
+fn monday() -> String {
+    grid_route("8404", "2026-10-12")
+}
 
 const SCHOOL: &str = "demo-u";
 
@@ -68,7 +73,7 @@ async fn harness(sandbox: bool, simulate: bool) -> Harness {
 }
 
 fn now() -> DateTime<Utc> {
-    DateTime::parse_from_rfc3339("2026-09-27T08:00:00-04:00")
+    DateTime::parse_from_rfc3339("2026-10-12T07:00:00-04:00")
         .unwrap()
         .to_utc()
 }
@@ -127,10 +132,12 @@ impl Harness {
         out
     }
 
-    fn only_gets(&self) {
+    /// Only the public directory page and availability grid were requested.
+    fn only_reads(&self) {
         for r in self.server.requests() {
             assert!(
-                r.starts_with("GET /api/1.1/space/items/"),
+                r.starts_with("GET /spaces?m=s&")
+                    || r.starts_with("POST /spaces/availability/grid?"),
                 "unexpected upstream request {r}"
             );
         }
@@ -142,7 +149,7 @@ fn code(result: &Result<ToolSuccess, ToolError>) -> ErrorCode {
 }
 
 fn find_args() -> Value {
-    json!({ "start": "2026-09-27T14:00:00-04:00", "end": "2026-09-27T16:00:00-04:00" })
+    json!({ "start": "2026-10-12T14:00:00-04:00", "end": "2026-10-12T16:00:00-04:00" })
 }
 
 // ------------------------------------------------------------ descriptors
@@ -181,7 +188,7 @@ async fn confirm_schema_accepts_only_the_confirmation_id() {
         .unwrap();
     for extra in [
         json!({ "confirmation_id": "cnf_x", "room_id": "58701" }),
-        json!({ "confirmation_id": "cnf_x", "start": "2026-09-27T14:00:00-04:00" }),
+        json!({ "confirmation_id": "cnf_x", "start": "2026-10-12T14:00:00-04:00" }),
         json!({ "confirmation_id": "cnf_x", "action": "book" }),
         json!({ "confirmation_id": "cnf_x", "user_id": "someone-else" }),
         json!({}),
@@ -192,7 +199,7 @@ async fn confirm_schema_accepts_only_the_confirmation_id() {
     let book = h.registry.get("book_study_room").unwrap();
     let err = book
         .validate_input(&json!({ "room_id": "1", "location_id": "8404",
-            "start": "2026-09-27T14:00:00-04:00", "end": "2026-09-27T15:00:00-04:00",
+            "start": "2026-10-12T14:00:00-04:00", "end": "2026-10-12T15:00:00-04:00",
             "user_id": "someone-else" }))
         .unwrap_err();
     assert_eq!(err.code, ErrorCode::InvalidArguments);
@@ -214,8 +221,8 @@ async fn confirm_schema_accepts_only_the_confirmation_id() {
 #[tokio::test]
 async fn find_returns_schema_valid_live_rooms() {
     let h = harness(false, false).await;
-    let args = json!({ "location_id": "main library", "start": "2026-09-27T14:00:00-04:00",
-        "end": "2026-09-27T16:00:00-04:00", "min_capacity": 10 });
+    let args = json!({ "location_id": "main library", "start": "2026-10-12T14:00:00-04:00",
+        "end": "2026-10-12T16:00:00-04:00", "min_capacity": 10 });
     let result = h
         .call("find_study_room", args, &ctx(Principal::guest()))
         .await;
@@ -226,9 +233,9 @@ async fn find_returns_schema_valid_live_rooms() {
     assert_eq!(out["meta"]["school_id"], SCHOOL);
     let rooms = out["data"]["rooms"].as_array().unwrap();
     let names: Vec<&str> = rooms.iter().map(|r| r["name"].as_str().unwrap()).collect();
-    assert_eq!(names, ["387", "405"]);
+    assert_eq!(names, ["387", "405", "425"]);
     assert_eq!(rooms[0]["description"], "Large group study room, breakout+");
-    assert_eq!(rooms[0]["slots"][0]["start"], "2026-09-27T14:00:00-04:00");
+    assert_eq!(rooms[0]["slots"][0]["start"], "2026-10-12T14:00:00-04:00");
     // The alias resolves to the configured ID, which is what booking accepts.
     assert!(rooms.iter().all(|r| r["location_id"] == "8404"));
 }
@@ -270,13 +277,13 @@ async fn find_rejects_bad_windows_without_upstream_calls() {
     let h = harness(false, false).await;
     let guest = ctx(Principal::guest());
     for args in [
-        json!({ "start": "2026-09-27T16:00:00-04:00", "end": "2026-09-27T14:00:00-04:00" }),
-        json!({ "start": "2026-09-26T09:00:00-04:00", "end": "2026-09-26T10:00:00-04:00" }),
-        json!({ "start": "2026-09-27T09:00:00-04:00", "end": "2026-09-28T10:00:00-04:00" }),
-        json!({ "start": "2026-10-05T09:00:00-04:00", "end": "2026-10-05T10:00:00-04:00" }),
-        json!({ "start": "2026-09-27T14:00:00", "end": "2026-09-27T16:00:00" }),
-        json!({ "start": "2026-09-27T14:00:00-04:00", "end": "2026-09-27T16:00:00-04:00", "limit": 50 }),
-        json!({ "location_id": "SECRET-LOCATION-9", "start": "2026-09-27T14:00:00-04:00", "end": "2026-09-27T16:00:00-04:00" }),
+        json!({ "start": "2026-10-12T16:00:00-04:00", "end": "2026-10-12T14:00:00-04:00" }),
+        json!({ "start": "2026-10-11T09:00:00-04:00", "end": "2026-10-11T10:00:00-04:00" }),
+        json!({ "start": "2026-10-12T09:00:00-04:00", "end": "2026-10-13T10:00:00-04:00" }),
+        json!({ "start": "2026-10-20T09:00:00-04:00", "end": "2026-10-20T10:00:00-04:00" }),
+        json!({ "start": "2026-10-12T14:00:00", "end": "2026-10-12T16:00:00" }),
+        json!({ "start": "2026-10-12T14:00:00-04:00", "end": "2026-10-12T16:00:00-04:00", "limit": 50 }),
+        json!({ "location_id": "SECRET-LOCATION-9", "start": "2026-10-12T14:00:00-04:00", "end": "2026-10-12T16:00:00-04:00" }),
     ] {
         let result = h.call("find_study_room", args, &guest).await;
         assert_eq!(code(&result), ErrorCode::InvalidArguments);
@@ -289,13 +296,14 @@ async fn find_rejects_bad_windows_without_upstream_calls() {
 async fn find_upstream_failure_is_typed_not_empty() {
     let h = harness(false, false).await;
     h.server
-        .route(NEXT_DAY_PATH, support::Reply::recorded(support::NOT_FOUND));
+        .route(&monday(), support::Reply::recorded(support::API_403));
     let result = h
         .call("find_study_room", find_args(), &ctx(Principal::guest()))
         .await;
     let out = h.projected("find_study_room", &result);
     assert_eq!(out["status"], "error");
-    assert_eq!(out["error"]["code"], "upstream_invalid_response");
+    // LibCal refusing anonymous access is an outage, not a bad response.
+    assert_eq!(out["error"]["code"], "upstream_unavailable");
 }
 
 #[tokio::test]
@@ -320,7 +328,7 @@ async fn disabled_module_is_unsupported_source() {
 
 fn propose_args() -> Value {
     json!({ "room_id": "58701", "location_id": "8404",
-        "start": "2026-09-27T14:00:00-04:00", "end": "2026-09-27T15:00:00-04:00" })
+        "start": "2026-10-12T14:00:00-04:00", "end": "2026-10-12T15:00:00-04:00" })
 }
 
 #[cfg(not(feature = "sandbox"))]
@@ -341,7 +349,7 @@ async fn production_build_has_no_booking() {
     h.projected("book_study_room", &propose);
     h.projected("confirm_booking", &confirm);
     assert_eq!(h.server.hits(), 0);
-    h.only_gets();
+    h.only_reads();
 }
 
 #[tokio::test]
@@ -385,8 +393,8 @@ mod sandbox {
         assert_eq!(data["submitted"], false);
         assert_eq!(data["proposal"]["room_id"], "58701");
         assert_eq!(data["proposal"]["location_id"], "8404");
-        assert_eq!(data["proposal"]["start"], "2026-09-27T14:00:00-04:00");
-        assert_eq!(data["proposal"]["end"], "2026-09-27T15:00:00-04:00");
+        assert_eq!(data["proposal"]["start"], "2026-10-12T14:00:00-04:00");
+        assert_eq!(data["proposal"]["end"], "2026-10-12T15:00:00-04:00");
         assert_eq!(out["meta"]["sandbox"], true);
         let expires: DateTime<Utc> = data["expires_at"].as_str().unwrap().parse().unwrap();
         assert_eq!(expires - now(), TimeDelta::seconds(120));
@@ -404,8 +412,8 @@ mod sandbox {
         let receipt = out["data"]["receipt_id"].as_str().unwrap();
         assert!(receipt.starts_with("sbx_") && !receipt.contains(&id[4..]));
         // One cached read to propose, one fresh read to confirm; reads only.
-        assert_eq!(h.server.hits(), 2);
-        h.only_gets();
+        assert_eq!(h.server.grid_hits(), 2);
+        h.only_reads();
     }
 
     #[tokio::test]
@@ -507,7 +515,11 @@ mod sandbox {
             code(&confirm(&h, &id, &student()).await),
             ErrorCode::ConfirmationInvalid
         );
-        assert_eq!(h.server.hits(), 1, "no fresh read for an expired proposal");
+        assert_eq!(
+            h.server.grid_hits(),
+            1,
+            "no fresh read for an expired proposal"
+        );
     }
 
     #[tokio::test]
@@ -574,7 +586,7 @@ mod sandbox {
         let id = propose(&h, &student()).await;
         // The day now has no free slots upstream (recorded empty-day body).
         h.server
-            .route(NEXT_DAY_PATH, support::Reply::recorded(support::EMPTY_DAY));
+            .route(&monday(), support::Reply::recorded(support::NO_SLOTS));
         let result = confirm(&h, &id, &student()).await;
         assert_eq!(code(&result), ErrorCode::ConfirmationInvalid);
         h.projected("confirm_booking", &result);
@@ -584,14 +596,14 @@ mod sandbox {
     async fn upstream_outage_at_confirm_gives_no_receipt_and_keeps_proposal() {
         let h = harness(true, true).await;
         let id = propose(&h, &student()).await;
-        h.server.route(NEXT_DAY_PATH, support::Reply::status(503));
+        h.server.route(&monday(), support::Reply::status(503));
         let result = confirm(&h, &id, &student()).await;
         assert_eq!(code(&result), ErrorCode::UpstreamUnavailable);
         // The cached (proposal-time) availability was not used to confirm.
         h.server
-            .route(NEXT_DAY_PATH, support::Reply::recorded(support::NEXT_DAY));
+            .route(&monday(), support::Reply::recorded(support::MONDAY));
         confirm(&h, &id, &student()).await.unwrap();
-        h.only_gets();
+        h.only_reads();
     }
 
     #[tokio::test]
@@ -599,13 +611,13 @@ mod sandbox {
         let h = harness(true, true).await;
         for (i, args) in [
             // Past, too long, unaligned, not free, beyond the horizon, unknown location.
-            json!({ "room_id": "58701", "location_id": "8404", "start": "2026-09-27T07:00:00-04:00", "end": "2026-09-27T07:30:00-04:00" }),
-            json!({ "room_id": "58701", "location_id": "8404", "start": "2026-09-27T14:00:00-04:00", "end": "2026-09-27T16:30:00-04:00" }),
-            json!({ "room_id": "58701", "location_id": "8404", "start": "2026-09-27T14:00:00-04:00", "end": "2026-09-27T14:45:00-04:00" }),
-            json!({ "room_id": "58701", "location_id": "8404", "start": "2026-09-27T12:00:00-04:00", "end": "2026-09-27T13:00:00-04:00" }),
-            json!({ "room_id": "58701", "location_id": "8404", "start": "2026-10-05T12:00:00-04:00", "end": "2026-10-05T13:00:00-04:00" }),
-            json!({ "room_id": "58701", "location_id": "9999", "start": "2026-09-27T14:00:00-04:00", "end": "2026-09-27T15:00:00-04:00" }),
-            json!({ "room_id": "58701", "location_id": "8404", "start": "2026-09-27T14:00:00-04:00", "end": "2026-09-27T15:00:00-04:00", "action": "confirm" }),
+            json!({ "room_id": "58701", "location_id": "8404", "start": "2026-10-12T07:00:00-04:00", "end": "2026-10-12T07:30:00-04:00" }),
+            json!({ "room_id": "58701", "location_id": "8404", "start": "2026-10-12T14:00:00-04:00", "end": "2026-10-12T16:30:00-04:00" }),
+            json!({ "room_id": "58701", "location_id": "8404", "start": "2026-10-12T14:00:00-04:00", "end": "2026-10-12T14:45:00-04:00" }),
+            json!({ "room_id": "58701", "location_id": "8404", "start": "2026-10-12T10:00:00-04:00", "end": "2026-10-12T11:00:00-04:00" }),
+            json!({ "room_id": "58701", "location_id": "8404", "start": "2026-10-20T12:00:00-04:00", "end": "2026-10-20T13:00:00-04:00" }),
+            json!({ "room_id": "58701", "location_id": "9999", "start": "2026-10-12T14:00:00-04:00", "end": "2026-10-12T15:00:00-04:00" }),
+            json!({ "room_id": "58701", "location_id": "8404", "start": "2026-10-12T14:00:00-04:00", "end": "2026-10-12T15:00:00-04:00", "action": "confirm" }),
         ]
         .into_iter()
         .enumerate()

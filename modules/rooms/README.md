@@ -19,7 +19,9 @@ Rules (demo defaults for the freeze, not LibCal rules):
 - `confirm_booking` rechecks student role and `rooms:book` scope, consumes the proposal atomically, then rereads availability bypassing the 60 s cache. If the slot is gone, it answers `confirmation_invalid`. If LibCal is unreachable, it answers `upstream_unavailable` and the proposal stays usable until it expires. Neither case returns a receipt.
 - Unknown, used, foreign and policy-invalidated IDs all answer `confirmation_invalid` without echoing the ID. A foreign caller cannot consume someone else's proposal.
 
-Booking exists only in a `--features sandbox` build **and** with `sandbox.enabled: true` and `libcal.booking_simulation: true`. Otherwise both booking tools answer `unsupported_source` and keep their schemas. No build contains code that sends a booking request to LibCal. The only upstream requests are `GET {base_url}/api/1.1/space/items/{location_id}?availability=YYYY-MM-DD` (school-local date), through the shared host limiter.
+Booking exists only in a `--features sandbox` build **and** with `sandbox.enabled: true` and `libcal.booking_simulation: true`. Otherwise both booking tools answer `unsupported_source` and keep their schemas. No build contains code that sends a booking request to LibCal. The only upstream requests are the school's public LibCal booking page and the data it loads itself: `GET {base_url}/spaces?m=s&lid={location_id}&search=` (room directory, cached 1 h) and `POST {base_url}/spaces/availability/grid` (one school-local day, cached 60 s), through the shared host limiter. That endpoint is public but undocumented and best-effort; LibCal API 1.1 refuses anonymous reads since 2026-10 (`openspec/changes/libcal-public-availability/`). A 401/403 answers `upstream_unavailable`.
+
+`location_id` takes a configured ID, name or alias, or a unique whole-word part of one ("drexel" for "Drexel Library"). Input matching several locations is refused with their names.
 
 ## Demo sequence (sandbox build)
 
@@ -35,14 +37,18 @@ cargo build --release -p kampus --features sandbox
 
 ## Fixtures
 
-Recorded real responses in `fixtures/libcal/` (captured 2026-09-26, see `fixtures/README.md`):
+Recorded real responses in `fixtures/libcal/` (captured 2026-10-10 unless noted, see `fixtures/README.md`), IDs prefixed `20261010T171030252035Z-`:
 
 | Fixture ID | Used as |
 |---|---|
-| `20260926T210700940343Z-temple-next-day-availability` | 2026-09-27 availability, 20 rooms / 287 slots, HTML descriptions |
-| `20260926T210700940343Z-temple-availability` | valid empty result (2026-09-26, no free slots) |
-| `20260926T210700940343Z-temple-items` | listing without `availability`: must be `upstream_invalid_response` |
-| `20260926T210517445804Z-temple-items` | real HTTP 404 body: must be an error, never empty |
+| `temple-directory` | search-mode directory, 32 listed spaces with capacities and descriptions |
+| `temple-grid-2026-10-12` | Monday grid, 980 slots for 35 rooms; 149 booked or unavailable; 4 rooms not on the directory |
+| `temple-grid-2026-10-11` | Sunday grid, for windows across midnight |
+| `temple-grid-2026-11-26` | valid empty day (Thanksgiving, no slots) |
+| `temple-api-1.1-availability` | real HTTP 403 from API 1.1: must be `upstream_unavailable` |
+| `sju-hawk-hill-directory`, `sju-university-city-directory` | grid-mode page with embedded rooms |
+| `sju-hawk-hill-grid-2026-10-12`, `-2026-10-10` | 286 slots with one booked; valid empty Saturday |
+| `20260926T210517445804Z-temple-items` | real HTTP 404 body (2026-09-26): must be an error, never empty |
 
 Derived mutations (truncation, bad dates, wrong types, injected HTML) are built in the tests from the recordings above and labeled there. Outages are injected statuses (503) or a closed port, not invented payloads. Tests serve the recordings over loopback HTTP, so the real client, cache and limiter paths run.
 
