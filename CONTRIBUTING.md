@@ -37,12 +37,15 @@ Larger changes start as an [OpenSpec](https://github.com/Fission-AI/OpenSpec) ch
 
 ## Owl client and hardware
 
-The talking mascot lives in [`clients/owl/`](clients/owl/) (Python) and [`hardware/owl/`](hardware/owl/) (CAD, wiring, parts). Read [`clients/owl/AGENTS.md`](clients/owl/AGENTS.md) first.
+The talking mascot lives in [`clients/owl/`](clients/owl/) (Python) and [`hardware/owl/`](hardware/owl/) (CAD, wiring, parts). Read [`clients/owl/AGENTS.md`](clients/owl/AGENTS.md) and [`hardware/owl/AGENTS.md`](hardware/owl/AGENTS.md) first; if you use an AI coding agent, it reads them too.
 
-1. **Fork** the repository (or create a branch if you're a collaborator), and run `git lfs install` once if you'll add CAD or print files.
+1. **Collaborators** clone the repository and create a branch (`owl/<topic>`); others **fork** it. Run `git lfs install` once if you'll add CAD or print files.
 2. Bringing existing work from another repository? Keep its history: rewrite it into `clients/owl/` (for example `git filter-repo --to-subdirectory-filter clients/owl`), then merge it into your branch with `--allow-unrelated-histories`.
 3. Use a commit email that's linked to your GitHub account, so the commits count as yours.
-4. Open a pull request against `master`. It's merged with a **merge commit** (not squashed), so every commit keeps its author.
+4. Keep the Python tooling your code already uses (uv, pip, Poetry…); CI checks uv projects and reports anything else as not checked.
+5. Open a pull request against `master`. It's merged with a **merge commit** (not squashed), so every commit keeps its author.
+
+The Rust checks below are only for changes to the server (`crates/`, `adapters/`, `modules/`, `schools/`, `fixtures/`).
 
 ## Before opening a pull request
 

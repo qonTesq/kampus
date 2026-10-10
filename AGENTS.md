@@ -96,4 +96,15 @@ Everything above is about the Rust server. Two other areas live here, each with 
 - `clients/owl/`: the Python voice client for the Raspberry Pi mascot. Read `clients/owl/AGENTS.md`.
 - `hardware/owl/`: CAD, print files, wiring and the parts list (large files via Git LFS).
 
+- `hardware/owl/`: read `hardware/owl/AGENTS.md`.
+
 Ownership is in `.github/CODEOWNERS`. The server's Rust rules don't apply to these folders; the rules on secrets, privacy and commits do.
+
+## Contributing from another machine
+
+The worktree, local-merge and never-push rules above are for agents working on the server on the owner's machine. A teammate (or their agent) working from their own clone or fork does this instead:
+
+1. Branch from an up-to-date `master`: `owl/<topic>` for the owl client and hardware, `change/<topic>` for anything else.
+2. Stay inside the folders you own (see `.github/CODEOWNERS`). Keep your code's existing tooling; don't restructure other areas.
+3. Commit small, push **your branch** (never `master`), and open a pull request against `master`. CI runs only the checks for the folders you touched.
+4. The code owners review; the PR is merged with a merge commit so every commit keeps its author. Don't merge your own PR unless the owner said so.

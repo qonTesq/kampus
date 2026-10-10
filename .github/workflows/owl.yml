@@ -28,7 +28,8 @@ jobs:
       - name: Detect the Python project
         id: project
         run: |
-          if [ -f pyproject.toml ]; then echo "present=true" >> "$GITHUB_OUTPUT"; else echo "present=false" >> "$GITHUB_OUTPUT"; echo "No pyproject.toml yet; nothing to check."; fi
+          # Only uv projects are checked; other tooling is reported, never failed.
+          if [ -f uv.lock ]; then echo "present=true" >> "$GITHUB_OUTPUT"; else echo "present=false" >> "$GITHUB_OUTPUT"; echo "::notice::No uv.lock in clients/owl: not checked (see clients/owl/AGENTS.md)."; fi
       - uses: astral-sh/setup-uv@v6
         if: steps.project.outputs.present == 'true'
       - name: Install
