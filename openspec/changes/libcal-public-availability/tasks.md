@@ -27,6 +27,6 @@
 
 ## 4. Gate and live check
 
-- [x] 4.1 `openspec validate --all --strict`
+- [x] 4.1 `openspec validate --all --strict` (this change valid; CLI 1.14.1 now fails 5 untouched living specs on long-requirement warnings)
 - [x] 4.2 Full gate from `AGENTS.md`
-- [ ] 4.3 Live `find_study_room` for SJU and Temple on Monday 2026-10-12
+- [x] 4.3 Live `find_study_room` for SJU and Temple on Monday 2026-10-12
