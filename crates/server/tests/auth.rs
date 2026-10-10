@@ -1662,3 +1662,47 @@ async fn two_students_on_one_cimd_client_see_only_their_own_deadlines() {
             .all(|r| r["rule"] == "builtin:self_registered_sensitive_off")
     );
 }
+
+#[cfg(feature = "sandbox")]
+#[tokio::test]
+async fn real_sign_in_sees_the_labelled_fallback_profile() {
+    let canvas = format!("http://127.0.0.1:{}", {
+        std::net::TcpListener::bind("127.0.0.1:0")
+            .unwrap()
+            .local_addr()
+            .unwrap()
+            .port()
+    });
+    let server = spawn_with(AuthMode::Oauth, |school| {
+        school.sandbox.enabled = true;
+        school.canvas = Some(kampus_core::config::CanvasConfig {
+            enabled: true,
+            base_url: canvas.parse().unwrap(),
+            service_token_env: None,
+            fallback_synthetic_user: Some("synthetic-student-b".into()),
+        });
+    })
+    .await;
+    assert_eq!(save_switches(&server, true, true).await.status(), 200);
+    // A broker subject from a real IdP sign-in; the seed does not map it.
+    let token = cimd_student("k1.6b1f0c2d9e8a7b3c4d5e6f708192a3b4");
+    let result = rpc_body(modern(&server, Some(&token), "tools/call", call("my_deadlines")).await)
+        .await["result"]["structuredContent"]
+        .clone();
+    assert_eq!(result["status"], "ok", "{result}");
+    assert_eq!(result["meta"]["sandbox"], true);
+    assert_eq!(result["meta"]["source_kind"], "sandbox");
+    let courses: Vec<_> = result["data"]["deadlines"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|d| d["course_code"].as_str().unwrap().to_owned())
+        .collect();
+    // Student B's synthetic courses only, never student A's SYN-1010.
+    assert!(courses.iter().any(|c| c == "SYN-3030"), "{courses:?}");
+    assert!(
+        courses
+            .iter()
+            .all(|c| c.starts_with("SYN-") && c != "SYN-1010")
+    );
+}
