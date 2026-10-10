@@ -105,6 +105,6 @@ Ownership is in `.github/CODEOWNERS`. The server's Rust rules don't apply to the
 The worktree, local-merge and never-push rules above are for agents working on the server on the owner's machine. A teammate (or their agent) working from their own clone or fork does this instead:
 
 1. Branch from an up-to-date `master`: `owl/<topic>` for the owl client and hardware, `change/<topic>` for anything else.
-2. Stay inside the folders you own (see `.github/CODEOWNERS`). Keep your code's existing tooling; don't restructure other areas.
+2. Stay inside the folders you own (see `.github/CODEOWNERS`), and follow their `AGENTS.md` layout: incoming work is migrated into it, not dropped in as it was. Don't restructure other areas.
 3. Commit small, push **your branch** (never `master`), and open a pull request against `master`. CI runs only the checks for the folders you touched.
 4. The code owners review; the PR is merged with a merge commit so every commit keeps its author. Don't merge your own PR unless the owner said so.

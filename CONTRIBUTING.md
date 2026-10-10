@@ -42,7 +42,7 @@ The talking mascot lives in [`clients/owl/`](clients/owl/) (Python) and [`hardwa
 1. **Collaborators** clone the repository and create a branch (`owl/<topic>`); others **fork** it. Run `git lfs install` once if you'll add CAD or print files.
 2. Bringing existing work from another repository? Keep its history: rewrite it into `clients/owl/` (for example `git filter-repo --to-subdirectory-filter clients/owl`), then merge it into your branch with `--allow-unrelated-histories`.
 3. Use a commit email that's linked to your GitHub account, so the commits count as yours.
-4. Keep the Python tooling your code already uses (uv, pip, Poetry…); CI checks uv projects and reports anything else as not checked.
+4. Migrate incoming code into the layouts in [`clients/owl/README.md`](clients/owl/README.md) (a uv project under `src/owl/`) and [`hardware/owl/README.md`](hardware/owl/README.md), keeping behaviour the same; CI lints and tests the uv project.
 5. Open a pull request against `master`. It's merged with a **merge commit** (not squashed), so every commit keeps its author.
 
 The Rust checks below are only for changes to the server (`crates/`, `adapters/`, `modules/`, `schools/`, `fixtures/`).
