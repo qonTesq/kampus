@@ -224,7 +224,6 @@ async fn same_binary_processes_reject_foreign_tokens_and_keep_policy_and_audit_s
         );
     }
     for (name, args) in [
-        ("library_hours", json!({})),
         ("search_courses", json!({"subject":"BIO"})),
         (
             "book_study_room",
@@ -260,7 +259,7 @@ async fn same_binary_processes_reject_foreign_tokens_and_keep_policy_and_audit_s
         .header("X-Kampus-CSRF", snapshot["csrf"].as_str().unwrap())
         .json(&json!({"version":snapshot["version"],"sensitive_enabled":true,"allow_self_registered_sensitive":false,"approvals":{"kampus-sju-claude":true}})).send().await.unwrap();
     assert_eq!(response.status(), 200);
-    // The disabled SJU deadlines module is reached only after its policy allows.
+    // SJU deadlines has no source in this config; it is reached only after policy allows.
     assert_eq!(
         call(&sju, &sju_token, "my_deadlines", json!({})).await["error"]["code"],
         "unsupported_source"

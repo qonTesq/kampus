@@ -1,5 +1,6 @@
-//! Configured dated HTML hours with shared public caching.
+//! Configured dated hours pages (HTML or `LibCal` JSON) with shared public caching.
 mod http;
+mod libcal;
 mod parser;
 use chrono::{DateTime, Utc};
 use chrono_tz::Tz;

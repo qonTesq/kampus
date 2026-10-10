@@ -9,8 +9,41 @@ use kampus_core::output::{
 };
 use scraper::{ElementRef, Html, Selector};
 
+use crate::libcal::LibCalGrid;
+
+/// A configured hours source format (`hours.libraries[].parser.profile`).
 #[derive(Debug)]
-pub struct HoursParser {
+pub enum HoursParser {
+    /// `dated-week-grid`: an HTML page with a dated week of day columns.
+    WeekGrid(WeekGrid),
+    /// `libcal-hours-grid`: `LibCal`'s public hours-widget JSON.
+    LibCalGrid(LibCalGrid),
+}
+
+impl HoursParser {
+    pub fn new(profile: &ParserProfile) -> Result<Self, ToolError> {
+        match profile.profile.as_str() {
+            "dated-week-grid" => WeekGrid::new(profile).map(Self::WeekGrid),
+            "libcal-hours-grid" => LibCalGrid::new(profile).map(Self::LibCalGrid),
+            _ => Err(ToolError::configuration_error()),
+        }
+    }
+    pub fn parse(
+        &self,
+        body: &str,
+        library: &Library,
+        date: NaiveDate,
+        timezone: Tz,
+    ) -> Result<LibraryDay, ToolError> {
+        match self {
+            Self::WeekGrid(p) => p.parse(body, library, date, timezone),
+            Self::LibCalGrid(p) => p.parse(body, library, date, timezone),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct WeekGrid {
     range: Selector,
     dates: Selector,
     rows: Selector,
@@ -22,12 +55,9 @@ pub struct HoursParser {
 fn invalid() -> ToolError {
     ToolError::upstream_invalid_response()
 }
-impl HoursParser {
+impl WeekGrid {
     /// `dated-week-grid` uses a dated range and seven aligned day columns.
-    pub fn new(profile: &ParserProfile) -> Result<Self, ToolError> {
-        if profile.profile != "dated-week-grid" {
-            return Err(ToolError::configuration_error());
-        }
+    fn new(profile: &ParserProfile) -> Result<Self, ToolError> {
         let selector = |key: &str| -> Result<Selector, ToolError> {
             Selector::parse(
                 profile
@@ -55,7 +85,7 @@ impl HoursParser {
                 .transpose()?,
         })
     }
-    pub fn parse(
+    fn parse(
         &self,
         html: &str,
         library: &Library,
@@ -162,7 +192,9 @@ fn text(element: ElementRef<'_>) -> String {
         .collect::<Vec<_>>()
         .join(" ")
 }
-fn hours(
+/// Parses `"9:00 am - 5:00 pm"` intervals joined by `;`, `"24 hours"`,
+/// `"closed"` or `"unknown"`.
+pub(crate) fn hours(
     raw: &str,
     date: NaiveDate,
     timezone: Tz,
