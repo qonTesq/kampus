@@ -9,8 +9,8 @@
 
 ## 2. Minimal scopes
 
-- [ ] 2.1 Metadata advertises only `offline_access`; snapshot test
-- [ ] 2.2 e2e: rmcp seeds from the metadata and still steps up to `rooms:book`
+- [x] 2.1 Metadata advertises only `offline_access`; snapshot test
+- [x] 2.2 e2e: rmcp seeds from the metadata and still steps up to `rooms:book`
 
 ## 3. Local times
 

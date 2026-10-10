@@ -15,9 +15,9 @@
 //! the RS classifies the client as self-registered, exactly as for a CIMD
 //! client; only rmcp's own CIMD branch selection is not exercised here.
 //!
-//! The first sign-in asks for `offline_access` only. Without explicit
-//! scopes rmcp seeds the request from the AS `scopes_supported`, which would
-//! ask for `rooms:book` up front and skip the step-up this file tests.
+//! rmcp is given no scopes, so like Claude and ChatGPT it seeds the first
+//! request from the AS `scopes_supported`, which lists `offline_access`
+//! only; `rooms:book` comes from the step-up this file tests.
 
 use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -265,7 +265,6 @@ async fn oauth(instance: &Instance) -> OAuthState {
 fn request(assistant: &Assistant) -> AuthorizationRequest {
     AuthorizationRequest::new(assistant.redirect_uri.clone())
         .with_preregistered_client(assistant.client_id.clone())
-        .with_scopes(["offline_access"])
 }
 
 /// The current token response, as rmcp stores it.
@@ -290,6 +289,13 @@ async fn signed_in(
     let mut oauth = oauth(instance).await;
     oauth.start_authorization(request(assistant)).await.unwrap();
     let auth_url = oauth.get_authorization_url().await.unwrap();
+    // Seeded from the broker metadata: no tool scope up front.
+    let scope = reqwest::Url::parse(&auth_url)
+        .unwrap()
+        .query_pairs()
+        .find(|(k, _)| k == "scope")
+        .map(|(_, v)| v.into_owned());
+    assert_eq!(scope.as_deref(), Some("offline_access"), "{auth_url}");
     let SignIn {
         callback,
         consented,

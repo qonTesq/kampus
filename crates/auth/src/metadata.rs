@@ -1,8 +1,6 @@
 //! RFC 8414 authorization-server metadata. Every URL comes from the
 //! configured issuer; nothing reads the request's `Host` or forwarded headers.
 
-use std::collections::BTreeSet;
-
 use serde_json::{Value, json};
 use url::Url;
 
@@ -20,13 +18,11 @@ pub(crate) fn endpoint(issuer: &Url, name: &str) -> String {
 }
 
 /// The metadata document. There is deliberately no `registration_endpoint`:
-/// clients identify themselves with CIMD or are pre-registered.
-pub(crate) fn document(issuer: &Url, scopes: &BTreeSet<String>) -> Value {
-    let scopes: Vec<&str> = scopes
-        .iter()
-        .map(String::as_str)
-        .chain(["offline_access"])
-        .collect();
+/// clients identify themselves with CIMD or are pre-registered. Tool scopes
+/// are left out of `scopes_supported` (RFC 8414 allows a subset): assistants
+/// request everything listed at first sign-in, and `rooms:book` should come
+/// only from the 403 step-up.
+pub(crate) fn document(issuer: &Url) -> Value {
     json!({
         "issuer": issuer.as_str(),
         "authorization_endpoint": endpoint(issuer, "authorize"),
@@ -39,7 +35,7 @@ pub(crate) fn document(issuer: &Url, scopes: &BTreeSet<String>) -> Value {
         "token_endpoint_auth_methods_supported": ["none", "client_secret_basic", "client_secret_post"],
         "client_id_metadata_document_supported": true,
         "authorization_response_iss_parameter_supported": true,
-        "scopes_supported": scopes,
+        "scopes_supported": ["offline_access"],
     })
 }
 
@@ -50,7 +46,7 @@ mod tests {
     #[test]
     fn temple_document_snapshot() {
         let issuer = Url::parse("https://mcp.temple.example/auth").unwrap();
-        let doc = document(&issuer, &["rooms:book".to_owned()].into());
+        let doc = document(&issuer);
         assert_eq!(
             doc,
             json!({
@@ -65,7 +61,7 @@ mod tests {
                 "token_endpoint_auth_methods_supported": ["none", "client_secret_basic", "client_secret_post"],
                 "client_id_metadata_document_supported": true,
                 "authorization_response_iss_parameter_supported": true,
-                "scopes_supported": ["rooms:book", "offline_access"],
+                "scopes_supported": ["offline_access"],
             })
         );
         assert!(doc.get("registration_endpoint").is_none());
