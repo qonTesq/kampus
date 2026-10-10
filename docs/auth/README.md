@@ -1,8 +1,8 @@
 # Auth and policy: operator overview
 
-kampus has two auth parts, and a school chooses how much of it to run:
+Kampus has two auth parts, and a school chooses how much of it to run:
 
-- **The resource server (always on).** Every kampus binary verifies OAuth access tokens from one configured issuer, `auth.issuer`, and runs school policy on every call before limits, cache or provider code. It never forwards a user's token upstream. All seven tools stay listed for every caller: policy refuses calls, it never hides tools.
+- **The resource server (always on).** Every Kampus binary verifies OAuth access tokens from one configured issuer, `auth.issuer`, and runs school policy on every call before limits, cache or provider code. It never forwards a user's token upstream. All seven tools stay listed for every caller: policy refuses calls, it never hides tools.
 - **The broker (optional).** A small OAuth 2.1 authorization server built into the binary behind the `broker` cargo feature, started when `school.yaml` has an `auth.broker` section. It lets Claude and ChatGPT connect by URL alone (Client ID Metadata Documents, CIMD) or as pre-registered workspace clients, signs students in through the school's OIDC IdP (or synthetic demo users in a sandbox build), asks for consent, and issues the tokens the resource server verifies. It stores no passwords or user records.
 
 The resource server treats the broker like any other issuer: it finds the keys through RFC 8414 discovery on the public issuer URL, with no in-process shortcut. A school that already runs its own authorization server can skip the broker ([school-idp.md](school-idp.md#alternative-your-schools-own-authorization-server)).
@@ -12,7 +12,7 @@ The resource server treats the broker like any other issuer: it finds the keys t
 | Broker config, listeners, proxy paths, signing keys and rotation, a curl walkthrough | [broker.md](broker.md) |
 | Connecting the broker to the school's IdP (registration, scopes, role mapping, subject key) | [school-idp.md](school-idp.md) |
 | What the live runs with SJU's Google Workspace, Claude and ChatGPT showed | [qualification.md](qualification.md) |
-| What students see when they add kampus to their own assistant | [student-assistants.md](student-assistants.md) |
+| What students see when they add Kampus to their own assistant | [student-assistants.md](student-assistants.md) |
 | Publishing it on a domain | [deploy/cloudflare-tunnel](../../deploy/cloudflare-tunnel/README.md), [deploy/trial](../../deploy/trial/) |
 
 ## Builds
@@ -30,7 +30,7 @@ The resource server treats the broker like any other issuer: it finds the keys t
 1. The assistant calls a tool without a token. A public tool runs as a guest. A protected one gets a 401 challenge naming the protected-resource metadata ([lazy authentication](#lazy-authentication-and-step-up-oauth-mode)).
 2. The assistant reads that metadata, then the broker's RFC 8414 metadata at `/.well-known/oauth-authorization-server/auth`. The broker advertises CIMD and `none` client authentication and has no `registration_endpoint`: no dynamic client registration.
 3. The assistant opens `/auth/authorize` in the student's browser. The client is either a CIMD URL listed in `auth.broker.cimd_clients` (the broker fetches and validates the document) or a pre-registered client in `auth.broker.clients` with its own secret. PKCE (S256) and an exact redirect URI are required.
-4. The student signs in at the school's IdP (or picks a synthetic demo user in a sandbox build). The broker maps IdP claims to kampus roles and derives a pseudonymous subject; tokens never carry a name or an email.
+4. The student signs in at the school's IdP (or picks a synthetic demo user in a sandbox build). The broker maps IdP claims to Kampus roles and derives a pseudonymous subject; tokens never carry a name or an email.
 5. The consent page names the assistant by its host or the school's label, the resource and any extra scope. Allow sends the browser back with `code`, `state` and `iss`.
 6. The assistant redeems the code at `/auth/token` for a 15-minute access token (`at+jwt`, EdDSA, `aud` = the MCP resource URL) and a rotating refresh token. Reusing a rotated-out refresh token revokes the whole family.
 7. Every MCP call is verified by the resource server and decided by `policy.yaml`. A student can disconnect an assistant at `/auth/connections`; its refresh then fails, and a held access token works until it expires.
@@ -67,7 +67,7 @@ Signing keys come only from the issuer's metadata: RFC 8414 at `{origin}/.well-k
 
 ## Lazy authentication and step-up (OAuth mode)
 
-Without a credential, kampus answers `initialize`, `server/discover`, `ping`, `tools/list`, notifications, and GET/DELETE on the MCP endpoint. Legacy session ownership still applies: a request on a session its caller doesn't own gets 404, exactly like an unknown session. Anything else without a credential gets a plain 401.
+Without a credential, Kampus answers `initialize`, `server/discover`, `ping`, `tools/list`, notifications, and GET/DELETE on the MCP endpoint. Legacy session ownership still applies: a request on a session its caller doesn't own gets 404, exactly like an unknown session. Anything else without a credential gets a plain 401.
 
 For each `tools/call`, before the MCP layer runs:
 
@@ -110,7 +110,7 @@ Every caller is classified before policy from the verified principal and `policy
 - **self-registered:** a user token whose `client_id` is registered `cimd` or `dcr`
 - **other:** guests, devices, and unregistered or unapproved clients
 
-With the broker, the CIMD URLs in `auth.broker.cimd_clients` go in the registry as `registration: cimd` (self-registered: a student adding kampus to a personal Claude or ChatGPT) and the `auth.broker.clients` as `pre_registered_confidential` (the school's workspace assistants, which hold a secret only the school's admin knows). Device clients (the owl) get `client_credentials` tokens and are classified as devices.
+With the broker, the CIMD URLs in `auth.broker.cimd_clients` go in the registry as `registration: cimd` (self-registered: a student adding Kampus to a personal Claude or ChatGPT) and the `auth.broker.clients` as `pre_registered_confidential` (the school's workspace assistants, which hold a secret only the school's admin knows). Device clients (the owl) get `client_credentials` tokens and are classified as devices.
 
 Only `pre_registered_confidential` entries can ever be approved. Config validation, every admin save and the approval switch refuse an approval for anything else, even in a forged request.
 

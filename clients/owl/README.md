@@ -1,10 +1,10 @@
 # Owl: the talking campus mascot
 
-The owl is a voice client for kampus: a Raspberry Pi 5 inside a 3D-printed mascot, with two round-screen eyes, a microphone and a Bluetooth speaker. Anyone can walk up and ask about study rooms, trains or library hours. It connects to kampus as a **public device**, so it answers campus questions but never reads personal data.
+The owl is a voice client for Kampus: a Raspberry Pi 5 inside a 3D-printed mascot, with two round-screen eyes, a microphone and a Bluetooth speaker. Anyone can walk up and ask about study rooms, trains or library hours. It connects to Kampus as a **public device**, so it answers campus questions but never reads personal data.
 
 - **Listening and thinking:** Gemini Live
 - **Speaking:** ElevenLabs
-- **Campus answers:** the kampus MCP server, through the owl's own device credential
+- **Campus answers:** the Kampus MCP server, through the owl's own device credential
 
 ## Layout
 

@@ -1,4 +1,4 @@
-# kampus contracts (frozen, 2026-09-26)
+# Kampus contracts (frozen, 2026-09-26)
 
 **Status: frozen as committed at `d9ff8ee`.** Changing a contract requires a human's sign-off. Source of truth: `crates/core/src/contracts/` and `crates/core/src/config/`; this page is the field reference.
 

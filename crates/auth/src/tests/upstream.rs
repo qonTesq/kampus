@@ -554,7 +554,7 @@ async fn an_account_without_a_mapped_role_gets_no_code() {
     let url = at_idp(&h, &started).await;
     let reply = callback(&h, &url, Some(&started.cookie)).await;
     assert_refused(&reply, 403);
-    assert!(reply.body.contains("no kampus role"), "{}", reply.body);
+    assert!(reply.body.contains("no Kampus role"), "{}", reply.body);
     assert!(
         reply.body.contains("map your affiliation"),
         "{}",

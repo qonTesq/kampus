@@ -1,8 +1,8 @@
-# kampus
+# Kampus
 
 **Your campus, inside the AI assistant you already use.**
 
-kampus is an open-source [MCP](https://modelcontextprotocol.io) server that connects a university's systems (study rooms, courses, transit, library hours, coursework) to the AI assistants students already use, like Claude and ChatGPT. The school stays in control: it decides **which assistant** may see **which data**, for **which role**, and every call is checked and audited.
+Kampus is an open-source [MCP](https://modelcontextprotocol.io) server that connects a university's systems (study rooms, courses, transit, library hours, coursework) to the AI assistants students already use, like Claude and ChatGPT. The school stays in control: it decides **which assistant** may see **which data**, for **which role**, and every call is checked and audited.
 
 🥈 **Runner-up (2nd place) at OwlHacks 2026** (September 2026).
 
@@ -16,7 +16,7 @@ kampus is an open-source [MCP](https://modelcontextprotocol.io) server that conn
 
 Deadlines live in Canvas, study rooms on the library's booking site, trains in the SEPTA app, courses in Banner. Students already ask an AI assistant about everything, and none of those assistants know anything about their campus.
 
-Universities can't simply let AI assistants into their systems either: student records are protected by FERPA, and schools require security approval before non-public data goes near AI. kampus is designed so that **students want to use it and a university's IT office could sign off on it**.
+Universities can't simply let AI assistants into their systems either: student records are protected by FERPA, and schools require security approval before non-public data goes near AI. Kampus is designed so that **students want to use it and a university's IT office could sign off on it**.
 
 ## What it does
 
@@ -57,7 +57,7 @@ flowchart LR
 
 - **MCP is a thin outer layer.** Only the `kampus` binary speaks MCP. Modules and vendor adapters exchange plain Rust types and never see tokens.
 - **Policy on every call, before any data or cache is touched.** It checks role × tool × data class × which assistant is asking. Tools are never hidden: every caller sees the same list, and refusals are explicit and audited.
-- **Standard sign-in, with the school's own accounts.** kampus is an OAuth resource server that verifies RFC 9068 access tokens (audience = its own resource URL) from one configured issuer. That issuer is either the school's own authorization server or the built-in kampus broker (`--features broker`), which signs students in through the school's OIDC IdP and keeps no passwords, names or emails. A student adds kampus to Claude or ChatGPT by pasting one URL (Client ID Metadata Documents); the school's own workspace assistants are pre-registered clients with a secret. Public tools work without signing in; protected calls answer with a 401 or 403 challenge. Only pre-registered clients can be approved for personal data. Tested live with SJU's Google Workspace, Claude and ChatGPT: [docs/auth](docs/auth/README.md).
+- **Standard sign-in, with the school's own accounts.** Kampus is an OAuth resource server that verifies RFC 9068 access tokens (audience = its own resource URL) from one configured issuer. That issuer is either the school's own authorization server or the built-in Kampus broker (`--features broker`), which signs students in through the school's OIDC IdP and keeps no passwords, names or emails. A student adds Kampus to Claude or ChatGPT by pasting one URL (Client ID Metadata Documents); the school's own workspace assistants are pre-registered clients with a secret. Public tools work without signing in; protected calls answer with a 401 or 403 challenge. Only pre-registered clients can be approved for personal data. Tested live with SJU's Google Workspace, Claude and ChatGPT: [docs/auth](docs/auth/README.md).
 - **Adapters per vendor, not per school.** One LibCal adapter serves every LibCal school. Everything school-specific lives in two files: `schools/<id>/school.yaml` and `policy.yaml`.
 - **Real data first.** Tests run against recorded real responses from every public source (`fixtures/`).
 
@@ -86,7 +86,7 @@ export KAMPUS_TEMPLE_AUDIT_SALT=$(openssl rand -hex 32)
 ./target/release/kampus serve --school school.local.yaml --policy schools/temple/policy.yaml
 ```
 
-kampus now serves MCP at `http://127.0.0.1:8080/mcp`. Try it with the [MCP Inspector](https://modelcontextprotocol.io/docs/tools/inspector).
+Kampus now serves MCP at `http://127.0.0.1:8080/mcp`. Try it with the [MCP Inspector](https://modelcontextprotocol.io/docs/tools/inspector).
 
 ### With the sign-in broker (synthetic demo users)
 
@@ -110,14 +110,14 @@ If `CARGO_TARGET_DIR` is set, the binary is under that directory instead of `./t
 
 Claude and ChatGPT need a public HTTPS address. Two ways to get one:
 
-- [deploy/trial](deploy/trial/): one command (`up.sh`) on a server with Docker and a domain: kampus with the broker behind Caddy.
+- [deploy/trial](deploy/trial/): one command (`up.sh`) on a server with Docker and a domain: Kampus with the broker behind Caddy.
 - [deploy/cloudflare-tunnel](deploy/cloudflare-tunnel/README.md): a named Cloudflare Tunnel in front of a laptop, as used for the live runs.
 
 Then add the `/mcp` URL as a custom connector in Claude or a developer-mode connector in ChatGPT ([student guide](docs/auth/student-assistants.md)). Operators: start with [docs/auth](docs/auth/README.md), then [broker.md](docs/auth/broker.md) and [school-idp.md](docs/auth/school-idp.md) to sign students in with the school's own accounts.
 
 ## Repository layout
 
-kampus is a monorepo: the Rust server, the owl voice client and its hardware.
+Kampus is a monorepo: the Rust server, the owl voice client and its hardware.
 
 ```
 crates/server          the server binary: MCP mapping (rmcp), HTTP router, login middleware, admin page
@@ -151,7 +151,7 @@ House rules (from [AGENTS.md](AGENTS.md)): no `unsafe` (the workspace forbids it
 
 ## Status and roadmap
 
-kampus is a hackathon prototype, not production software. Personal data in the demo is synthetic, and bookings are simulated. Sign-in through a real school account works: the broker has been run live against Saint Joseph's University's Google Workspace with Claude and ChatGPT ([record](docs/auth/qualification.md)).
+Kampus is a hackathon prototype, not production software. Personal data in the demo is synthetic, and bookings are simulated. Sign-in through a real school account works: the broker has been run live against Saint Joseph's University's Google Workspace with Claude and ChatGPT ([record](docs/auth/qualification.md)).
 
 Next up:
 - A published-timetable fallback for Regional Rail, so late-night trips still get an answer
@@ -164,7 +164,7 @@ Next up:
 ## Docs
 
 - [Research report](docs/research/campus-ai-connector-report.md): the original plan and the research behind it
-- [Contracts](docs/contracts/README.md) · [Auth](docs/auth/README.md) · [Add kampus to your assistant](docs/auth/student-assistants.md) · [Transit](docs/transit/README.md) · [Device API](docs/device-api/README.md)
+- [Contracts](docs/contracts/README.md) · [Auth](docs/auth/README.md) · [Add Kampus to your assistant](docs/auth/student-assistants.md) · [Transit](docs/transit/README.md) · [Device API](docs/device-api/README.md)
 - [Demo script](docs/demo/script.md)
 
 ## License

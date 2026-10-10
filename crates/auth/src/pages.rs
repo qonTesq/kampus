@@ -67,13 +67,13 @@ impl PageError {
             Self::InvalidClient => (
                 StatusCode::BAD_REQUEST,
                 "Unknown assistant",
-                "This assistant is not registered with kampus, or its client information could not be verified. Ask your school's IT team which assistants are supported.",
+                "This assistant is not registered with Kampus, or its client information could not be verified. Ask your school's IT team which assistants are supported.",
                 false,
             ),
             Self::InvalidRedirect => (
                 StatusCode::BAD_REQUEST,
                 "Invalid return address",
-                "The assistant asked kampus to send you back to an address it has not registered, so kampus stopped here.",
+                "The assistant asked Kampus to send you back to an address it has not registered, so Kampus stopped here.",
                 false,
             ),
             Self::Expired => (
@@ -85,31 +85,31 @@ impl PageError {
             Self::BadRequest => (
                 StatusCode::BAD_REQUEST,
                 "Invalid request",
-                "kampus could not read this request. Start again from your assistant.",
+                "Kampus could not read this request. Start again from your assistant.",
                 false,
             ),
             Self::Busy => (
                 StatusCode::SERVICE_UNAVAILABLE,
-                "kampus is busy",
-                "kampus is handling too many sign-in requests right now.",
+                "Kampus is busy",
+                "Kampus is handling too many sign-in requests right now.",
                 true,
             ),
             Self::Upstream => (
                 StatusCode::BAD_GATEWAY,
                 "School sign-in unavailable",
-                "kampus could not reach your school's sign-in service.",
+                "Kampus could not reach your school's sign-in service.",
                 true,
             ),
             Self::LoginFailed => (
                 StatusCode::BAD_REQUEST,
                 "Sign-in failed",
-                "kampus could not confirm this sign-in with your school, so it stopped here. Start again from your assistant.",
+                "Kampus could not confirm this sign-in with your school, so it stopped here. Start again from your assistant.",
                 false,
             ),
             Self::NoRole => (
                 StatusCode::FORBIDDEN,
-                "No kampus access for this account",
-                "You signed in, but your school account has no kampus role. Ask your school's IT team to map your affiliation to a kampus role, then try again.",
+                "No Kampus access for this account",
+                "You signed in, but your school account has no Kampus role. Ask your school's IT team to map your affiliation to a Kampus role, then try again.",
                 false,
             ),
             Self::RateLimited => (
@@ -121,19 +121,19 @@ impl PageError {
             Self::CrossSite => (
                 StatusCode::FORBIDDEN,
                 "Request refused",
-                "This form was submitted from another site, so kampus refused it.",
+                "This form was submitted from another site, so Kampus refused it.",
                 false,
             ),
             Self::SignedOut => (
                 StatusCode::FORBIDDEN,
                 "Not signed in",
-                "Your kampus sign-in has ended. Connect kampus from your assistant to sign in again, then come back to this page.",
+                "Your Kampus sign-in has ended. Connect Kampus from your assistant to sign in again, then come back to this page.",
                 false,
             ),
             Self::Internal => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Something went wrong",
-                "kampus hit an internal error. Try again from your assistant.",
+                "Kampus hit an internal error. Try again from your assistant.",
                 true,
             ),
         }

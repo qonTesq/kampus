@@ -1,4 +1,4 @@
-# The kampus authorization broker
+# The Kampus authorization broker
 
 The broker is a small OAuth 2.1 authorization server for MCP clients. It's built into the `kampus` binary behind the `broker` cargo feature and starts only when `school.yaml` has an `auth.broker` section. It serves on **its own listener**, separate from the MCP and admin listeners. The resource server verifies its tokens like any other issuer's: RFC 8414 discovery, then the JWKS. There is no in-process shortcut, so the broker can become a separate binary later without code changes.
 
@@ -174,7 +174,7 @@ curl -s -o /dev/null -w '%{redirect_url}\n' -c "$demo/cookies.txt" \
 
 # 4. Consent: the page names the client, the resource and the scopes. Approve it.
 consent=$(curl -s -b "$demo/cookies.txt" "$issuer/consent?pending=$pending")
-printf %s "$consent" | grep '<h1>'   # <h1>Allow Claude (Temple workspace) to use kampus?</h1>
+printf %s "$consent" | grep '<h1>'   # <h1>Allow Claude (Temple workspace) to use Kampus?</h1>
 csrf=$(printf %s "$consent" | sed -n 's/.*name="csrf" value="\([0-9a-f]*\)".*/\1/p')
 callback=$(curl -s -o /dev/null -w '%{redirect_url}' -b "$demo/cookies.txt" \
   -d "pending=$pending&csrf=$csrf&decision=approve" "$issuer/consent")
@@ -229,11 +229,11 @@ With the shipped Temple policy (`sensitive_enabled: false`), the authenticated `
 
 The full student guide, from pasting the URL to disconnecting, is [student-assistants.md](student-assistants.md). In short:
 
-When you add kampus to Claude, ChatGPT or another assistant, it sends you to your school's kampus sign-in page. After you sign in, kampus asks whether to allow that assistant. The page names the assistant by its web address (for example `claude.ai`) or by the name your school gave it, never by a name the assistant chose for itself. It also shows the kampus address it will use and any extra permission it asks for, such as `rooms:book` for booking study rooms. Choose **Allow** or **Deny**. Deny sends you back to the assistant with nothing shared.
+When you add Kampus to Claude, ChatGPT or another assistant, it sends you to your school's Kampus sign-in page. After you sign in, Kampus asks whether to allow that assistant. The page names the assistant by its web address (for example `claude.ai`) or by the name your school gave it, never by a name the assistant chose for itself. It also shows the Kampus address it will use and any extra permission it asks for, such as `rooms:book` for booking study rooms. Choose **Allow** or **Deny**. Deny sends you back to the assistant with nothing shared.
 
-You are asked once per assistant and permission set. If an assistant later asks for more (for example booking rooms), kampus asks you again, and you'll see two entries for it.
+You are asked once per assistant and permission set. If an assistant later asks for more (for example booking rooms), Kampus asks you again, and you'll see two entries for it.
 
-To disconnect an assistant, open `/auth/connections` on your school's kampus address while you are still signed in (a sign-in lasts 8 hours; to sign in again, connect from your assistant). Each connected assistant has a **Disconnect** button. After you disconnect, the assistant can no longer renew its access. A token it already holds keeps working until it expires, at most `access_token_ttl_seconds` (15 minutes by default). Your school's policy still decides every request in the meantime.
+To disconnect an assistant, open `/auth/connections` on your school's Kampus address while you are still signed in (a sign-in lasts 8 hours; to sign in again, connect from your assistant). Each connected assistant has a **Disconnect** button. After you disconnect, the assistant can no longer renew its access. A token it already holds keeps working until it expires, at most `access_token_ttl_seconds` (15 minutes by default). Your school's policy still decides every request in the meantime.
 
 ### Accessibility
 

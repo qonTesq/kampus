@@ -1,7 +1,7 @@
 # course-search Specification
 
 ## Purpose
-Public Banner 9 course search with isolated sessions. Provides explicit behavior and failure boundaries for the software-only kampus implementation.
+Public Banner 9 course search with isolated sessions. Provides explicit behavior and failure boundaries for the software-only Kampus implementation.
 
 ## Requirements
 
@@ -21,7 +21,7 @@ search_courses SHALL declare Public, readOnlyHint=true and destructiveHint=false
 
 ### Requirement: Session-backed Banner requests
 
-The adapter SHALL establish the Banner term session with POST /term/search?mode=search and reuse its anonymous cookies for search. Cookies SHALL be isolated by school and term and SHALL never contain forwarded kampus user credentials.
+The adapter SHALL establish the Banner term session with POST /term/search?mode=search and reuse its anonymous cookies for search. Cookies SHALL be isolated by school and term and SHALL never contain forwarded Kampus user credentials.
 
 #### Scenario: First term search
 

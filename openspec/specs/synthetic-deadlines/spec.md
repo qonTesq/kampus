@@ -1,7 +1,7 @@
 # synthetic-deadlines Specification
 
 ## Purpose
-Sensitive my_deadlines against a synthetic Canvas-shaped service. Provides explicit behavior and failure boundaries for the software-only kampus implementation.
+Sensitive my_deadlines against a synthetic Canvas-shaped service. Provides explicit behavior and failure boundaries for the software-only Kampus implementation.
 
 ## Requirements
 
@@ -59,7 +59,7 @@ Sensitive calls SHALL require current enabled policy and either an approved clie
 
 ### Requirement: Sandbox-only service and bounded use
 
-Canvas simulation SHALL be unreachable in production builds and SHALL require sandbox runtime opt-in. It SHALL use only synthetic fixtures, a loopback service and per-user read limits, without forwarding kampus credentials.
+Canvas simulation SHALL be unreachable in production builds and SHALL require sandbox runtime opt-in. It SHALL use only synthetic fixtures, a loopback service and per-user read limits, without forwarding Kampus credentials.
 
 #### Scenario: Production start with fake
 
@@ -68,5 +68,5 @@ Canvas simulation SHALL be unreachable in production builds and SHALL require sa
 
 #### Scenario: Credential sentinel
 
-- **WHEN** an approved test call contains a distinctive kampus bearer token
+- **WHEN** an approved test call contains a distinctive Kampus bearer token
 - **THEN** the fake request, audit and logs contain no copy of that token

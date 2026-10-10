@@ -5,7 +5,7 @@ Owner: the `canvas-mock` change (`openspec/changes/archive/2026-09-28-canvas-moc
 ## Contract
 Implements `DeadlineProvider` against a loopback Canvas-shaped fake. Everything here is sandbox only.
 
-Synthetic users and courses only. Never use a caller's kampus token or a real admin credential. Project only `assignment_id`, `course_code`, `due_at`, `status`; drop titles, descriptions and comments. Fixtures: `fixtures/canvas-synthetic/` (labeled synthetic).
+Synthetic users and courses only. Never use a caller's Kampus token or a real admin credential. Project only `assignment_id`, `course_code`, `due_at`, `status`; drop titles, descriptions and comments. Fixtures: `fixtures/canvas-synthetic/` (labeled synthetic).
 
 ## Boundaries
 - Touch only this folder, your fixture folders and (via the integrator) the one registration line in `crates/server/src/registry.rs`.

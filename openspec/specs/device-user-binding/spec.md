@@ -1,7 +1,7 @@
 # device-user-binding Specification
 
 ## Purpose
-Server-only short-lived synthetic identity binding. Provides explicit behavior and failure boundaries for the software-only kampus implementation.
+Server-only short-lived synthetic identity binding. Provides explicit behavior and failure boundaries for the software-only Kampus implementation.
 
 ## Requirements
 

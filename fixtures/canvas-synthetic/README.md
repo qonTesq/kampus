@@ -11,7 +11,7 @@ Fixture ID: `canvas-synthetic/seed.json`, version 1.
 | `synthetic` | Must be `true`; the loader refuses anything else |
 | `users[].canvas_user_id` | The fake's Canvas user ID |
 | `users[].synthetic_user_id` | kampus-side synthetic ID (`DeadlineQuery.synthetic_user_id`) |
-| `users[].kampus_subjects` | Verified token `sub` values that map to this synthetic user: the broker's sandbox demo users carry these subjects (`synthetic:student-a`, `synthetic:student-b`; see `auth.broker.demo_users`). Each subject maps to at most one user. An empty list means no kampus account can reach this user |
+| `users[].kampus_subjects` | Verified token `sub` values that map to this synthetic user: the broker's sandbox demo users carry these subjects (`synthetic:student-a`, `synthetic:student-b`; see `auth.broker.demo_users`). Each subject maps to at most one user. An empty list means no Kampus account can reach this user |
 | `courses[]` | `id`, `course_code` (must be in the server-controlled enumeration in `kampus_canvas::COURSE_CODES`), `name` (free text; never projected) |
 | `enrollments[]` | `user_id` → `course_id` |
 | `assignments[]` | `id`, `course_id`, `name`, `description` (free text; never projected), `due_offset_minutes` relative to the fake's start time |
@@ -22,6 +22,6 @@ Due times are relative, so a demo started at any time still has upcoming deadlin
 
 ## Deliberate adversarial content
 
-Assignment `7003`'s name and description, and course `504`'s name, contain prompt-injection text, HTML, a script and links. Announcement `8001` is a teacher-message lookalike. They exist to prove that kampus projects only `assignment_id`, `course_code`, `due_at` and `status`, and that none of this text reaches the projected envelope or errors. Full-dispatch audit and tracing assertions remain pending auth integration.
+Assignment `7003`'s name and description, and course `504`'s name, contain prompt-injection text, HTML, a script and links. Announcement `8001` is a teacher-message lookalike. They exist to prove that Kampus projects only `assignment_id`, `course_code`, `due_at` and `status`, and that none of this text reaches the projected envelope or errors. Full-dispatch audit and tracing assertions remain pending auth integration.
 
-User `9003` (`synthetic-student-c`) has no kampus subject. That makes it an existing Canvas user no caller can select.
+User `9003` (`synthetic-student-c`) has no Kampus subject. That makes it an existing Canvas user no caller can select.

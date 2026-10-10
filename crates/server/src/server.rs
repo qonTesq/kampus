@@ -36,7 +36,7 @@ impl KampusMcp {
         let info = ServerConfig::new(ServerCapabilities::builder().enable_tools().build())
             .with_server_info(
                 Implementation::new("kampus", env!("CARGO_PKG_VERSION"))
-                    .with_title(format!("kampus ({display_name})")),
+                    .with_title(format!("Kampus ({display_name})")),
             )
             .with_instructions(
                 "Campus tools for students, faculty and staff. Every tool is listed; \

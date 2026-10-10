@@ -1,7 +1,7 @@
 # platform-foundation Specification
 
 ## Purpose
-Workspace, configuration, module/provider contracts, transport and safe output primitives. Provides explicit behavior and failure boundaries for the software-only kampus implementation.
+Workspace, configuration, module/provider contracts, transport and safe output primitives. Provides explicit behavior and failure boundaries for the software-only Kampus implementation.
 
 ## Requirements
 

@@ -1,8 +1,8 @@
-# kampus: demo script
+# Kampus: demo script
 
 Five minutes for the presentation and demo, not counting Q&A. The same material doubles as the script for the demo video.
 
-> **Status, 2026-10-10.** This is the OwlHacks script. Since then, sign-in runs through the kampus broker built into the binary (`--features sandbox,broker` for the demo), and a student can add kampus to a personal Claude or ChatGPT by URL alone ([docs/auth](../auth/README.md)). **Room search currently fails upstream** (LibCal's API now refuses anonymous requests; [details](../auth/qualification.md#findings-and-owner-decisions-task-77)), so until it's fixed, replace the room questions in beats 1, 3 and 4 with a train or library-hours question, and skip the booking.
+> **Status, 2026-10-10.** This is the OwlHacks script. Since then, sign-in runs through the Kampus broker built into the binary (`--features sandbox,broker` for the demo), and a student can add Kampus to a personal Claude or ChatGPT by URL alone ([docs/auth](../auth/README.md)). **Room search currently fails upstream** (LibCal's API now refuses anonymous requests; [details](../auth/qualification.md#findings-and-owner-decisions-task-77)), so until it's fixed, replace the room questions in beats 1, 3 and 4 with a train or library-hours question, and skip the booking.
 
 ## Roles and setup
 
@@ -33,7 +33,7 @@ Get-Content E:\kampus-local\audit.jsonl -Wait -Tail 3
 
 **C:**
 > "Canvas for deadlines. LibCal for study rooms. SEPTA for trains. Banner for courses. Six apps, six logins. Meanwhile, most students already ask ChatGPT or Claude everything, and none of them know anything about your campus.
-> This is **kampus**: your campus, inside the AI assistant you already use. It's one official, school-controlled connection between a university's systems and whatever assistant students pick."
+> This is **Kampus**: your campus, inside the AI assistant you already use. It's one official, school-controlled connection between a university's systems and whatever assistant students pick."
 
 (If you have a real student quote or number from the pitch feedback, add it here in one sentence.)
 
@@ -74,7 +74,7 @@ The owl answers with real rooms.
 The owl says: *"That's personal, so open it in your school's approved assistant. I'm a public helper."*
 
 **B:** "Hey Owl, how were you made?"
-The owl says: *"I'm a Raspberry Pi 5 with round-screen eyes. Gemini Live does my listening and thinking, ElevenLabs gives me my voice, and I get campus answers from kampus over MCP, as a public device, so I never see anyone's personal data."*
+The owl says: *"I'm a Raspberry Pi 5 with round-screen eyes. Gemini Live does my listening and thinking, ElevenLabs gives me my voice, and I get campus answers from Kampus over MCP, as a public device, so I never see anyone's personal data."*
 
 **B:**
 > "Anyone can walk up and ask. **The refusal is the feature.**"
@@ -97,14 +97,14 @@ Option 2 takes about 15 seconds; give the spare time to the owl by letting a jud
 **Slide 3.** **A**, one line each:
 - "**Live, public data:** Temple LibCal, Banner, SEPTA, library hours. **Synthetic:** anything personal."
 - "Rust, no `unsafe`, 276 tests, policy checked on every call, never by hiding tools."
-- "Sign-in through kampus's own standards-based broker and the school's accounts; public tools need no sign-in at all."
+- "Sign-in through Kampus's own standards-based broker and the school's accounts; public tools need no sign-in at all."
 - "Running on **kampus.study**, with Cloudflare, Gemini and ElevenLabs."
 
 ### 4:40–5:00 · Close
 **Slide 4:** `mcp.kampus.study` in large text.
 
 **C:**
-> "A new school is one YAML file. A new capability is one folder. Free, open source and self-hosted, so the school stays in control. Your campus, inside the AI assistant you already use. That's kampus."
+> "A new school is one YAML file. A new capability is one folder. Free, open source and self-hosted, so the school stays in control. Your campus, inside the AI assistant you already use. That's Kampus."
 
 ---
 
@@ -115,12 +115,12 @@ For the submission, and as a backup during the live demo. Record screen and audi
 | Time | Picture | Voice-over |
 |---|---|---|
 | 0:00–0:15 | Slide 1: six app icons | "Six campus apps, six logins, while students already ask AI everything. None of it knows their campus." |
-| 0:15–0:30 | Slide 2: the diagram | "kampus is one school-controlled connection between campus systems and any AI assistant, over MCP, written in Rust." |
+| 0:15–0:30 | Slide 2: the diagram | "Kampus is one school-controlled connection between campus systems and any AI assistant, over MCP, written in Rust." |
 | 0:30–1:05 | Claude: the question, deadlines and live rooms, the approval prompt, the receipt | "Claude is the school's approved assistant. Rooms are live from Temple's library; deadlines are synthetic. Booking is a proposal, then a write I approve." |
 | 1:05–1:40 | ChatGPT: trains answer, deadlines refused; zoom on the audit line | "Same server, same student, but ChatGPT isn't the school's approved assistant, so personal data is refused. The audit log records the decision, never the content." |
 | 1:40–2:15 | The owl: close-up, eyes blinking, a room answer, the refusal line, then the owl explaining how it was made (its own voice, no voice-over) | "Public questions yes, personal data never." |
 | 2:15–2:25 | Claude with `kampus-sju` answering Hawk Hill rooms, **or** the two `school.yaml` files side by side | "Saint Joseph's runs the same binary with one config file." |
-| 2:25–2:35 | Slide 4: `mcp.kampus.study` | "One YAML per school, one folder per feature. kampus." |
+| 2:25–2:35 | Slide 4: `mcp.kampus.study` | "One YAML per school, one folder per feature. Kampus." |
 
 ---
 
@@ -139,11 +139,11 @@ For the submission, and as a backup during the live demo. Record screen and audi
 
 - **"List all CIS courses."** That's 26 calls and about 90 seconds. Ask "Is there a machine learning course in CIS this fall?" instead.
 - **Trains late at night.** The live feed only covers the next hour.
-- **Course prerequisites.** kampus doesn't serve them yet (it's on the roadmap; Banner's description endpoint is verified).
+- **Course prerequisites.** Kampus doesn't serve them yet (it's on the roadmap; Banner's description endpoint is verified).
 
 ## Likely judge questions
 
-- **"FERPA?"** Sensitive data only reaches the school's approved workspace. Legally, that also needs the school's contract with the AI provider and sign-off from its security office; kampus enforces that decision, it doesn't replace it.
+- **"FERPA?"** Sensitive data only reaches the school's approved workspace. Legally, that also needs the school's contract with the AI provider and sign-off from its security office; Kampus enforces that decision, it doesn't replace it.
 - **"How do you know it's the school's ChatGPT and not someone's personal account?"** Approved assistants are pre-registered clients whose secret only the school's admin holds. Anything that registers itself is unapproved.
 - **"Why MCP?"** It's the standard both Claude and ChatGPT speak, so one server works in both.
 - **"How does another school join?"** One `school.yaml` and one `policy.yaml`. Adapters are per vendor, so any LibCal or Banner school reuses them.

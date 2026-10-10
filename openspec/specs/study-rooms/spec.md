@@ -1,7 +1,7 @@
 # study-rooms Specification
 
 ## Purpose
-LibCal availability and sandbox two-step booking. Provides explicit behavior and failure boundaries for the software-only kampus implementation.
+LibCal availability and sandbox two-step booking. Provides explicit behavior and failure boundaries for the software-only Kampus implementation.
 
 ## Requirements
 

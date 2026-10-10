@@ -1,10 +1,10 @@
-# Run kampus behind a Cloudflare Tunnel
+# Run Kampus behind a Cloudflare Tunnel
 
-This runs kampus and its authorization broker on one machine (a laptop) and publishes them on a real domain through a named Cloudflare Tunnel. There are no open ports and no VM, and Cloudflare handles HTTPS. It suits demos and pilots. For anything long-lived, use a server with Caddy in front ([../trial/](../trial/) or [../instances/Caddyfile](../instances/Caddyfile)), because a laptop has to stay on and awake.
+This runs Kampus and its authorization broker on one machine (a laptop) and publishes them on a real domain through a named Cloudflare Tunnel. There are no open ports and no VM, and Cloudflare handles HTTPS. It suits demos and pilots. For anything long-lived, use a server with Caddy in front ([../trial/](../trial/) or [../instances/Caddyfile](../instances/Caddyfile)), because a laptop has to stay on and awake.
 
 Use a **named** tunnel. A quick tunnel (`trycloudflare.com`) gets a new hostname on every start, and the broker's issuer and the token audience must stay the same.
 
-Each school runs one kampus process with three listeners, all on loopback:
+Each school runs one Kampus process with three listeners, all on loopback:
 
 | Listener | Temple (first school) | SJU (second school) | Through the tunnel |
 |---|---|---|---|
@@ -18,7 +18,7 @@ The tunnel routes only those paths, and everything else gets a 404. The admin li
 
 - A domain whose DNS is managed by Cloudflare (the free plan is fine). The examples use `mcp.example.edu` for the first school and `sju.example.edu` for the second; replace them with your own hostnames.
 - `cloudflared` installed.
-- A kampus build with the broker: `cargo build --release -p kampus --features broker`. Add `sandbox` (`--features sandbox,broker`) for synthetic demo users, the synthetic Canvas and simulated bookings.
+- A Kampus build with the broker: `cargo build --release -p kampus --features broker`. Add `sandbox` (`--features sandbox,broker`) for synthetic demo users, the synthetic Canvas and simulated bookings.
 
 ## 1. Create the tunnel and hostnames
 
@@ -173,5 +173,5 @@ The admin page stays local: open `http://127.0.0.1:8081/` (Temple) or `http://12
 
 ## Notes
 
-- kampus serves its protected-resource metadata at both `/.well-known/oauth-protected-resource/mcp` and `/.well-known/oauth-protected-resource`. ChatGPT uses the root form.
-- If the machine restarts, the URLs stay the same, but kampus and `cloudflared` must be started again. Broker sessions and refresh tokens live in memory, so assistants ask students to sign in again; access tokens already issued keep working until they expire, because the key file persists.
+- Kampus serves its protected-resource metadata at both `/.well-known/oauth-protected-resource/mcp` and `/.well-known/oauth-protected-resource`. ChatGPT uses the root form.
+- If the machine restarts, the URLs stay the same, but Kampus and `cloudflared` must be started again. Broker sessions and refresh tokens live in memory, so assistants ask students to sign in again; access tokens already issued keep working until they expire, because the key file persists.

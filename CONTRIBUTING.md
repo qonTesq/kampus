@@ -1,6 +1,6 @@
-# Contributing to kampus
+# Contributing to Kampus
 
-Thanks for helping. kampus is small on purpose, so most contributions are one of three things: a new school, a new vendor adapter, or a new capability.
+Thanks for helping. Kampus is small on purpose, so most contributions are one of three things: a new school, a new vendor adapter, or a new capability.
 
 Read [AGENTS.md](AGENTS.md) first. It lists the architecture, the hard rules and the forbidden patterns that every change is reviewed against, whether a person or an AI agent wrote it.
 
@@ -26,7 +26,7 @@ Read [AGENTS.md](AGENTS.md) first. It lists the architecture, the hard rules and
 
 To sign the school's students in with their own accounts, add an `auth.broker` section and follow [docs/auth/school-idp.md](docs/auth/school-idp.md).
 
-If the school uses a vendor kampus already supports (LibCal, Banner 9, GTFS), no code changes are needed. See [schools/sju/README.md](schools/sju/README.md) for a worked example.
+If the school uses a vendor Kampus already supports (LibCal, Banner 9, GTFS), no code changes are needed. See [schools/sju/README.md](schools/sju/README.md) for a worked example.
 
 ## Add a vendor adapter or a capability
 

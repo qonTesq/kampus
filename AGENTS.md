@@ -1,6 +1,6 @@
-# kampus: agent instructions
+# Kampus: agent instructions
 
-kampus is a self-hosted, policy-controlled bridge between a university's systems and any AI assistant, speaking MCP. Living specs: `openspec/specs/`. New work starts as an OpenSpec change in `openspec/changes/<change>/` (proposal, design, specs, tasks); finished changes are archived. Background: `docs/research/campus-ai-connector-report.md` sections 3, 5 and 6.
+Kampus is a self-hosted, policy-controlled bridge between a university's systems and any AI assistant, speaking MCP. Living specs: `openspec/specs/`. New work starts as an OpenSpec change in `openspec/changes/<change>/` (proposal, design, specs, tasks); finished changes are archived. Background: `docs/research/campus-ai-connector-report.md` sections 3, 5 and 6.
 
 This is the only agent instruction file. **Never create `CLAUDE.md`** or any tool-specific rule file (`.cursor/rules`, `.github/copilot-instructions.md`, …). The nearest `AGENTS.md` to the file you edit takes precedence for that folder.
 
@@ -36,7 +36,7 @@ schools/<id>/school.yaml, policy.yaml     everything school-specific
 
 ## Forbidden patterns (check in every review)
 
-1. Forwarding a user's kampus login token to Canvas or any upstream service.
+1. Forwarding a user's Kampus login token to Canvas or any upstream service.
 2. Writing tool output or student content to the audit log, tracing, metrics or operational logs.
 3. Swallowing errors into an empty list, including treating Banner `data:null` as "no results".
 4. Writing tool arguments, queries, booking times or sticker IDs to the audit log.

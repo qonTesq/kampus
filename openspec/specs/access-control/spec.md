@@ -1,7 +1,7 @@
 # access-control Specification
 
 ## Purpose
-Resource authentication, call-time policy, metadata-only audit, fallback and localhost administration. Provides explicit behavior and failure boundaries for the software-only kampus implementation.
+Resource authentication, call-time policy, metadata-only audit, fallback and localhost administration. Provides explicit behavior and failure boundaries for the software-only Kampus implementation.
 
 ## Requirements
 
@@ -160,7 +160,7 @@ The admin page SHALL bind only to loopback, protect mutations against cross-orig
 
 ### Requirement: Log verbosity cannot expose tool payloads
 
-Operational logging SHALL never contain tool arguments, tool results or other message content, whatever log level the operator configures. Only kampus's own log targets SHALL follow the configured level; dependency targets SHALL be capped at levels that do not log message payloads, and that cap SHALL NOT be overridable through configuration or environment variables.
+Operational logging SHALL never contain tool arguments, tool results or other message content, whatever log level the operator configures. Only Kampus's own log targets SHALL follow the configured level; dependency targets SHALL be capped at levels that do not log message payloads, and that cap SHALL NOT be overridable through configuration or environment variables.
 
 #### Scenario: Trace logging with sentinels
 

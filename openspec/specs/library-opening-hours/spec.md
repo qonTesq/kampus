@@ -1,7 +1,7 @@
 # library-opening-hours Specification
 
 ## Purpose
-Scraped library opening hours. Provides explicit behavior and failure boundaries for the software-only kampus implementation.
+Scraped library opening hours. Provides explicit behavior and failure boundaries for the software-only Kampus implementation.
 
 ## Requirements
 

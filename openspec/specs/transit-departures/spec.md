@@ -1,7 +1,7 @@
 # transit-departures Specification
 
 ## Purpose
-SEPTA live rail, filtered static GTFS and labeled Flight replay. Provides explicit behavior and failure boundaries for the software-only kampus implementation.
+SEPTA live rail, filtered static GTFS and labeled Flight replay. Provides explicit behavior and failure boundaries for the software-only Kampus implementation.
 
 ## Requirements
 

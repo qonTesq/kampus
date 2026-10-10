@@ -1,11 +1,11 @@
 {% extends "base.html" %}
-{% block title %}kampus: sign in{% endblock %}
+{% block title %}Kampus: sign in{% endblock %}
 {% block content %}
 <h1>Sign in to {{ school }}</h1>
-<p><strong>{{ client }}</strong> is asking to use kampus for you.</p>
+<p><strong>{{ client }}</strong> is asking to use Kampus for you.</p>
 {% match upstream_host %}{% when Some with (host) %}
 <p><a href="{{ upstream_action }}">Sign in with {{ host }}</a></p>
-<p>kampus never sees your password and keeps no name or email address.</p>
+<p>Kampus never sees your password and keeps no name or email address.</p>
 {% when None %}{% endmatch %}
 {% if !demo_users.is_empty() %}
 <h2>Synthetic demo users</h2>

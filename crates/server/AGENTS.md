@@ -1,4 +1,4 @@
-# kampus (binary)
+# Kampus (binary)
 
 Owner: the foundation integrator. It's the only crate that uses rmcp (`=3.5.0`; read `docs/vendor/rmcp/`).
 

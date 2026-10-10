@@ -1,7 +1,7 @@
 # school-instances Specification
 
 ## Purpose
-SJU configuration, instance isolation and software demo integration. Provides explicit behavior and failure boundaries for the software-only kampus implementation.
+SJU configuration, instance isolation and software demo integration. Provides explicit behavior and failure boundaries for the software-only Kampus implementation.
 
 ## Requirements
 
@@ -82,7 +82,7 @@ Each school instance that enables the broker SHALL have its own issuer URL, key 
 
 ### Requirement: One-command trial deployment
 
-The repository SHALL provide a trial deployment for one small VM. After the operator supplies a DNS name, a single documented command SHALL generate the missing secrets, build the sandbox + broker binary, and start kampus behind an HTTPS reverse proxy. The proxy SHALL route only the MCP endpoint, the protected-resource metadata, the broker's issuer paths and its RFC 8414 metadata. The admin listener SHALL stay on loopback. The documented trial SHALL demonstrate:
+The repository SHALL provide a trial deployment for one small VM. After the operator supplies a DNS name, a single documented command SHALL generate the missing secrets, build the sandbox + broker binary, and start Kampus behind an HTTPS reverse proxy. The proxy SHALL route only the MCP endpoint, the protected-resource metadata, the broker's issuer paths and its RFC 8414 metadata. The admin listener SHALL stay on loopback. The documented trial SHALL demonstrate:
 - public answers with no login
 - an approved pre-registered assistant reading synthetic deadlines
 - a student's own assistant connected by URL and sign-in
@@ -98,7 +98,7 @@ The repository SHALL provide a trial deployment for one small VM. After the oper
 #### Scenario: Missing secret
 
 - **WHEN** a required secret environment variable is empty
-- **THEN** kampus refuses to start and names the variable, without printing any secret value
+- **THEN** Kampus refuses to start and names the variable, without printing any secret value
 
 ### Requirement: Live assistant qualification
 

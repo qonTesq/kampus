@@ -1,7 +1,7 @@
 # authorization-broker Specification
 
 ## Purpose
-The kampus authorization broker issues standard OAuth 2.1 access tokens for one school's MCP resource to Claude, ChatGPT and other MCP clients. Real users sign in through the school's OIDC identity provider, and synthetic demo users exist only in sandbox builds. The broker stores no passwords or user records.
+The Kampus authorization broker issues standard OAuth 2.1 access tokens for one school's MCP resource to Claude, ChatGPT and other MCP clients. Real users sign in through the school's OIDC identity provider, and synthetic demo users exist only in sandbox builds. The broker stores no passwords or user records.
 
 ## Requirements
 
@@ -55,7 +55,7 @@ The broker SHALL sign access tokens with Ed25519 (EdDSA) keys from a key file ho
 
 #### Scenario: Rotation with live tokens
 
-- **WHEN** an access token is issued, `kampus auth rotate-key` runs and kampus restarts
+- **WHEN** an access token is issued, `kampus auth rotate-key` runs and Kampus restarts
 - **THEN** the JWKS lists two keys, new tokens carry the new `kid`, and the earlier token still verifies until its `exp`
 
 #### Scenario: Corrupt key file
@@ -155,7 +155,7 @@ After a valid authorization request, the broker SHALL establish the user through
 
 ### Requirement: Role mapping and pseudonymous subjects
 
-Roles SHALL be derived from the validated upstream ID token only through the configured ordered mapping of (claim path, value) → kampus role. A user to whom no mapping applies SHALL NOT receive a token and SHALL see an explanatory error page. The token subject for an upstream user SHALL be a keyed HMAC-SHA-256 of the upstream issuer and subject, with a school-specific key from an environment variable, encoded with a fixed prefix. The same upstream user SHALL always receive the same subject at that school, and different users or schools SHALL receive different subjects. Access tokens SHALL contain no email, name, upstream subject or other upstream claim.
+Roles SHALL be derived from the validated upstream ID token only through the configured ordered mapping of (claim path, value) → Kampus role. A user to whom no mapping applies SHALL NOT receive a token and SHALL see an explanatory error page. The token subject for an upstream user SHALL be a keyed HMAC-SHA-256 of the upstream issuer and subject, with a school-specific key from an environment variable, encoded with a fixed prefix. The same upstream user SHALL always receive the same subject at that school, and different users or schools SHALL receive different subjects. Access tokens SHALL contain no email, name, upstream subject or other upstream claim.
 
 #### Scenario: Stable pseudonym
 
@@ -165,7 +165,7 @@ Roles SHALL be derived from the validated upstream ID token only through the con
 #### Scenario: Unmapped affiliation
 
 - **WHEN** the ID token's affiliation claim has no configured mapping
-- **THEN** no code is issued and the page explains that the account has no kampus role
+- **THEN** no code is issued and the page explains that the account has no Kampus role
 
 #### Scenario: Injected role claim
 
@@ -260,7 +260,7 @@ Pending authorizations, codes, browser sessions, grants, refresh families and ca
 
 #### Scenario: Restart
 
-- **WHEN** kampus restarts
+- **WHEN** Kampus restarts
 - **THEN** existing refresh tokens fail with `invalid_grant`, and access tokens that were already issued keep verifying until `exp` because the key file persists
 
 ### Requirement: Broker privacy and logging

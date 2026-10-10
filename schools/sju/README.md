@@ -1,6 +1,6 @@
 # SJU instance
 
-SJU runs the same kampus executable as Temple. The checked-in settings use local OAuth, public vendor data and no sandbox providers. Both campuses use `sju.libcal.com`: Hawk Hill `20094`, University City `20098`. All seven tools remain listed. Courses and hours return `unsupported_source`; deadlines are denied by the default Sensitive policy. Booking requires a separate sandbox config with both `sandbox.enabled: true` and `libcal.booking_simulation: true` plus a sandbox build. No real booking is submitted.
+SJU runs the same Kampus executable as Temple. The checked-in settings use local OAuth, public vendor data and no sandbox providers. Both campuses use `sju.libcal.com`: Hawk Hill `20094`, University City `20098`. All seven tools remain listed. Courses and hours return `unsupported_source`; deadlines are denied by the default Sensitive policy. Booking requires a separate sandbox config with both `sandbox.enabled: true` and `libcal.booking_simulation: true` plus a sandbox build. No real booking is submitted.
 
 ## Run side by side
 
@@ -18,7 +18,7 @@ Temple listens on MCP 8080 / local admin 8081; SJU uses MCP 8090 / local admin 8
 
 ## Sign-in
 
-SJU's issuer is its own kampus broker, locally `http://127.0.0.1:8092/auth`, which arrives with the `auth-broker` change. Until then nothing serves it: public tools work without a token, and protected calls get a 401. A school can instead set `auth.issuer` to its own standards-compliant authorization server (token profile: `docs/auth/README.md`).
+SJU's issuer is its own Kampus broker, locally `http://127.0.0.1:8092/auth`, which arrives with the `auth-broker` change. Until then nothing serves it: public tools work without a token, and protected calls get a 401. A school can instead set `auth.issuer` to its own standards-compliant authorization server (token profile: `docs/auth/README.md`).
 
 Tokens must name SJU's resource URL (`server.resource_url`) as the audience, so a token minted for Temple's resource is refused at SJU and vice versa, even from a shared issuer. SJU's registry keys clients by `client_id`:
 
