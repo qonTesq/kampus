@@ -32,7 +32,7 @@ impl Clock for TestClock {
         Duration::from_millis(self.millis.load(Ordering::SeqCst))
     }
     fn wall(&self) -> DateTime<Utc> {
-        DateTime::parse_from_rfc3339("2026-09-27T12:00:00Z")
+        DateTime::parse_from_rfc3339("2026-10-12T11:00:00Z")
             .unwrap()
             .to_utc()
             + chrono::TimeDelta::from_std(self.elapsed()).unwrap()
@@ -206,7 +206,7 @@ async fn binding_expiry_uses_monotonic_time_and_preserves_trust() {
     assert_eq!(status, 200);
     assert_eq!(
         body,
-        json!({"status":"bound", "expires_at":"2026-09-27T12:02:00Z", "effective_role":"student", "demo_only":true})
+        json!({"status":"bound", "expires_at":"2026-10-12T11:02:00Z", "effective_role":"student", "demo_only":true})
     );
     let bound = h.identity();
     assert!(bound.principal.has_role(Role::Student));
@@ -472,7 +472,7 @@ async fn repeated_calls_resolve_live_identity_and_deny_sensitive_before_provider
     let mut security = security(&h.audit);
     security.identity = Some(h.service.clone());
     let dispatcher = Dispatcher::with_security("demo-u", registry.clone(), security);
-    let args = json!({"location_id":"8404", "room_id":"58701", "start":"2026-09-27T18:00:00Z", "end":"2026-09-27T19:00:00Z"});
+    let args = json!({"location_id":"8404", "room_id":"58701", "start":"2026-10-12T18:00:00Z", "end":"2026-10-12T19:00:00Z"});
     let before = dispatcher
         .call(
             "book_study_room",
@@ -593,7 +593,7 @@ async fn post_tap_booking_rechecks_generation_scope_and_annotations() {
             policy_version: 1,
         }
     };
-    let args = json!({"location_id":"8404", "room_id":"58701", "start":"2026-09-27T14:00:00-04:00", "end":"2026-09-27T15:00:00-04:00"});
+    let args = json!({"location_id":"8404", "room_id":"58701", "start":"2026-10-12T14:00:00-04:00", "end":"2026-10-12T15:00:00-04:00"});
     assert_eq!(h.tap("synthetic:sticker-a").await.0, 200);
     let proposal = rooms
         .call("book_study_room", args.clone(), &context())
@@ -639,7 +639,8 @@ async fn post_tap_booking_rechecks_generation_scope_and_annotations() {
         upstream
             .requests()
             .iter()
-            .all(|r| r.starts_with("GET /api/1.1/space/items/"))
+            .all(|r| r.starts_with("GET /spaces?m=s&")
+                || r.starts_with("POST /spaces/availability/grid?"))
     );
 }
 

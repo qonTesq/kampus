@@ -33,7 +33,7 @@ No module, adapter, auth, contract, registry or Temple file changed.
 - `libcal/20260927T024504670951Z-sju-university-city-availability`
 - `septa/20260927T024504670951Z-sju-overbrook-arrivals`
 
-Live probe at the same time: `GET https://sju.libcal.com/api/1.1/space/items/20094?availability=2026-09-27` returned HTTP 200.
+Live probe at the same time: `GET https://sju.libcal.com/api/1.1/space/items/20094?availability=2026-09-27` returned HTTP 200. Since 2026-10 API 1.1 refuses anonymous reads (HTTP 403); Kampus reads the public booking page instead (`openspec/changes/libcal-public-availability/`).
 
 ## Still needs a human
 

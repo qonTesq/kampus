@@ -4,6 +4,7 @@ Run from the repository root with Python 3.11 or later. No extra packages or Rus
 
 ```powershell
 python fixtures/capture.py public --date 2026-09-27
+python fixtures/capture.py libcal
 python fixtures/capture.py gtfs --gtfs-release v202609061
 python fixtures/capture.py gtfs
 python fixtures/capture.py verify
@@ -72,6 +73,21 @@ python fixtures/capture.py verify
 ```
 
 This captures the configured `GetMapVehiclePoints` endpoint with the same manifest rules. It is a documented manual capture slot, not an installed scheduler. Flight was not captured during this daytime task and remains nighttime evidence for public-transit. If the endpoint returns only positions, keep departure availability unknown; do not infer ETAs. Record any actual prediction endpoint separately if discovered. Replay requires both the sandbox build and runtime opt-in and must retain original capture/as-of timestamps.
+
+## LibCal public booking page, October 10, 2026
+
+LibCal API 1.1 now answers HTTP 403 to every anonymous request. `python fixtures/capture.py libcal` records what the public booking page loads instead, for each entry in `sources.json` `libcal_public`: the room directory (`GET /spaces?m=s&lid=…&search=`), the availability grid the page POSTs for each listed date (`POST /spaces/availability/grid` with the page's `Referer` and `X-Requested-With`, both recorded in the manifest), and, where `api_evidence` is set, the API 1.1 refusal. These manifests carry a `source_note`: the page endpoints are public but undocumented by Springshare, best-effort, and may change without notice.
+
+| Fixture IDs (`libcal/20261010T171030252035Z-…`) | Result |
+|---|---|
+| `sju-hawk-hill-directory`, `sju-university-city-directory` | HTTP 200 grid-mode page; 22 and 2 embedded `resources.push` rooms |
+| `temple-directory` | HTTP 200 search-mode listing; 32 spaces |
+| `sju-hawk-hill-grid-2026-10-12`, `-2026-10-11`, `-2026-10-10` | 286 slots (1 booked) / 132 / 0 (no Saturday room slots) |
+| `sju-university-city-grid-2026-10-12`, `-2026-10-10` | 24 / 0 slots |
+| `temple-grid-2026-10-12`, `-2026-10-11`, `-2026-11-26` | 980 slots (149 booked or unavailable) / 700 / 0 (Thanksgiving) |
+| `sju-hawk-hill-api-1.1-availability`, `temple-api-1.1-availability` | HTTP 403 "You do not have permission to perform this operation." |
+
+The directory pages contain library staff contact addresses that the libraries publish on the page; no student data is involved. The September API 1.1 recordings above stay as historical evidence.
 
 ## Verification
 

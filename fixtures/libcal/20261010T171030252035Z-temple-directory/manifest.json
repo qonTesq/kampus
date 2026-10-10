@@ -1,0 +1,21 @@
+{
+  "format_version": 1,
+  "kind": "recorded",
+  "captured_at": "2026-10-10T17:10:39.196618+00:00",
+  "source_url": "https://charlesstudy.temple.edu/spaces?m=s&lid=8404&search=",
+  "request": {
+    "method": "GET",
+    "form": null,
+    "headers": {
+      "Accept-Encoding": "identity"
+    },
+    "cookies": "omitted"
+  },
+  "license_provenance": "Public vendor response recorded for offline interoperability tests. Upstream retains rights; no additional license is asserted.",
+  "source_note": "Public LibCal booking page and the data endpoint that page itself calls. Undocumented by Springshare; best-effort, may change without notice.",
+  "http_status": 200,
+  "content_type": "text/html; charset=utf-8",
+  "body_file": "body.bin",
+  "sha256": "d809443c277f4355885b78284b90067065b8de5f42218b3a84ef1dfa44333880",
+  "byte_length": 81630
+}

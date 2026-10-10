@@ -95,10 +95,9 @@ impl Rooms {
         let args: FindArgs = parse_args(args)?;
         let (start, end) = args.window(ctx.now)?;
         let location_id = match args.location_id.as_deref() {
-            Some(requested) => libcal.resolve_location(requested),
-            None => Some(libcal.default_location()),
-        }
-        .ok_or_else(|| ToolError::invalid_arguments("Unknown location."))?;
+            Some(requested) => libcal.resolve_location(requested)?,
+            None => libcal.default_location(),
+        };
         let query = RoomQuery {
             location_id: location_id.to_owned(),
             start,
