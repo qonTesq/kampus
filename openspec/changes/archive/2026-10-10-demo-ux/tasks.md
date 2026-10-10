@@ -19,7 +19,7 @@
 
 ## 4. Deadline titles
 
-- [ ] 4.1 Blocked: frozen `Deadline` contract and the living spec exclude names
+- [x] 4.1 Owner decision 2026-10-10: titles stay out (privacy rule kept); the frozen `Deadline` contract and the living spec exclude names
 
 ## 5. Booking errors
 
