@@ -227,6 +227,8 @@ With the shipped Temple policy (`sensitive_enabled: false`), the authenticated `
 
 ## For students: connecting and disconnecting an assistant
 
+The full student guide, from pasting the URL to disconnecting, is [student-assistants.md](student-assistants.md). In short:
+
 When you add kampus to Claude, ChatGPT or another assistant, it sends you to your school's kampus sign-in page. After you sign in, kampus asks whether to allow that assistant. The page names the assistant by its web address (for example `claude.ai`) or by the name your school gave it, never by a name the assistant chose for itself. It also shows the kampus address it will use and any extra permission it asks for, such as `rooms:book` for booking study rooms. Choose **Allow** or **Deny**. Deny sends you back to the assistant with nothing shared.
 
 You are asked once per assistant and permission set. If an assistant later asks for more (for example booking rooms), kampus asks you again, and you'll see two entries for it.
