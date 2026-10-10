@@ -180,7 +180,8 @@ async fn b_aliases_resolve_to_scheduled_b1() {
             deps.iter()
                 .all(|d| d["timing"] == "scheduled" && d["delay_seconds"].is_null())
         );
-        assert_eq!(deps[0]["departure_at"], "2026-09-26T22:01:00Z");
+        // 22:01 UTC, in the school's own offset (EDT).
+        assert_eq!(deps[0]["departure_at"], "2026-09-26T18:01:00-04:00");
         assert_eq!(projected["meta"]["source_kind"], "scheduled");
         assert_eq!(projected["meta"]["sandbox"], false);
     }
@@ -233,6 +234,8 @@ async fn temple_rail_is_live_from_recorded_board_and_cached() {
     assert_eq!(projected["meta"]["stale"], false);
     for d in ok.data["departures"].as_array().unwrap() {
         assert_eq!(d["timing"], "live");
+        let at = d["departure_at"].as_str().unwrap();
+        assert!(at.ends_with("-04:00"), "{at}");
     }
     let requests = h.fake.requests.lock().unwrap().clone();
     assert_eq!(requests.len(), 1);

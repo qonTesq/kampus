@@ -13,7 +13,7 @@ Study rooms from Springshare LibCal (`adapters/libcal`), configured per school i
 Rules (demo defaults for the freeze, not LibCal rules):
 
 - Search window: end after start, not entirely past, at most 24 hours, starting within 7 days. Slots that already started are dropped. Only rooms with a free slot fully inside the window are returned; a day with no free slots is an empty `rooms` array.
-- Booking: start in the future, at most 2 hours, ending within 7 days, exactly covered by consecutive free LibCal slots.
+- Booking: start in the future, at most 2 hours, ending within 7 days, exactly covered by consecutive free LibCal slots. An unknown location, or a room the location's directory doesn't list, answers `invalid_arguments` naming which is unknown and pointing to `find_study_room`; "not free" means a listed room whose slot is taken.
 - Proposals expire after 120 s, are single-use and bound to school, subject, client identity (`client_id`), device and binding generation, and the policy version. Restart discards them. At most 5 live per user (oldest replaced), 1000 overall.
 - Per user: 5 proposals and 2 confirmations per minute, counting failures. Dispatch also applies the school's `policy.yaml` caller limits.
 - `confirm_booking` rechecks student role and `rooms:book` scope, consumes the proposal atomically, then rereads availability bypassing the 60 s cache. If the slot is gone, it answers `confirmation_invalid`. If LibCal is unreachable, it answers `upstream_unavailable` and the proposal stays usable until it expires. Neither case returns a receipt.

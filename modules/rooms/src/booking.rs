@@ -86,7 +86,16 @@ impl Booking {
         require_student(ctx)?;
         let args: ProposeArgs = parse_args(args)?;
         args.check(ctx.now)?;
-        let location_id = self.libcal.resolve_location(&args.location_id)?.to_owned();
+        let location_id = self
+            .libcal
+            .resolve_location(&args.location_id)
+            .map_err(|e| {
+                ToolError::invalid_arguments(format!(
+                    "{} Use find_study_room for valid room_id and location_id values.",
+                    e.message
+                ))
+            })?
+            .to_owned();
         let slot = TimeSlot {
             start: args.start,
             end: args.end,

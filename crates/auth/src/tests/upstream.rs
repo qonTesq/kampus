@@ -278,7 +278,7 @@ async fn sign_in_and_redeem(h: &Harness, request: &AuthRequest) -> Value {
 }
 
 #[tokio::test]
-async fn login_page_offers_the_school_idp() {
+async fn login_names_the_school_and_skips_a_one_option_page() {
     let idp = Idp::start().await;
     let h = broker(&idp).await;
     let reply = h.authorize(&AuthRequest::claude(), None).await;
@@ -289,14 +289,66 @@ async fn login_page_offers_the_school_idp() {
         .strip_prefix(&h.issuer)
         .unwrap()
         .to_owned();
+    let pending = path.strip_prefix("/login?pending=").unwrap().to_owned();
     let login = h.get(&path, None, None).await;
-    assert_eq!(login.status, 200);
-    assert!(
-        login.body.contains("Sign in with 127.0.0.1</a>"),
-        "{}",
-        login.body
-    );
-    assert!(login.body.contains("/auth/login/upstream?pending="));
+    if cfg!(feature = "sandbox") {
+        // Demo users are a second option, so the page is shown.
+        assert_eq!(login.status, 200);
+        assert!(
+            login
+                .body
+                .contains("Sign in with your Temple University account</a>"),
+            "{}",
+            login.body
+        );
+        assert!(!login.body.contains("127.0.0.1</a>"), "no IdP host");
+        assert!(
+            login
+                .body
+                .contains(&format!("/auth/login/upstream?pending={pending}"))
+        );
+    } else {
+        // The school's IdP is the only option: straight there, same pending ID.
+        assert_eq!(login.status, 303, "{login:?}");
+        assert_eq!(
+            login.location.as_deref(),
+            Some(format!("{}/login/upstream?pending={pending}", h.issuer).as_str())
+        );
+        let upstream = h
+            .get(&format!("/login/upstream?pending={pending}"), None, None)
+            .await;
+        assert_eq!(upstream.status, 303, "{upstream:?}");
+    }
+    // An expired or unknown pending ID still gets the error page.
+    assert_eq!(h.get("/login?pending=nope", None, None).await.status, 400);
+}
+
+#[tokio::test]
+async fn signed_in_pages_name_the_school_account_not_the_idp_host() {
+    let idp = Idp::start().await;
+    let h = broker(&idp).await;
+    let started = begin(&h, &AuthRequest::claude()).await;
+    let url = at_idp(&h, &started).await;
+    let reply = callback(&h, &url, Some(&started.cookie)).await;
+    let session = set_cookie(&reply, COOKIE).unwrap();
+    let consent = h
+        .get(
+            &format!("/consent?pending={}", started.pending),
+            Some(&session),
+            None,
+        )
+        .await;
+    let connections = h.get("/connections", Some(&session), None).await;
+    for page in [&consent, &connections] {
+        assert_eq!(page.status, 200);
+        assert!(
+            page.body
+                .contains("<strong>your Temple University account</strong>"),
+            "{}",
+            page.body
+        );
+        assert!(!page.body.contains("127.0.0.1 account"));
+    }
 }
 
 #[tokio::test]
@@ -831,6 +883,10 @@ async fn sentinel_flow() {
         "grant revoked",
         "upstream ID token refused",
         "no mapped kampus role",
+        // The workspace client replays the rotated token (revoking the
+        // family), then Claude's replay finds no family.
+        "refresh refused client_id=kampus-claude reason=\"reused\"",
+        "refresh refused client_id=https://claude.ai/oauth/mcp-oauth-client-metadata reason=\"unknown_token\"",
     ] {
         assert!(logs.contains(expected), "missing {expected:?} in:\n{logs}");
     }

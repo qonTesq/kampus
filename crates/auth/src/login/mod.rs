@@ -1,6 +1,7 @@
 //! `GET {issuer}/login?pending=…`: the sign-in page for a pending
-//! authorization: "Sign in with <school IdP>" (`upstream.rs`) and, in
-//! sandbox builds with `sandbox.enabled`, the synthetic demo users.
+//! authorization: "Sign in with your <school> account" (`upstream.rs`) and,
+//! in sandbox builds with `sandbox.enabled`, the synthetic demo users. With
+//! the upstream `IdP` as the only option it redirects straight there.
 
 #[cfg(feature = "sandbox")]
 pub(crate) mod demo;
@@ -15,7 +16,7 @@ use url::Url;
 
 use crate::Inner;
 use crate::authorize::AuthorizeQuery;
-use crate::pages::{LoginPage, PageError, render};
+use crate::pages::{LoginPage, PageError, render, see_other};
 
 /// `GET /login`.
 pub(crate) async fn login(
@@ -36,16 +37,21 @@ pub(crate) async fn login(
         return PageError::Expired.into_response();
     };
     let action = format!("{}/login/demo", inner.issuer.as_str().trim_end_matches('/'));
-    let upstream_host = inner.upstream.as_ref().and_then(|u| u.issuer.host_str());
+    let upstream = inner.upstream.is_some();
     let upstream_action = inner.url(&format!("/login/upstream?pending={id}"));
+    let demo_users = demo_labels(&inner);
+    // Nothing to choose: go straight to the school's sign-in.
+    if upstream && demo_users.is_empty() {
+        return see_other(&upstream_action);
+    }
     let page = LoginPage {
         school: &inner.school_name,
         client: &pending.client_label,
-        upstream_host,
+        upstream,
         upstream_action: &upstream_action,
         action: &action,
         pending: &id,
-        demo_users: demo_labels(&inner),
+        demo_users,
     };
     let target = Url::parse(&pending.redirect_uri).ok();
     render(&page, target.as_ref())

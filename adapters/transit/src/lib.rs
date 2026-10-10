@@ -18,7 +18,9 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use chrono::{DateTime, Utc};
-use chrono_tz::Tz;
+/// Re-exported so the transit module renders school-local times without
+/// its own `chrono-tz` dependency edge.
+pub use chrono_tz::Tz;
 use kampus_core::config::{SchoolConfig, TransitProvider as ProviderConfig};
 use kampus_core::contracts::providers::{Departure, Timing, TransitProvider};
 use kampus_core::output::{clean_text, limits::TITLE_MAX};

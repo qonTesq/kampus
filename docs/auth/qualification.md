@@ -71,7 +71,7 @@ Kampus was restarted at 16:19 with both assistants connected; the signing key fi
 
 ### Findings and owner decisions (task 7.7)
 
-- **Scopes up front.** Claude and ChatGPT both requested every scope in `scopes_supported` (here `rooms:book`) at first sign-in, so the `confirm_booking` step-up never ran live. Candidate fix: put a minimal `scope` in the tokenless 401 challenge so clients start small and step up on 403. Owner decision pending.
+- **Scopes up front.** Claude and ChatGPT both requested every scope in `scopes_supported` (here `rooms:book`) at first sign-in, so the `confirm_booking` step-up never ran live. Tried on 2026-10-10 with `scopes_supported: ["offline_access"]`: Claude signed in without `rooms:book`, got 403 `insufficient_scope` on `confirm_booking`, and did not start a step-up; it told the user to reconnect, and a manual reconnect requested the same scopes (consent skipped as an identical grant). Reverted: `rooms:book` stays advertised and is granted at first sign-in.
 - **No ChatGPT `_meta` lazy-auth or `private_key_jwt` need appeared**: ChatGPT connected through CIMD with `none`, and the standard 401 challenge was enough.
 - **Times in UTC.** `next_departures` returns UTC; Claude converted visibly, ChatGPT silently. Return the school's local time with an offset.
 - **LibCal API 1.1 refuses anonymous reads** for SJU and Temple since the fixtures were recorded; the public booking page's endpoint still works. Planned: use that public endpoint (documented as best-effort), fix the "drexel" alias and the 403 error code.
