@@ -27,7 +27,7 @@
 
 ## 6. SJU names
 
-- [ ] 6.1 "Drexel Library, Hawk Hill Campus" in both SJU configs; `kampus check`
+- [x] 6.1 "Drexel Library, Hawk Hill Campus" in both SJU configs; `kampus check`
 
 ## 7. Refused refresh log
 

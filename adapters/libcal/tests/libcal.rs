@@ -224,7 +224,7 @@ fn derived_malformed_grids_are_invalid() {
 
 #[test]
 fn locations_resolve_by_whole_words_and_refuse_ambiguity() {
-    // The real SJU configuration: "Hawk Hill Campus" (aliases Hawk Hill,
+    // The real SJU configuration: "Drexel Library, Hawk Hill Campus" (aliases Hawk Hill,
     // Drexel Library, Post Learning Commons) and "University City Campus".
     let yaml = std::fs::read_to_string(
         std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../schools/sju/school.yaml"),
@@ -245,6 +245,8 @@ fn locations_resolve_by_whole_words_and_refuse_ambiguity() {
         ("library", "20094"),
         ("post learning", "20094"),
         ("hawk hill", "20094"),
+        ("Hawk Hill Campus", "20094"),
+        ("Drexel Library, Hawk Hill Campus", "20094"),
         ("city", "20098"),
         ("University City Campus", "20098"),
         ("20098", "20098"),

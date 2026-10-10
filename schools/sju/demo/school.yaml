@@ -45,7 +45,7 @@ libcal:
   base_url: https://sju.libcal.com
   locations:
     - id: "20094"
-      name: Hawk Hill Campus
+      name: Drexel Library, Hawk Hill Campus
       aliases: [Hawk Hill, Drexel Library, Post Learning Commons]
     - id: "20098"
       name: University City Campus
@@ -56,7 +56,7 @@ hours:
   enabled: true
   libraries:
     - id: hawk-hill
-      name: Hawk Hill Campus library
+      name: Drexel Library, Hawk Hill Campus
       url: https://sju.libcal.com/widget/hours/grid?iid=6480&format=json&weeks=8&systemTime=0
       parser:
         profile: libcal-hours-grid
