@@ -4,7 +4,7 @@
 
 ## Area
 
-- [ ] Server (`crates/`, `modules/`, `schools/`, `fixtures/`)
+- [ ] Server (`crates/`, `adapters/`, `modules/`, `schools/`, `fixtures/`)
 - [ ] Owl client (`clients/owl/`)
 - [ ] Hardware (`hardware/`)
 - [ ] Docs, deploy or CI

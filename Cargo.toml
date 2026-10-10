@@ -1,15 +1,15 @@
 [workspace]
 resolver = "3"
 members = [
-    "crates/kampus",
-    "crates/kampus-core",
-    "crates/kampus-libcal",
-    "crates/kampus-banner",
-    "crates/kampus-transit",
-    "crates/kampus-hours",
-    "crates/kampus-canvas",
-    "crates/kampus-device",
-    "crates/kampus-auth",
+    "crates/server",
+    "crates/core",
+    "adapters/libcal",
+    "adapters/banner",
+    "adapters/transit",
+    "adapters/hours",
+    "adapters/canvas",
+    "crates/device",
+    "crates/auth",
     "modules/rooms",
     "modules/courses",
     "modules/transit",
@@ -64,14 +64,14 @@ askama = { version = "0.16.1", default-features = false, features = ["derive", "
 proptest = "1"
 
 # Workspace crates.
-kampus-core = { path = "crates/kampus-core" }
-kampus-libcal = { path = "crates/kampus-libcal" }
-kampus-banner = { path = "crates/kampus-banner" }
-kampus-transit = { path = "crates/kampus-transit" }
-kampus-hours = { path = "crates/kampus-hours" }
-kampus-canvas = { path = "crates/kampus-canvas" }
-kampus-device = { path = "crates/kampus-device" }
-kampus-auth = { path = "crates/kampus-auth" }
+kampus-core = { path = "crates/core" }
+kampus-libcal = { path = "adapters/libcal" }
+kampus-banner = { path = "adapters/banner" }
+kampus-transit = { path = "adapters/transit" }
+kampus-hours = { path = "adapters/hours" }
+kampus-canvas = { path = "adapters/canvas" }
+kampus-device = { path = "crates/device" }
+kampus-auth = { path = "crates/auth" }
 kampus-rooms = { path = "modules/rooms" }
 kampus-courses = { path = "modules/courses" }
 kampus-transit-tools = { path = "modules/transit" }

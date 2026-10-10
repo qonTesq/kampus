@@ -1,6 +1,6 @@
 # Synthetic Canvas seed (sandbox only)
 
-`seed.json` is a **hand-written synthetic** seed for the loopback Canvas-shaped fake in `crates/kampus-canvas` (`sandbox` feature). It isn't a vendor recording. No real Canvas instance, iCal feed, person or student record was used to make it. It's compiled into the binary only with the `sandbox` feature, and served only when `sandbox.enabled: true` and `canvas.enabled: true`.
+`seed.json` is a **hand-written synthetic** seed for the loopback Canvas-shaped fake in `adapters/canvas` (`sandbox` feature). It isn't a vendor recording. No real Canvas instance, iCal feed, person or student record was used to make it. It's compiled into the binary only with the `sandbox` feature, and served only when `sandbox.enabled: true` and `canvas.enabled: true`.
 
 Fixture ID: `canvas-synthetic/seed.json`, version 1.
 

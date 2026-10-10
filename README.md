@@ -120,10 +120,11 @@ Then add the `/mcp` URL as a custom connector in Claude or a developer-mode conn
 kampus is a monorepo: the Rust server, the owl voice client and its hardware.
 
 ```
-crates/kampus          the server binary: MCP mapping (rmcp), HTTP router, login middleware, admin page
-crates/kampus-core     contracts, config, policy, audit, dispatch, output sanitizing
-crates/kampus-auth     the OAuth sign-in broker (behind the `broker` feature)
-crates/kampus-*        vendor adapters: libcal, banner, transit, hours, canvas; device binding
+crates/server          the server binary: MCP mapping (rmcp), HTTP router, login middleware, admin page
+crates/core            contracts, config, policy, audit, dispatch, output sanitizing
+crates/auth            the OAuth sign-in broker (behind the `broker` feature)
+crates/device          POST /device/bind: the owl mascot's device binding
+adapters/*             vendor adapters: libcal, banner, transit, hours, canvas
 modules/*              one folder per capability: module.yaml + a small crate
 schools/<id>/          school.yaml and policy.yaml per school
 fixtures/              recorded real responses used by tests

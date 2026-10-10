@@ -1,6 +1,6 @@
 # Transit: `next_departures`
 
-Owner: the `public-transit` change. Code: `crates/kampus-transit` (adapters) and `modules/transit` (the tool).
+Owner: the `public-transit` change. Code: `adapters/transit` (adapters) and `modules/transit` (the tool).
 
 ## Tool
 

@@ -69,7 +69,7 @@ pub struct Deadlines {
     limiter: RateLimiter,
 }
 
-/// Registration entry point, called once from `crates/kampus/src/registry.rs`.
+/// Registration entry point, called once from `crates/server/src/registry.rs`.
 pub fn module(init: &ModuleInit) -> Result<Arc<dyn Module>, RegistryError> {
     Ok(Arc::new(Deadlines::new(init, configured_source(init)?)?))
 }

@@ -6,6 +6,7 @@ on:
     branches: [master]
     paths:
       - "crates/**"
+      - "adapters/**"
       - "modules/**"
       - "schools/**"
       - "fixtures/**"
@@ -17,6 +18,7 @@ on:
   pull_request:
     paths:
       - "crates/**"
+      - "adapters/**"
       - "modules/**"
       - "schools/**"
       - "fixtures/**"

@@ -61,7 +61,7 @@ pub struct Transit {
     enabled: Option<Enabled>,
 }
 
-/// Registration entry point, called once from `crates/kampus/src/registry.rs`.
+/// Registration entry point, called once from `crates/server/src/registry.rs`.
 pub fn module(init: &ModuleInit) -> Result<Arc<dyn Module>, RegistryError> {
     let descriptor = ModuleDescriptor::from_yaml(MODULE_ID, MODULE_YAML)?;
     let enabled = match init.school.transit.as_ref() {

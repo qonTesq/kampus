@@ -1,6 +1,6 @@
 # kampus contracts (frozen, 2026-09-26)
 
-**Status: frozen as committed at `d9ff8ee`.** Changing a contract requires a human's sign-off. Source of truth: `crates/kampus-core/src/contracts/` and `crates/kampus-core/src/config/`; this page is the field reference.
+**Status: frozen as committed at `d9ff8ee`.** Changing a contract requires a human's sign-off. Source of truth: `crates/core/src/contracts/` and `crates/core/src/config/`; this page is the field reference.
 
 ## module.yaml (version 1)
 
@@ -105,7 +105,7 @@ On 2026-09-26, America/New_York, the human project owner instructed foundation t
 
 - S1: the optional `school.yaml` `auth.broker` section and its validation rules (field reference below).
 - S2: the `broker` cargo feature on `kampus` (`sandbox` also enables the broker's sandbox parts). The demo build is `--features sandbox,broker`, and the gate adds a clippy and test run with `--features kampus/sandbox,kampus/broker`.
-- S3: the dependencies `openidconnect` 4.0.1 (default features off) and `askama` 0.16.1; dev-only `proptest`, rmcp's `auth`, `client` and `transport-streamable-http-client-reqwest` features for `crates/kampus` tests, and `libfuzzer-sys` in the `fuzz/` crate, which the root manifest excludes from the workspace.
+- S3: the dependencies `openidconnect` 4.0.1 (default features off) and `askama` 0.16.1; dev-only `proptest`, rmcp's `auth`, `client` and `transport-streamable-http-client-reqwest` features for `crates/server` tests, and `libfuzzer-sys` in the `fuzz/` crate, which the root manifest excludes from the workspace.
 - S4: the synthetic Canvas seed subjects become `synthetic:student-a` and `synthetic:student-b`.
 - S5: the `client_credentials` grant for pre-registered device clients.
 

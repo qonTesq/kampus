@@ -1,6 +1,6 @@
 //! Task 3.11: the RFC negative matrix of design §14, one test per row (the
 //! resource-server rows on tampered broker tokens live in
-//! `crates/kampus/tests/broker.rs`). Every authorization refusal is made by
+//! `crates/server/tests/broker.rs`). Every authorization refusal is made by
 //! a signed-in browser, so a code would have been issued had the broker not
 //! refused; each test asserts that none was.
 

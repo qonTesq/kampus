@@ -34,4 +34,4 @@ curl -s http://127.0.0.1:8080/mcp -H 'Content-Type: application/json' -H 'Accept
 curl -si http://127.0.0.1:8080/mcp -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' \
   -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"curl","version":"0"}}}'
 ```
-Public HTTPS smoke test: the same requests against `https://<KAMPUS_DOMAIN>/mcp`, plus the MCP Inspector (`npx @modelcontextprotocol/inspector`) in both protocol modes. The offline equivalents are in `crates/kampus/tests/transport.rs`.
+Public HTTPS smoke test: the same requests against `https://<KAMPUS_DOMAIN>/mcp`, plus the MCP Inspector (`npx @modelcontextprotocol/inspector`) in both protocol modes. The offline equivalents are in `crates/server/tests/transport.rs`.
