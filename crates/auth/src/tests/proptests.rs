@@ -14,7 +14,7 @@ use ::proptest::test_runner::{Config, TestRunner};
 use super::{AuthRequest, CLAUDE_REDIRECT, Harness};
 use crate::authorize::{AuthorizeQuery, Refusal};
 use crate::pages::PageError;
-use crate::store::{Capacity, Family, GrantKey, MemoryStore, Rotation, Store as _};
+use crate::store::{Capacity, Family, GrantKey, MemoryStore, Rotation};
 
 const UNIVERSE: [&str; 4] = ["a", "b", "rooms:book", "c:d"];
 

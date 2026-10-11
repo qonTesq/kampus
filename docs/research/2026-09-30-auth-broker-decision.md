@@ -1,6 +1,6 @@
 # Decision record: kampus builds its own authorization broker
 
-**Date:** 2026-09-30 · **Decided by:** project owner · **Status:** accepted · **Plans:** `openspec/changes/standard-token-profile/`, `openspec/changes/auth-broker/`
+**Date:** 2026-09-30 · **Decided by:** project owner · **Status:** accepted · **Plans:** `openspec/changes/archive/2026-10-02-standard-token-profile/`, `openspec/changes/archive/2026-10-10-auth-broker/`
 
 ## Decision
 

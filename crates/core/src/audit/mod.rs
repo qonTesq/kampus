@@ -1,5 +1,5 @@
 //! Metadata-only JSONL audit log implementing
-//! [`crate::contracts::AuditSink`]. OWNED BY auth-policy-audit.
+//! [`crate::contracts::AuditSink`].
 //!
 //! One line per [`AuditEvent`]: timestamp, school, salted subject hash, `client_id`,
 //! tool, effective class, decision, rule, latency and policy version. The

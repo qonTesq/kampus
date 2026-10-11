@@ -1,6 +1,6 @@
 //! Resource-server authentication (RFC 9068 access-token verification
 //! against the configured issuer, protected-resource metadata, 401
-//! challenges). OWNED BY auth-policy-audit.
+//! challenges).
 //!
 //! Output: a verified [`Principal`], inserted into the HTTP request extensions
 //! by the server's middleware before the MCP service runs. Nothing here trusts

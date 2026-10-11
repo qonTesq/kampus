@@ -2,15 +2,7 @@
 
 The broker is a small OAuth 2.1 authorization server for MCP clients. It's built into the `kampus` binary behind the `broker` cargo feature and starts only when `school.yaml` has an `auth.broker` section. It serves on **its own listener**, separate from the MCP and admin listeners. The resource server verifies its tokens like any other issuer's: RFC 8414 discovery, then the JWKS. There is no in-process shortcut, so the broker can become a separate binary later without code changes.
 
-The broker never stores passwords or user records. All of its state (pending sign-ins, sessions, codes, grants, refresh tokens, cached client documents) lives in memory. A restart signs everyone out; access tokens already issued keep working until they expire because the key file persists.
-
-## Builds
-
-| Build | Command | Broker |
-|---|---|---|
-| Production, no broker | `cargo build --release -p kampus` | none; a `school.yaml` with `auth.broker` fails startup |
-| Production with broker | `cargo build --release -p kampus --features broker` | upstream OIDC login only |
-| Demo | `cargo build --release -p kampus --features sandbox,broker` | upstream login plus synthetic demo users (with `sandbox.enabled: true`) |
+The broker never stores passwords or user records. All of its state (pending sign-ins, sessions, codes, grants, refresh tokens, cached client documents) lives in memory. A restart signs everyone out; access tokens already issued keep working until they expire because the key file persists. Builds with and without the broker: [README.md](README.md#builds).
 
 ## Configuration
 
@@ -86,7 +78,7 @@ Locally, without a proxy, the issuer is `http://127.0.0.1:8082/auth` and the bro
 
 ## Upstream sign-in
 
-With `upstream` set, the sign-in page offers "Sign in with your <school display name> account"; when the IdP is the only option (no demo users), `GET /auth/login` redirects straight to `GET /auth/login/upstream` with the same pending ID. `GET /auth/login/upstream` sends the browser to the IdP with the broker's own `state`, `nonce` and S256 PKCE challenge, and sets a 10-minute `__Host-kampus_login` cookie (`Secure; HttpOnly; SameSite=Lax; Path=/`) that binds the login to that browser. `GET /auth/callback` accepts the IdP's answer once: the `state` must be known, unused and from the same browser, an RFC 9207 `iss` parameter must equal the IdP's issuer (and must be present when the IdP advertises it), and the ID token's signature, `iss`, `aud`, `exp` and `nonce` must validate. Then the broker maps roles, derives the subject (below), starts the 8-hour session, clears the login cookie and continues to consent. Any failure shows an error page and creates no session; an IdP timeout or outage (5 s per request) shows a retryable page. Registration and role-mapping checklist: [school-idp.md](school-idp.md).
+With `upstream` set, the sign-in page offers "Sign in with your <school display name> account"; when the IdP is the only option (no demo users), `GET /auth/login` redirects straight to `GET /auth/login/upstream` with the same pending ID. `GET /auth/login/upstream` sends the browser to the IdP with the broker's own `state`, `nonce` and S256 PKCE challenge, and sets a 10-minute `__Host-kampus_login` cookie (`Secure; HttpOnly; SameSite=Lax; Path=/`) that binds the login to that browser. `GET /auth/callback` accepts the IdP's answer once: the `state` must be known, unused and from the same browser, an RFC 9207 `iss` parameter must equal the IdP's issuer (and must be present when the IdP advertises it), and the ID token's signature, `iss`, `aud`, `exp` and `nonce` must validate. Then the broker maps roles, derives the pseudonymous subject ([school-idp.md](school-idp.md#4-keep-the-subject-key-forever)), starts the 8-hour session, clears the login cookie and continues to consent. Any failure shows an error page and creates no session; an IdP timeout or outage (5 s per request) shows a retryable page. Registration and role-mapping checklist: [school-idp.md](school-idp.md).
 
 ## Signing keys and rotation
 
@@ -225,22 +217,10 @@ kill %1
 
 With the shipped Temple policy (`sensitive_enabled: false`), the authenticated `my_deadlines` call returns HTTP 200 with a `permission_denied` envelope: the resource server accepted the broker's token, and school policy refused the Sensitive tool. Turn the switches on in a copy of the policy to see deadlines. The session cookie in `$demo/cookies.txt` skips the picker on the next authorization for 8 hours, and an authorization for the same client and scopes skips consent while the grant exists. The form POSTs work from curl because it sends no `Origin`; a browser's cross-site POST is refused.
 
-## For students: connecting and disconnecting an assistant
+## Pages and accessibility
 
-The full student guide, from pasting the URL to disconnecting, is [student-assistants.md](student-assistants.md). In short:
-
-When you add Kampus to Claude, ChatGPT or another assistant, it sends you to your school's Kampus sign-in page. After you sign in, Kampus asks whether to allow that assistant. The page names the assistant by its web address (for example `claude.ai`) or by the name your school gave it, never by a name the assistant chose for itself. It also shows the Kampus address it will use and any extra permission it asks for, such as `rooms:book` for booking study rooms. Choose **Allow** or **Deny**. Deny sends you back to the assistant with nothing shared.
-
-You are asked once per assistant and permission set. If an assistant later asks for more (for example booking rooms), Kampus asks you again, and you'll see two entries for it.
-
-To disconnect an assistant, open `/auth/connections` on your school's Kampus address while you are still signed in (a sign-in lasts 8 hours; to sign in again, connect from your assistant). Each connected assistant has a **Disconnect** button. After you disconnect, the assistant can no longer renew its access. A token it already holds keeps working until it expires, at most `access_token_ttl_seconds` (15 minutes by default). Your school's policy still decides every request in the meantime.
-
-### Accessibility
+What students see on these pages, from pasting the URL to disconnecting: [student-assistants.md](student-assistants.md).
 
 The sign-in, consent, connected-assistants and error pages are plain HTML with no scripts and one small inline stylesheet (`crates/auth/templates/style.css`), allowed by its CSP `style-src` hash and nothing else: one `h1` per page, buttons whose text names the action and the assistant ("Allow claude.ai", "Disconnect claude.ai"), tab order equal to reading order and a 3 px focus outline. Text contrast stays above 4.5:1 in light and dark mode, and buttons go full width on narrow screens. Nothing takes focus automatically, so Allow is never one keypress away on arrival. Errors are announced with `role="alert"`; after a disconnect the page title changes to "kampus: assistant disconnected" and a `role="status"` message comes right after the heading.
 
 Keyboard-only walkthrough (2026-10-09, the desktop app's Chromium pane, a local sandbox build with a loopback redirect): on the sign-in page, Tab focused "Student A (synthetic demo user)" and Enter signed in. On the consent page, Tab went to the "connected assistants" link, then "Allow Claude (Temple workspace)", then "Deny Claude (Temple workspace)", with a visible focus ring; Enter on Allow returned to the client with `code`, `state` and `iss`. On `/auth/connections`, the first Tab reached "Disconnect Claude (Temple workspace)"; Enter removed it, and the new page's title and status text said so. Not tested: a screen reader, or browser zoom.
-
-## Subject key
-
-`sub` for an upstream user is `k1.` plus the first 16 bytes, as hex, of HMAC-SHA-256 over the upstream issuer and subject, keyed with `subject_key_env`. Tokens never carry the upstream subject, an email or a name. Rotating the subject key changes every user's `sub`: audit subject hashes change and every grant is lost. Treat it as permanent. Each school has its own key, so the same person gets different subjects at different schools.

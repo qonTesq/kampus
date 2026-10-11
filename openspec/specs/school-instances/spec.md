@@ -87,13 +87,7 @@ Each school instance that enables the broker SHALL have its own issuer URL, key 
 
 ### Requirement: One-command trial deployment
 
-The repository SHALL provide a trial deployment for one small VM. After the operator supplies a DNS name, a single documented command SHALL generate the missing secrets, build the sandbox + broker binary, and start Kampus behind an HTTPS reverse proxy. The proxy SHALL route only the MCP endpoint, the protected-resource metadata, the broker's issuer paths and its RFC 8414 metadata. The admin listener SHALL stay on loopback. The documented trial SHALL demonstrate:
-- public answers with no login
-- an approved pre-registered assistant reading synthetic deadlines
-- a student's own assistant connected by URL and sign-in
-- a policy refusal
-- the metadata-only audit
-- sign-in through either the synthetic demo users or a configured school OIDC IdP
+The repository SHALL provide a trial deployment for one small VM. After the operator supplies a DNS name, a single documented command SHALL generate the missing secrets, build the sandbox + broker binary, and start Kampus behind an HTTPS reverse proxy. The proxy SHALL route only the MCP endpoint, the protected-resource metadata, the broker's issuer paths and its RFC 8414 metadata. The admin listener SHALL stay on loopback.
 
 #### Scenario: Fresh VM
 
@@ -105,6 +99,21 @@ The repository SHALL provide a trial deployment for one small VM. After the oper
 - **WHEN** a required secret environment variable is empty
 - **THEN** Kampus refuses to start and names the variable, without printing any secret value
 
+### Requirement: What the trial demonstrates
+
+The documented trial SHALL demonstrate:
+- public answers with no login
+- an approved pre-registered assistant reading synthetic deadlines
+- a student's own assistant connected by URL and sign-in
+- a policy refusal
+- the metadata-only audit
+- sign-in through either the synthetic demo users or a configured school OIDC IdP
+
+#### Scenario: Trial walkthrough
+
+- **WHEN** an operator follows the trial documentation on a running trial
+- **THEN** each of these outcomes can be shown with the bundled trial school and policy, without code changes
+
 ### Requirement: Live assistant qualification
 
 Before the broker is called supported, recorded live runs SHALL show both Claude and ChatGPT completing, over HTTPS on a public host:
@@ -114,7 +123,7 @@ Before the broker is called supported, recorded live runs SHALL show both Claude
 - the step-up for `confirm_booking`
 - revocation
 
-The runs SHALL also show the policy outcomes: approved Sensitive access, and a personal-switch denial followed by an allow. Each run SHALL record the date, client surface, redirect URI, authentication method, requested and granted scopes and outcome, without tokens or secrets. Offline tests SHALL NOT be presented as evidence for these runs.
+Offline tests SHALL NOT be presented as evidence for these runs.
 
 #### Scenario: Claude personal connection
 
@@ -125,3 +134,12 @@ The runs SHALL also show the policy outcomes: approved Sensitive access, and a p
 
 - **WHEN** a live run fails at any step
 - **THEN** the qualification record marks that step failed with the observed error, and no documentation claims support for that surface
+
+### Requirement: Qualification record contents
+
+The live runs SHALL also show the policy outcomes: approved Sensitive access, and a personal-switch denial followed by an allow. Each run SHALL record the date, client surface, redirect URI, authentication method, requested and granted scopes and outcome, without tokens or secrets.
+
+#### Scenario: Recorded run
+
+- **WHEN** a live run is recorded
+- **THEN** its entry names the date, client surface, redirect URI, authentication method, requested and granted scopes and outcome, and contains no token, code or secret

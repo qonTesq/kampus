@@ -157,11 +157,6 @@ impl PublicCache {
         }
     }
 
-    /// Drop every entry for a school (e.g. after a configuration reload).
-    pub fn invalidate_school(&self, school_id: &str) {
-        self.lock().retain(|k, _| k.school_id != school_id);
-    }
-
     fn slot(&self, key: CacheKey) -> Arc<Slot> {
         let mut slots = self.lock();
         if slots.len() >= self.max_entries && !slots.contains_key(&key) {

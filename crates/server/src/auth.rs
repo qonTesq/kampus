@@ -1,4 +1,4 @@
-//! HTTP glue for `kampus_core::auth` (auth-policy-audit): the path-inserted
+//! HTTP glue for `kampus_core::auth`: the path-inserted
 //! protected-resource metadata route, the middleware that verifies the
 //! bearer token of every MCP request and inserts the `Principal`, and the
 //! lazy-authentication preflight that answers 401/403/429 before rmcp runs

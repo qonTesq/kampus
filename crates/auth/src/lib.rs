@@ -41,7 +41,7 @@ use url::Url;
 
 use cimd::CimdCache;
 use limits::Limits;
-use store::{Capacity, MemoryStore, Store};
+use store::{Capacity, MemoryStore};
 
 pub use clients::MissingSecret;
 pub use error::OAuthError;
@@ -97,20 +97,6 @@ pub enum BrokerError {
     Http,
 }
 
-/// Optional runtime inputs (tests inject a clock).
-#[derive(Default)]
-pub struct BrokerOptions {
-    pub clock: Option<Clock>,
-}
-
-impl fmt::Debug for BrokerOptions {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("BrokerOptions")
-            .field("clock", &self.clock.is_some())
-            .finish()
-    }
-}
-
 /// One school's broker.
 #[derive(Debug, Clone)]
 pub struct Broker {
@@ -126,7 +112,7 @@ pub(crate) struct Inner {
     pub(crate) keys: SigningKeys,
     pub(crate) clients: Clients,
     pub(crate) cimd: CimdCache,
-    pub(crate) store: Box<dyn Store>,
+    pub(crate) store: MemoryStore,
     pub(crate) limits: Limits,
     pub(crate) school_name: String,
     /// The school's timezone, for times shown on pages.
@@ -156,24 +142,6 @@ impl fmt::Debug for Inner {
             .field("issuer", &self.issuer.as_str())
             .finish_non_exhaustive()
     }
-}
-
-/// Check the broker's secrets without touching the key file or the
-/// network (`kampus check`): every secret is set and the subject key is
-/// at least 32 bytes of hex.
-pub fn check(
-    school: &SchoolConfig,
-    secret: &dyn Fn(&str) -> Option<String>,
-) -> Result<(), BrokerError> {
-    let config = school
-        .auth
-        .broker
-        .as_ref()
-        .ok_or(BrokerError::NotConfigured)?;
-    subject_key(&config.subject_key_env, secret)?;
-    Clients::from_config(config, secret)?;
-    upstream_secret(config, secret)?;
-    Ok(())
 }
 
 fn upstream_secret(
@@ -231,21 +199,14 @@ impl Broker {
         school: &SchoolConfig,
         secret: &dyn Fn(&str) -> Option<String>,
     ) -> Result<Self, BrokerError> {
-        Self::with_options(school, secret, BrokerOptions::default())
+        Self::build(school, secret, Arc::new(util::unix_now), Capacity::DEFAULT)
     }
 
-    pub fn with_options(
-        school: &SchoolConfig,
-        secret: &dyn Fn(&str) -> Option<String>,
-        options: BrokerOptions,
-    ) -> Result<Self, BrokerError> {
-        Self::build(school, secret, options, Capacity::DEFAULT)
-    }
-
+    /// [`Broker::new`] with an injected clock and store capacity (tests).
     pub(crate) fn build(
         school: &SchoolConfig,
         secret: &dyn Fn(&str) -> Option<String>,
-        options: BrokerOptions,
+        clock: Clock,
         capacity: Capacity,
     ) -> Result<Self, BrokerError> {
         let config = school
@@ -274,7 +235,7 @@ impl Broker {
             keys,
             clients,
             cimd,
-            store: Box::new(MemoryStore::new(capacity)),
+            store: MemoryStore::new(capacity),
             limits: Limits::new(),
             school_name: school.school.display_name.clone(),
             // Config validation already refused an unknown timezone.
@@ -283,7 +244,7 @@ impl Broker {
             subject_key,
             #[cfg(feature = "sandbox")]
             demo_users: config.demo_users.clone(),
-            clock: options.clock.unwrap_or_else(|| Arc::new(util::unix_now)),
+            clock,
         };
         Ok(Self {
             inner: Arc::new(inner),

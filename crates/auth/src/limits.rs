@@ -1,5 +1,5 @@
 //! Rate limits on the browser-facing endpoints (`/authorize`, `/login*`,
-//! `/consent`, `/connections*` and later `/callback`): 30 requests per minute per client
+//! `/callback`, `/consent`, `/connections*`): 30 requests per minute per client
 //! address and 600 per minute in total. The address comes from the
 //! binary's trusted-proxy layer ([`ClientAddress`]); without it, the TCP
 //! peer. Addresses are only bucket keys and are never logged.

@@ -1,10 +1,10 @@
 # Transit: `next_departures`
 
-Owner: the `public-transit` change. Code: `adapters/transit` (adapters) and `modules/transit` (the tool).
+Code: `adapters/transit` (adapters) and `modules/transit` (the tool).
 
 ## Tool
 
-Public, `readOnlyHint: true`, `destructiveHint: false`. It is called after policy by the dispatcher. End-to-end authorization and metadata-only auditing remain pending integration with auth-policy-audit. The module logs nothing per call.
+Public, `readOnlyHint: true`, `destructiveHint: false`. It is called after policy by the dispatcher, which writes the one metadata-only audit row. The module logs nothing per call.
 
 Input: `stop` (1–160 characters: a configured stop ID, name or alias), optional `route` (1–80: a configured route ID or alias), optional `at` (RFC 3339, default now), `limit` (1–20, default 5). Matching ignores case, periods and extra spaces. An unknown or ambiguous name, a route from a different provider than the stop, or a route that never serves the stop returns `invalid_arguments`. The message lists at most five configured choices and never echoes the input.
 
@@ -23,7 +23,7 @@ Adapters are per vendor. Hosts, stop IDs, aliases, windows and paths all come fr
 
 ## Regenerating the GTFS subset
 
-The full SEPTA feed (about 105 MB of `stop_times.txt`) is never committed or read at runtime. The foundation capture utility filters it in a temporary directory:
+The full SEPTA feed (about 105 MB of `stop_times.txt`) is never committed or read at runtime. The capture utility filters it in a temporary directory:
 
 ```powershell
 # edit gtfs_stop_ids in a copy of fixtures/sources.json if the campus stop list changes
@@ -37,7 +37,7 @@ Current choice: `20260926T210752721463Z-gtfs-subset`, release `v202609061`, vali
 
 **Stop mapping correction:** GTFS stop `53` is the route 3 bus stop, not the subway. The B at Cecil B. Moore is stop `1277` (southbound to NRG) and stop `32148` (northbound to Fern Rock).
 
-## Flight capture (tonight, 18:00–02:00 America/New_York)
+## Flight capture (the shuttle runs 18:00–02:00 America/New_York)
 
 ```powershell
 python fixtures/capture.py flight      # preferably ~18:15 and again later
@@ -65,69 +65,3 @@ cargo test -p kampus-transit -p kampus-transit-tools --features kampus-transit-t
 ```
 
 Rail tests serve the recorded bodies from a loopback listener. GTFS tests use the real subset, including Saturday 24:xx trips, the Labor Day exception and the November 1 DST change. Derived fault cases name their base recording and transformation.
-
-Pending integration: end-to-end policy denial and audit rows for `next_departures` belong to auth-policy-audit's dispatcher tests.
-
-## Integration handoff
-
-The registry already contains `kampus_transit_tools::module(init)?`, and the binary's sandbox feature already forwards to the module. No registry or root manifest edit is needed.
-
-The previous agent added these existing workspace dependencies:
-
-- `kampus-transit`: `chrono`, `chrono-tz`, `reqwest`, `serde`, `serde_json`, `thiserror`, `tokio`, `tracing`, `url`; dev Tokio enables `test-util`. This handoff also enables dev `io-util` for HTTP fixture tests.
-- `kampus-transit-tools`: `chrono`, `serde`; dev Tokio enables `io-util`.
-
-No new package or version was introduced. The inherited `Cargo.lock` diff only records these crate dependency lists. It is committed with the adapters under the handoff reviewer's explicit authorization; the integrator will reconcile it at merge.
-
-Apply these values through the school config owner:
-
-```yaml
-# Under transit, replace the incorrect stop-53 subway mapping with these stops.
-stops:
-  - id: Temple University
-    name: Temple University Station
-    provider: septa_rail
-    aliases: [Temple, Temple Station]
-  - id: "32148"
-    name: Cecil B. Moore northbound
-    provider: septa_gtfs
-    aliases: [Cecil B Moore, Cecil B. Moore, CBM north]
-  - id: "1277"
-    name: Cecil B. Moore southbound
-    provider: septa_gtfs
-    aliases: [Cecil B Moore, Cecil B. Moore, CBM south]
-  - id: flight
-    name: Flight shuttle
-    provider: flight
-    aliases: [Flight, shuttle]
-gtfs_subset_path: fixtures/septa/20260926T210752721463Z-gtfs-subset
-gtfs_validity: { start: "2026-09-06", end: "2027-02-20" }
-# Sandbox config only, also requiring sandbox.enabled: true:
-# replay_path: fixtures/flight/20260926T225527128011Z-vehicle-points
-```
-
-Keep the existing B1 route aliases. A directionless Cecil B. Moore request offers northbound and southbound choices. The three-stop committed subset contains 890 stop-time rows; expansion to roughly 20 campus stops still needs an agreed stop list and is outside the requested B1 demo scope. Runtime only reads the subset once.
-
-The selected GTFS archive SHA-256 is `72a6797155d28e5c26615d945358287252e0da5b8d5396c242190cc13158aaf7`. Source and per-file checksums are in its manifest. The existing `fixtures/capture.py gtfs` utility already filters configured stops, preserves source columns, calendars and exceptions, and streams the full stop-time input before writing the small artifact. It was reused without downloading the full feed again.
-
-Additional rail evidence: `septa/20260926T225827539240Z-temple-arrivals`, recorded at 18:58 EDT. The empty Cynwyd capture was obtained at the same time by passing `station=Cynwyd` to the configured Arrivals endpoint using the existing `Recorder`; it is not a transformed Temple response. The planned before-17:00 capture deadline was missed before this handoff.
-
-HTTP reads enforce a 512 KiB body cap while streaming and a 10-second total deadline, use the shared one-request/second host budget with burst two, retry transient failures at most once, and respect numeric Retry-After within the deadline. Redirects are refused so they cannot bypass the configured host budget.
-
-Forbidden-pattern review: adapters receive no credentials; output and arguments are never logged; upstream errors stay typed errors; the tool remains listed when disabled and keeps Public/read-only annotations; school values come from config; Flight replay is compiled only with the transit sandbox feature and constructed only after runtime opt-in. Tests use recorded rail, GTFS and Flight evidence, with labeled derived faults. Dependency review and dispatcher denial/audit evidence remain the integrator's pending items.
-
-## Local gate results
-
-All commands used `CARGO_TARGET_DIR=E:/cargo-target/kampus` on `change/public-transit` on September 26. This is the transit branch gate, not an integrated dispatcher acceptance run.
-
-| Command | Result |
-|---|---|
-| `cargo fmt --all` | pass |
-| `cargo clippy --workspace --all-targets -- -D warnings` | pass; initial test-helper partial-read warning fixed before rerun |
-| `cargo test --workspace` | pass, 93 tests |
-| `cargo clippy --workspace --all-targets --features kampus/sandbox -- -D warnings` | pass |
-| `cargo test -p kampus-transit -p kampus-transit-tools --features sandbox` | pass, 46 tests |
-| `cargo check --workspace` | pass |
-| `python fixtures/capture.py verify` | pass, 24 manifests with body/subset checksums |
-
-Production transit tests exercise replay rejection. Sandbox tests exercise runtime rejection without opt-in and replay through the published envelope schema with opt-in. No release build or deployed MCP/auth/audit acceptance run was performed in this worktree.

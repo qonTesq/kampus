@@ -22,6 +22,6 @@ Due times are relative, so a demo started at any time still has upcoming deadlin
 
 ## Deliberate adversarial content
 
-Assignment `7003`'s name and description, and course `504`'s name, contain prompt-injection text, HTML, a script and links. Announcement `8001` is a teacher-message lookalike. They exist to prove that Kampus projects only `assignment_id`, `course_code`, `due_at` and `status`, and that none of this text reaches the projected envelope or errors. Full-dispatch audit and tracing assertions remain pending auth integration.
+Assignment `7003`'s name and description, and course `504`'s name, contain prompt-injection text, HTML, a script and links. Announcement `8001` is a teacher-message lookalike. They exist to prove that Kampus projects only `assignment_id`, `course_code`, `due_at` and `status`, and that none of this text reaches the projected envelope or errors.
 
 User `9003` (`synthetic-student-c`) has no Kampus subject. That makes it an existing Canvas user no caller can select.

@@ -23,7 +23,7 @@ use crate::client::ClientAddr;
 
 /// One rmcp handler instance; cheap to clone per session.
 #[derive(Debug, Clone)]
-pub struct KampusMcp {
+pub(crate) struct KampusMcp {
     dispatcher: Arc<Dispatcher>,
     tools: Arc<[Tool]>,
     info: Arc<ServerConfig>,
@@ -31,7 +31,7 @@ pub struct KampusMcp {
 }
 
 impl KampusMcp {
-    pub fn new(dispatcher: Arc<Dispatcher>, display_name: &str) -> Self {
+    pub(crate) fn new(dispatcher: Arc<Dispatcher>, display_name: &str) -> Self {
         let tools = dispatcher.registry().tools().map(to_rmcp_tool).collect();
         let info = ServerConfig::new(ServerCapabilities::builder().enable_tools().build())
             .with_server_info(

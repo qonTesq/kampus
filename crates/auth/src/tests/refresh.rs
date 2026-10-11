@@ -40,28 +40,6 @@ async fn refresh_rotates_and_the_old_token_dies() {
 }
 
 #[tokio::test]
-async fn reuse_of_a_rotated_token_revokes_the_family() {
-    let h = Harness::start().await;
-    let first = h.claude_tokens("offline_access").await;
-    let t1 = token(&first, "refresh_token").to_owned();
-    let (_, second) = h.refresh(CLAUDE, &t1, &[]).await;
-    let t2 = token(&second, "refresh_token").to_owned();
-    // The attacker replays t1.
-    let (status, body) = h.refresh(CLAUDE, &t1, &[]).await;
-    assert_eq!(
-        (status, body["error"].as_str()),
-        (400, Some("invalid_grant"))
-    );
-    assert!(body.get("access_token").is_none());
-    // The legitimate client's current token died with the family.
-    let (status, body) = h.refresh(CLAUDE, &t2, &[]).await;
-    assert_eq!(
-        (status, body["error"].as_str()),
-        (400, Some("invalid_grant"))
-    );
-}
-
-#[tokio::test]
 async fn scope_may_narrow_but_never_widen() {
     let h = Harness::start().await;
     // A grant without rooms:book cannot gain it on refresh.

@@ -1,7 +1,6 @@
-//! `deadlines` module: `my_deadlines` (Sensitive, synthetic). OWNED BY the
-//! `canvas-mock` change.
+//! `deadlines` module: `my_deadlines` (Sensitive, synthetic).
 //!
-//! Policy (auth-policy-audit) runs before [`Module::call`]; this module adds
+//! Policy runs before [`Module::call`]; this module adds
 //! defense in depth: only signed-in student users with a registered synthetic
 //! profile reach the provider, at most 30 reads per user per minute, and
 //! nothing is cached. A production build has no source, so every call answers

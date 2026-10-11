@@ -11,5 +11,4 @@ pub mod registry;
 mod server;
 mod session;
 
-pub use app::{App, AppError, AppOptions, CheckReport, SUPPORTED_PROTOCOL_VERSIONS, Secrets};
-pub use server::KampusMcp;
+pub use app::{App, AppError, AppOptions, CheckReport, Secrets};

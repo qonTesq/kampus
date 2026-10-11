@@ -1,4 +1,4 @@
-//! `transit` module: `next_departures`. OWNED BY the `public-transit` change.
+//! `transit` module: `next_departures`.
 //!
 //! Resolves configured stop/route aliases, routes the call to the stop's
 //! provider (live rail, scheduled GTFS, Flight live or sandbox replay) and

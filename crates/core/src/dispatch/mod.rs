@@ -1,4 +1,4 @@
-//! Tool-call pipeline. OWNED BY auth-policy-audit.
+//! Tool-call pipeline.
 //!
 //! verify credential (HTTP middleware) -> resolve device identity ->
 //! admission (caller rate, guest cap, execution slot) -> validate

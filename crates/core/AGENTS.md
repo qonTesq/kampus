@@ -10,7 +10,7 @@
 - `Authorizer`, `Decision`, `IdentityResolver`, `ResolvedIdentity`, `AuditSink`, `AuditEvent` (metadata only).
 - `providers::{Room,Booking,Course,Transit,Hours,Deadline}Provider` and their DTOs.
 - `Envelope`, `Meta`, `Provenance`, `SourceKind`, `ToolError`, `ErrorCode`.
-- `config::{SchoolConfig, PolicyConfig, Env}` with `validate`; `output::{clean_text, cap_items, project, limits}`; `runtime::{PublicCache, RateLimiter, upstream_client, defaults}`.
+- `config::{SchoolConfig, PolicyConfig, Env}` with `validate`; `output::{clean_text, cap_items, project, limits}`; `runtime::{PublicCache, RateLimiter, upstream_client_builder, defaults}`.
 
 ## Rules
 - There are no rmcp types in this crate.
