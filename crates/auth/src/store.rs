@@ -301,7 +301,12 @@ impl MemoryStore {
     }
 
     /// Insert the grant for `key`, or return the existing one.
-    pub(crate) fn upsert_grant(&self, key: GrantKey, label: String, now: i64) -> Result<Grant, Full> {
+    pub(crate) fn upsert_grant(
+        &self,
+        key: GrantKey,
+        label: String,
+        now: i64,
+    ) -> Result<Grant, Full> {
         let mut g = lock(&self.grants);
         if let Some(existing) = g.by_key.get(&key).and_then(|id| g.by_id.get(id)) {
             return Ok(existing.clone());
