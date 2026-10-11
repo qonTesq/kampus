@@ -1,116 +1,71 @@
-===============================================================================
-  KAMPUS OWL - RESTART AFTER POWER LOSS
-  Use this checklist whenever the Raspberry Pi 5 loses power (cable pulled,
-  battery died, etc.). Nothing needs to be reinstalled: the code, the speaker
-  pairing and the wake-word model all survive a power cut.
-===============================================================================
+# Restart after power loss
 
--------------------------------------------------------------------------------
-STEP 1 - Power the Pi back on
--------------------------------------------------------------------------------
-  - Plug the 27W USB-C power supply back into the Pi.
-  - The Pi has no power button: it starts by itself.
-  - Wait about 1 MINUTE. The green LED flickers while it boots.
-      * Red LED only, no green  -> SD card not read: reseat the card.
-      * No light at all         -> check the power cable/supply.
+Use this checklist whenever the Raspberry Pi 5 loses power (cable pulled, battery died). Nothing needs to be reinstalled: the code, the speaker pairing and the wake-phrase model all survive a power cut.
 
--------------------------------------------------------------------------------
-STEP 2 - Turn on the other hardware
--------------------------------------------------------------------------------
-  - JBL Go 3 speaker: press its power button. It reconnects to the Pi by
-    itself (already paired and trusted).
-  - Logitech Brio 100 webcam (the mic): stays plugged into the Pi's blue
-    USB port; nothing to do.
-  - iPhone: Settings -> Personal Hotspot -> "Allow Others to Join" ON,
-    "Maximize Compatibility" ON. KEEP THIS SCREEN OPEN until the Pi joins
-    (iPhones hide the hotspot when the screen locks).
+## 1. Power the Pi back on
 
--------------------------------------------------------------------------------
-STEP 3 - Connect the laptop to the Pi
--------------------------------------------------------------------------------
-  - Laptop Wi-Fi: connect to  kampus-hotspot   (NOT eduroam - campus Wi-Fi
-    blocks laptop-to-Pi connections).
-  - Open PowerShell on the laptop and log in (no password needed, the
-    laptop's SSH key is installed):
+- Plug the 27 W USB-C power supply back into the Pi. It has no power button and starts by itself.
+- Wait about a minute; the green LED flickers while it boots.
+  - Red LED only, no green: the SD card wasn't read. Reseat the card.
+  - No light at all: check the power cable and supply.
 
-        ssh hienle@172.20.10.8
+## 2. Turn on the other hardware
 
-    If that address doesn't answer, try:
+- **Speaker (JBL Go 3):** press its power button. It reconnects by itself (already paired and trusted).
+- **Webcam (Logitech Brio 100, the mic):** stays plugged into a blue USB port; nothing to do.
+- **Phone hotspot:** Settings → Personal Hotspot → "Allow Others to Join" on, "Maximize Compatibility" on. Keep this screen open until the Pi joins (iPhones hide the hotspot when the screen locks).
 
-        ssh hienle@hienle.local
+## 3. Connect the laptop to the Pi
 
--------------------------------------------------------------------------------
-STEP 4 - Go to the project folder (on the Pi)
--------------------------------------------------------------------------------
+Connect the laptop to the hotspot (not eduroam: campus Wi-Fi blocks laptop-to-Pi connections), open a terminal and log in. The laptop's SSH key is installed, so no password is needed.
 
-        cd ~/kampus/owl-pi
+```bash
+ssh <user>@<pi-address>
+```
 
--------------------------------------------------------------------------------
-STEP 5 - Restore the speaker volume
--------------------------------------------------------------------------------
-  The JBL often comes back too quiet after reconnecting. Set it to the
-  tested level (62%):
+If that address doesn't answer, try `ssh <user>@<pi-hostname>.local`.
 
-        wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.62
+## 4. Go to the project folder (on the Pi)
 
--------------------------------------------------------------------------------
-STEP 6 - Run what you need   (press Ctrl+C to stop any of them)
--------------------------------------------------------------------------------
-  # Eye animation only - cycles all owl expressions (no mic, no internet)
-        .venv/bin/python main.py --demo
+```bash
+cd ~/kampus/clients/owl
+```
 
-  # Mic + speaker check - records 3 s from the webcam, plays it on the JBL
-        .venv/bin/python main.py --audio-test
+## 5. Restore the speaker volume
 
-  # Voice echo test - speak, hear it back 3 s after you stop (5 rounds)
-        .venv/bin/python echo_test.py
+The speaker often comes back too quiet after reconnecting. Set it to the tested level (62%):
 
-  # 10-minute combined test - eyes + mic + speaker together, prints health
-        .venv/bin/python soak_test.py
+```bash
+wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.62
+```
 
-  # Talking owl, ChatGPT brain + ElevenLabs voice - say "Hey Owl"
-  # (needs OPENAI_API_KEY, ELEVENLABS_API_KEY, ELEVENLABS_VOICE_ID in .env)
-        .venv/bin/python voice_pipeline.py
-  #   add --no-wake to skip "Hey Owl", or --text to type instead of speaking
+## 6. Run what you need (Ctrl+C stops any of them)
 
-  # Full talking owl, OpenAI voice only - say "Hey Owl" or "Hello Owl"
-  # (needs the OpenAI API key in ~/kampus/owl-pi/.env on the Pi)
-        .venv/bin/python main.py
+```bash
+uv run owl-realtime --demo      # eye animation only: every expression, no mic, no internet
+uv run owl-realtime --audio-test   # records 3 s from the webcam, plays it on the speaker
+uv run owl-echo-test            # speak, hear it back 3 s after you stop (5 rounds)
+uv run owl-soak-test            # 10 minutes of eyes + mic + speaker, prints health
+scripts/run_owl.sh              # the talking owl: say "Hey Owl"
+uv run owl-realtime             # backup owl, OpenAI voice only (needs OPENAI_API_KEY in .env)
+```
 
--------------------------------------------------------------------------------
-QUICK HEALTH CHECK (optional)
--------------------------------------------------------------------------------
-  # Power: must say throttled=0x0 (anything else = weak power supply)
-        vcgencmd get_throttled
+## Quick health check (optional)
 
-  # Temperature: fine below 80'C
-        vcgencmd measure_temp
+```bash
+vcgencmd get_throttled                    # must say throttled=0x0; anything else = weak power supply
+vcgencmd measure_temp                     # fine below 80 °C
+bluetoothctl info <speaker-address> | grep Connected   # must say "Connected: yes"
+bluetoothctl connect <speaker-address>    # reconnect the speaker if it isn't
+lsusb | grep -i brio                      # webcam mic detected
+```
 
-  # Speaker connected? must say "Connected: yes"
-        bluetoothctl info 18:90:67:87:94:0C | grep Connected
+## Before unplugging: always shut down first
 
-  # If the speaker is NOT connected, reconnect it:
-        bluetoothctl connect 18:90:67:87:94:0C
+Pulling the power while the Pi is running can corrupt the SD card.
 
-  # Webcam/mic detected? must list "Brio 100"
-        lsusb | grep -i brio
+```bash
+sudo shutdown -h now
+```
 
--------------------------------------------------------------------------------
-BEFORE UNPLUGGING - ALWAYS SHUT DOWN FIRST
--------------------------------------------------------------------------------
-  Pulling the power while the Pi is running can corrupt the SD card.
-
-        sudo shutdown -h now
-
-  Wait until the green LED stops blinking, THEN unplug.
-
--------------------------------------------------------------------------------
-REFERENCE
--------------------------------------------------------------------------------
-  Pi user / hostname : hienle / hienle   (IP on hotspot: 172.20.10.8)
-  Hotspot name       : kampus-hotspot
-  Code on the Pi     : ~/kampus/owl-pi
-  Code on laptop     : Desktop\SJU\Hackathon_ideas\kampus\owl-pi
-  GitHub (eyes branch): https://github.com/hienle0401/kampus_hardware_version
-  Project status     : see HANDOFF.md
-===============================================================================
+Wait until the green LED stops blinking, then unplug.
