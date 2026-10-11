@@ -7,6 +7,7 @@ eye fps, mic level, audio glitch counters, CPU temperature and throttling.
   owl-soak-test                    # 10 minutes
   owl-soak-test --minutes 2
 """
+
 import argparse
 import subprocess
 import time
@@ -21,7 +22,7 @@ from owl.hardware.eyes import EyeLoop
 from owl.state import OwlState
 
 EXPRESSIONS = ("normal", "happy", "explaining", "love", "sleepy", "confused")
-LOUD = 3000          # int16 RMS that counts as "the mic heard something"
+LOUD = 3000  # int16 RMS that counts as "the mic heard something"
 
 
 def vcgencmd(*args):
@@ -83,19 +84,24 @@ def main():
             if now - last_report >= 30:
                 temp = float(vcgencmd("measure_temp").rstrip("'C"))
                 worst_temp = max(worst_temp, temp)
-                print(f"{(now - start) / 60:4.1f} min | eyes {frames[0] / (now - last_report):4.1f} fps"
-                      f" | mic peak {peak:6.0f} | loud {loud_events:3d}"
-                      f" | mic drops {audio.input_drops} in-glitch {audio.input_status_count}"
-                      f" out-glitch {audio.output_status_count}"
-                      f" | {temp:.1f}C throttled={vcgencmd('get_throttled')}", flush=True)
+                print(
+                    f"{(now - start) / 60:4.1f} min | eyes {frames[0] / (now - last_report):4.1f} fps"
+                    f" | mic peak {peak:6.0f} | loud {loud_events:3d}"
+                    f" | mic drops {audio.input_drops} in-glitch {audio.input_status_count}"
+                    f" out-glitch {audio.output_status_count}"
+                    f" | {temp:.1f}C throttled={vcgencmd('get_throttled')}",
+                    flush=True,
+                )
                 frames[0] = 0
                 peak = 0.0
                 last_report = now
     finally:
         audio.close()
         eyes.close()
-    print(f"PASS criteria: eyes ~{cfg['display']['fps']} fps, mic drops 0, throttled=0x0."
-          f" Worst temp {worst_temp:.1f}C.")
+    print(
+        f"PASS criteria: eyes ~{cfg['display']['fps']} fps, mic drops 0, throttled=0x0."
+        f" Worst temp {worst_temp:.1f}C."
+    )
 
 
 if __name__ == "__main__":

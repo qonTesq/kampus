@@ -1,4 +1,5 @@
 """ElevenLabs text-to-speech, streamed straight into the speaker."""
+
 import requests
 
 ELEVENLABS = "https://api.elevenlabs.io/v1"
@@ -19,11 +20,15 @@ class Voice:
         params = {"output_format": "pcm_24000"}
         if self.cfg["pipeline"].get("tts_latency"):
             params["optimize_streaming_latency"] = self.cfg["pipeline"]["tts_latency"]
-        for attempt in (1, 2):               # one quick retry if the hotspot hiccups
+        for attempt in (1, 2):  # one quick retry if the hotspot hiccups
             try:
-                r = self.http.post(f"{ELEVENLABS}/text-to-speech/{self.voice_id}/stream",
-                                   params=params, stream=True, timeout=(5, 20),
-                                   json={"text": text, "model_id": self.cfg["pipeline"]["tts_model"]})
+                r = self.http.post(
+                    f"{ELEVENLABS}/text-to-speech/{self.voice_id}/stream",
+                    params=params,
+                    stream=True,
+                    timeout=(5, 20),
+                    json={"text": text, "model_id": self.cfg["pipeline"]["tts_model"]},
+                )
                 break
             except requests.ConnectionError:
                 if attempt == 2:

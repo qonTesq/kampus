@@ -5,6 +5,7 @@ protected), connects the bridge, lists tools, and calls one. No cloud.
 
   uv run python tests/live/check_mcp_bridge.py
 """
+
 import subprocess
 import sys
 import time
@@ -44,6 +45,7 @@ def main():
     try:
         time.sleep(3)
         from owl.kampus.bridge import MCPBridge
+
         url = "http://127.0.0.1:8765/mcp"
         try:
             MCPBridge(url, "wrong-token", timeout=10)

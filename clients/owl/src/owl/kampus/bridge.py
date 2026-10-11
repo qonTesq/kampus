@@ -4,13 +4,18 @@ Gemini's API can't call a remote MCP server by itself, so the Pi does it: this
 keeps one MCP session open (streamable HTTP) on a background event loop, lists
 the server's tools once, and runs the tool calls the model asks for.
 """
+
 import asyncio
 import json
 import threading
 
 UNSUPPORTED_SCHEMA_KEYS = {"additionalProperties", "$schema", "format", "default", "title"}
-UNREACHABLE = json.dumps({"status": "error", "error": {
-    "code": "unreachable", "message": "Couldn't reach the campus system.", "retryable": True}})
+UNREACHABLE = json.dumps(
+    {
+        "status": "error",
+        "error": {"code": "unreachable", "message": "Couldn't reach the campus system.", "retryable": True},
+    }
+)
 
 
 def gemini_schema(schema):
@@ -43,6 +48,7 @@ class MCPBridge:
     async def _run(self):
         from mcp import ClientSession
         from mcp.client.streamable_http import streamablehttp_client
+
         self.stop_event = asyncio.Event()
         try:
             async with (
@@ -61,8 +67,14 @@ class MCPBridge:
 
     def declarations(self):
         """The allowed tools as Gemini function declarations."""
-        return [{"name": t.name, "description": t.description or t.name,
-                 "parametersJsonSchema": gemini_schema(t.inputSchema)} for t in self.tools]
+        return [
+            {
+                "name": t.name,
+                "description": t.description or t.name,
+                "parametersJsonSchema": gemini_schema(t.inputSchema),
+            }
+            for t in self.tools
+        ]
 
     def call(self, name, arguments):
         """Run one tool and return its result as text for the model.
@@ -73,8 +85,7 @@ class MCPBridge:
         after call_timeout seconds becomes a short "unreachable" error."""
         if name not in {t.name for t in self.tools}:
             return json.dumps({"status": "error", "error": {"code": "unknown_tool", "message": name}})
-        future = asyncio.run_coroutine_threadsafe(
-            self.session.call_tool(name, arguments or {}), self.loop)
+        future = asyncio.run_coroutine_threadsafe(self.session.call_tool(name, arguments or {}), self.loop)
         try:
             result = future.result(self.call_timeout)
         except Exception:

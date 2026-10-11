@@ -8,6 +8,7 @@ happy = playing back.
   owl-echo-test                        # 5 turns, 3 s reply delay
   owl-echo-test --turns 3 --delay 3 --no-display
 """
+
 import argparse
 import time
 import tomllib
@@ -20,16 +21,21 @@ from owl.config import default_config
 from owl.hardware.audio_io import AudioIO
 from owl.state import OwlState
 
-TARGET_RMS = 6000     # replay loudness (int16 RMS) before the config volume
+TARGET_RMS = 6000  # replay loudness (int16 RMS) before the config volume
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--turns", type=int, default=5)
-    parser.add_argument("--delay", type=float, default=3.0,
-                        help="seconds from end of speech to start of playback")
-    parser.add_argument("--bt-latency", type=float, default=0.25,
-                        help="estimated Bluetooth speaker delay, subtracted from --delay")
+    parser.add_argument(
+        "--delay", type=float, default=3.0, help="seconds from end of speech to start of playback"
+    )
+    parser.add_argument(
+        "--bt-latency",
+        type=float,
+        default=0.25,
+        help="estimated Bluetooth speaker delay, subtracted from --delay",
+    )
     parser.add_argument("--no-display", action="store_true")
     args = parser.parse_args()
     with open(default_config(), "rb") as f:
@@ -43,8 +49,8 @@ def main():
     if not args.no_display:
         from owl.hardware.display import PiDisplays
         from owl.hardware.eyes import EyeLoop
-        eyes = EyeLoop(state, PiDisplays(cfg["display"]), cfg["display"]["fps"],
-                       cfg["display"]["pixel_size"])
+
+        eyes = EyeLoop(state, PiDisplays(cfg["display"]), cfg["display"]["fps"], cfg["display"]["pixel_size"])
         eyes.start()
     state.emotion("normal")
     audio = AudioIO(cfg["audio"])
@@ -67,8 +73,7 @@ def main():
             spoken = said.samples.astype(np.float32)
             # Level the replay: quiet or distant speech is boosted (up to 4x)
             # without clipping, so it plays at a steady volume.
-            gain = min(4.0, TARGET_RMS / max(rms(spoken), 1.0),
-                       30000 / max(float(np.abs(spoken).max()), 1.0))
+            gain = min(4.0, TARGET_RMS / max(rms(spoken), 1.0), 30000 / max(float(np.abs(spoken).max()), 1.0))
             spoken = (spoken * gain).astype(np.int16)
             state.emotion("explaining")
             print(f"  heard {speech_end - started:.1f} s of speech; replying in {args.delay:g} s", flush=True)
@@ -79,8 +84,11 @@ def main():
             queued = time.monotonic() - speech_end
             state.emotion("happy")
             audio.feed_pcm24(reply)
-            print(f"  playback queued {queued:.2f} s after you stopped"
-                  f" (~{queued + args.bt_latency:.2f} s at the speaker)", flush=True)
+            print(
+                f"  playback queued {queued:.2f} s after you stopped"
+                f" (~{queued + args.bt_latency:.2f} s at the speaker)",
+                flush=True,
+            )
             while audio.playing():
                 time.sleep(0.05)
     finally:

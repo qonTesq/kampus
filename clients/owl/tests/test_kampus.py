@@ -1,4 +1,5 @@
 """Kampus MCP integration pieces, offline."""
+
 import asyncio
 import json
 import time
@@ -16,12 +17,17 @@ def bridge_with(session, call_timeout=10):
     b = MCPBridge.__new__(MCPBridge)
     b.loop = asyncio.new_event_loop()
     import threading
+
     threading.Thread(target=b.loop.run_forever, daemon=True).start()
     b.session, b.call_timeout = session, call_timeout
-    b.tools = [types.SimpleNamespace(name="library_hours", description="Library hours",
-                                     inputSchema={"type": "object", "properties": {}}),
-               types.SimpleNamespace(name="my_deadlines", description="Deadlines",
-                                     inputSchema={"type": "object"})]
+    b.tools = [
+        types.SimpleNamespace(
+            name="library_hours",
+            description="Library hours",
+            inputSchema={"type": "object", "properties": {}},
+        ),
+        types.SimpleNamespace(name="my_deadlines", description="Deadlines", inputSchema={"type": "object"}),
+    ]
     return b
 
 
@@ -36,20 +42,36 @@ class Session:
 
 class KampusBridgeTests(unittest.TestCase):
     def test_schema_is_made_gemini_safe_recursively(self):
-        schema = {"$schema": "x", "type": "object", "title": "T", "additionalProperties": False,
-                  "properties": {"start": {"type": "string", "format": "date-time", "title": "Start"},
-                                 "limit": {"type": "integer", "default": 5},
-                                 "nested": {"type": "array", "items": {"type": "object",
-                                                                       "additionalProperties": False}}},
-                  "required": ["start"]}
-        self.assertEqual(gemini_schema(schema), {
-            "type": "object", "required": ["start"],
-            "properties": {"start": {"type": "string"}, "limit": {"type": "integer"},
-                           "nested": {"type": "array", "items": {"type": "object"}}}})
+        schema = {
+            "$schema": "x",
+            "type": "object",
+            "title": "T",
+            "additionalProperties": False,
+            "properties": {
+                "start": {"type": "string", "format": "date-time", "title": "Start"},
+                "limit": {"type": "integer", "default": 5},
+                "nested": {"type": "array", "items": {"type": "object", "additionalProperties": False}},
+            },
+            "required": ["start"],
+        }
+        self.assertEqual(
+            gemini_schema(schema),
+            {
+                "type": "object",
+                "required": ["start"],
+                "properties": {
+                    "start": {"type": "string"},
+                    "limit": {"type": "integer"},
+                    "nested": {"type": "array", "items": {"type": "object"}},
+                },
+            },
+        )
 
     def test_structured_error_code_reaches_the_model(self):
-        refusal = {"status": "error", "error": {"code": "permission_denied",
-                                                "message": "guest device", "retryable": False}}
+        refusal = {
+            "status": "error",
+            "error": {"code": "permission_denied", "message": "guest device", "retryable": False},
+        }
         result = types.SimpleNamespace(structuredContent=refusal, content=[], isError=True)
         out = json.loads(bridge_with(Session(result)).call("my_deadlines", {}))
         self.assertEqual(out["error"]["code"], "permission_denied")
@@ -76,8 +98,10 @@ class KampusPromptTests(unittest.TestCase):
 
     def test_only_demo_tools_are_allowed(self):
         cfg = load_config(CONFIG)
-        self.assertEqual(sorted(cfg["mcp"]["allowed_tools"]),
-                         ["find_study_room", "library_hours", "my_deadlines", "next_departures"])
+        self.assertEqual(
+            sorted(cfg["mcp"]["allowed_tools"]),
+            ["find_study_room", "library_hours", "my_deadlines", "next_departures"],
+        )
 
 
 if __name__ == "__main__":

@@ -4,15 +4,16 @@ Shared by hardware/echo_test.py and brain/pipeline.py. Energy-based (no cloud):
 speech starts once MIN_SPEECH of loud audio lands within ONSET_WINDOW, so taps,
 clicks and echo tails are ignored; it ends after SILENCE_END of quiet.
 """
+
 import time
 from dataclasses import dataclass
 
 import numpy as np
 
-SILENCE_END = 1.2     # seconds of quiet that count as "done speaking" (natural pauses are ~1 s)
-MAX_UTTERANCE = 10    # seconds; longer speech is cut off here
-MIN_SPEECH = 0.3      # seconds of loud audio needed before it counts as speech
-ONSET_WINDOW = 0.5    # seconds the MIN_SPEECH has to fall within
+SILENCE_END = 1.2  # seconds of quiet that count as "done speaking" (natural pauses are ~1 s)
+MAX_UTTERANCE = 10  # seconds; longer speech is cut off here
+MIN_SPEECH = 0.3  # seconds of loud audio needed before it counts as speech
+ONSET_WINDOW = 0.5  # seconds the MIN_SPEECH has to fall within
 MAX_THRESHOLD = 4500  # a noisy calibration (fan at boot, people talking) can't make it deaf
 
 
@@ -22,9 +23,9 @@ def rms(samples):
 
 @dataclass
 class Utterance:
-    samples: np.ndarray   # int16 mono at the input rate, 0.3 s pre-roll, 0.2 s tail
-    started: float        # time.monotonic() when speech began
-    ended: float          # time.monotonic() of the last loud audio
+    samples: np.ndarray  # int16 mono at the input rate, 0.3 s pre-roll, 0.2 s tail
+    started: float  # time.monotonic() when speech began
+    ended: float  # time.monotonic() of the last loud audio
 
 
 def calibrate(audio, seconds=2.0):
@@ -61,8 +62,8 @@ def listen(audio, rate, block_ms, threshold, on_start=None, timeout=None, on_aud
             continue
         loud = rms(samples) > threshold
         if started is None:
-            chunks = chunks[-(onset_chunks + 15):] + [samples]   # + 300 ms pre-roll
-            recent = recent[-(onset_chunks - 1):] + [(captured_at, loud)]
+            chunks = chunks[-(onset_chunks + 15) :] + [samples]  # + 300 ms pre-roll
+            recent = recent[-(onset_chunks - 1) :] + [(captured_at, loud)]
             if sum(len(samples) for _, l in recent if l) / rate < MIN_SPEECH:
                 continue
             started = next(t for t, l in recent if l)

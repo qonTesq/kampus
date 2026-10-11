@@ -13,14 +13,19 @@ from owl.state import EMOTIONS, OwlState
 
 
 class Clock:
-    def __init__(self): self.now = 0
-    def __call__(self): return self.now
+    def __init__(self):
+        self.now = 0
+
+    def __call__(self):
+        return self.now
+
 
 class StateTests(unittest.TestCase):
     def setUp(self):
         self.clock = Clock()
         self.state = OwlState(300, self.clock)
-        self.state.wake(); self.state.phase("idle")
+        self.state.wake()
+        self.state.phase("idle")
 
     def test_five_minutes_exactly(self):
         self.clock.now = 299.9
@@ -30,7 +35,8 @@ class StateTests(unittest.TestCase):
 
     def test_speech_restarts_timer_but_emotion_does_not(self):
         self.clock.now = 250
-        self.state.speech(True); self.state.speech(False)
+        self.state.speech(True)
+        self.state.speech(False)
         self.state.phase("idle")
         self.clock.now = 400
         self.state.emotion("money")
@@ -53,14 +59,17 @@ class StateTests(unittest.TestCase):
         self.assertEqual(self.state.snapshot().phase, "connecting")
 
     def test_expression_allowlist(self):
-        for emotion in EMOTIONS: self.state.emotion(emotion)
-        with self.assertRaises(ValueError): self.state.emotion("run_shell")
+        for emotion in EMOTIONS:
+            self.state.emotion(emotion)
+        with self.assertRaises(ValueError):
+            self.state.emotion("run_shell")
+
 
 class RenderTests(unittest.TestCase):
     def test_all_expressions_and_blinks(self):
         for emotion in EMOTIONS + ("sleeping",):
             for eye in (0, 1):
-                for opening in (0, .3, 1):
+                for opening in (0, 0.3, 1):
                     image = render_eye(eye, emotion, opening)
                     self.assertEqual(image.size, (240, 240))
                     self.assertEqual(image.mode, "RGB")
@@ -81,14 +90,18 @@ class RenderTests(unittest.TestCase):
 
     def test_animation_reaches_requested_expression(self):
         state = OwlState()
-        state.wake(); state.phase("idle"); state.emotion("love")
+        state.wake()
+        state.phase("idle")
+        state.emotion("love")
         animator = Animator(seed=1)
         animator.pose(state.snapshot(), 0)
-        self.assertEqual(animator.pose(state.snapshot(), .2)[0], "love")
+        self.assertEqual(animator.pose(state.snapshot(), 0.2)[0], "love")
 
     def test_rgb565_byte_order(self):
         from PIL import Image
+
         self.assertEqual(rgb565(Image.new("RGB", (1, 1), "red")).tobytes(), b"\xf8\x00")
+
 
 class ProtocolTests(unittest.TestCase):
     def test_each_screen_uses_its_own_dc_pin(self):
@@ -107,8 +120,10 @@ class ProtocolTests(unittest.TestCase):
     def test_init_sequence_is_well_formed(self):
         pos = 0
         while pos < len(INIT):
-            count = INIT[pos+1]; pos += 2 + (count & 127)
-            if count & 128: pos += 1
+            count = INIT[pos + 1]
+            pos += 2 + (count & 127)
+            if count & 128:
+                pos += 1
             self.assertLessEqual(pos, len(INIT))
         self.assertEqual(pos, len(INIT))
 
@@ -133,16 +148,20 @@ class TurnCueTests(unittest.TestCase):
     def test_mic_reopening_triggers_one_blink(self):
         clock = [100.0]
         state = OwlState(300, clock=lambda: clock[0])
-        state.wake(); state.phase("idle"); state.emotion("normal")
+        state.wake()
+        state.phase("idle")
+        state.emotion("normal")
         eyes = Animator(seed=1)
         eyes.pose(state.snapshot(), 100.0)
         eyes.blink_start, eyes.next_blink, eyes.emotion = None, 10**9, "normal"
-        self.assertEqual(eyes.pose(state.snapshot(), 101.0)[1], 1.0)     # eyes open
+        self.assertEqual(eyes.pose(state.snapshot(), 101.0)[1], 1.0)  # eyes open
         clock[0] = 102.0
         state.cue()
         eyes.pose(state.snapshot(), 102.0)
-        self.assertLess(eyes.pose(state.snapshot(), 102.2)[1], .5)       # blinking
+        self.assertLess(eyes.pose(state.snapshot(), 102.2)[1], 0.5)  # blinking
         eyes.pose(state.snapshot(), 103.0)
-        self.assertEqual(eyes.pose(state.snapshot(), 103.1)[1], 1.0)     # one blink only
+        self.assertEqual(eyes.pose(state.snapshot(), 103.1)[1], 1.0)  # one blink only
 
-if __name__ == "__main__": unittest.main()
+
+if __name__ == "__main__":
+    unittest.main()

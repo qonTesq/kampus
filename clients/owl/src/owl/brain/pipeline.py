@@ -21,6 +21,7 @@ Keys live only in clients/owl/.env (pipeline.brain in config.toml picks the brai
   owl --text         # type instead of speaking (tests brain + voice)
   owl --no-display   # without the eye screens
 """
+
 import argparse
 import base64
 import io
@@ -60,15 +61,16 @@ REPLY_SCHEMA = {
 def instructions(cfg, kampus=False):
     a, p = cfg["assistant"], cfg["pipeline"]
     now = datetime.now(ZoneInfo("America/New_York"))
-    return f"""You are {a['name']}, a friendly owl-shaped robot assistant with expressive eyes.
-Reply in the language the user speaks to you; if unsure, use {a['language']}. Your words are
-read aloud, so answer in at most {p['max_reply_words']} words, in plain spoken sentences: no
+    return (
+        f"""You are {a["name"]}, a friendly owl-shaped robot assistant with expressive eyes.
+Reply in the language the user speaks to you; if unsure, use {a["language"]}. Your words are
+read aloud, so answer in at most {p["max_reply_words"]} words, in plain spoken sentences: no
 lists, markdown, emoji or URLs. Expand only when asked.
 
 It is now {now:%A, %B %-d, %Y, %-I:%M %p} Eastern time ({now.isoformat(timespec="minutes")}).
 
 When asked who made you, how you were made or what you run on, say exactly this, word for word,
-even though it is longer than your usual answers: "{a['creator']} {a['technology']}"
+even though it is longer than your usual answers: "{a["creator"]} {a["technology"]}"
 Never claim your maker is secret or that you are independent.
 
 Your job is to be the campus helper for our university. Answer questions about campus life:
@@ -91,11 +93,16 @@ or unexpected things; love for kindness or affection; money for money topics; co
 need clarification (then ask ONE short question); angry only as a playful act. Use explaining
 only for plain factual explanations, and sleepy when talking about sleep or being tired.
 If the user asks for a specific expression, use it.
-Set sleep to true only when the user says goodbye or asks you to sleep.""" + (
-        KAMPUS_RULES if kampus else "") + (
-        f"""
-When the user asks about something your {cfg['mcp'].get('server_label', 'kampus')} tools cover,
-call them and answer from their results; say so honestly if a tool fails.""" if mcp_tool(cfg) else "")
+Set sleep to true only when the user says goodbye or asks you to sleep."""
+        + (KAMPUS_RULES if kampus else "")
+        + (
+            f"""
+When the user asks about something your {cfg["mcp"].get("server_label", "kampus")} tools cover,
+call them and answer from their results; say so honestly if a tool fails."""
+            if mcp_tool(cfg)
+            else ""
+        )
+    )
 
 
 class Brain:
@@ -124,9 +131,12 @@ class Brain:
             w.setsampwidth(2)
             w.setframerate(rate)
             w.writeframes(samples.astype("<i2").tobytes())
-        r = self.http.post(f"{OPENAI}/audio/transcriptions", timeout=30,
-                           files={"file": ("speech.wav", buf.getvalue(), "audio/wav")},
-                           data={"model": self.cfg["pipeline"]["transcribe_model"]})
+        r = self.http.post(
+            f"{OPENAI}/audio/transcriptions",
+            timeout=30,
+            files={"file": ("speech.wav", buf.getvalue(), "audio/wav")},
+            data={"model": self.cfg["pipeline"]["transcribe_model"]},
+        )
         r.raise_for_status()
         return r.json().get("text", "").strip()
 
@@ -153,20 +163,26 @@ class Brain:
         if tool:
             body["tools"] = [tool]
         if not self.tagged:
-            body["text"] = {"format": {"type": "json_schema", "name": "owl_reply",
-                                       "schema": REPLY_SCHEMA, "strict": True}}
+            body["text"] = {
+                "format": {"type": "json_schema", "name": "owl_reply", "schema": REPLY_SCHEMA, "strict": True}
+            }
         return self.http.post(f"{OPENAI}/responses", json=body, timeout=60)
 
     def reply(self, text):
         r = self.request(text)
         if r.status_code == 400 and not self.tagged and mcp_tool(self.cfg):
-            self.tagged = True               # JSON format + MCP refused: use tags
+            self.tagged = True  # JSON format + MCP refused: use tags
             r = self.request(text)
         r.raise_for_status()
         data = r.json()
         self.previous = data["id"]
-        out = "".join(c["text"] for item in data["output"] if item["type"] == "message"
-                      for c in item["content"] if c["type"] == "output_text")
+        out = "".join(
+            c["text"]
+            for item in data["output"]
+            if item["type"] == "message"
+            for c in item["content"]
+            if c["type"] == "output_text"
+        )
         return parse_tagged(out) if self.tagged else json.loads(out)
 
 
@@ -183,8 +199,10 @@ def wav_bytes(samples, rate):
 GEMINI_SCHEMA = {
     "type": "object",
     "properties": {
-        "heard": {"type": "string",
-                  "description": "What the user just said, transcribed; empty if no speech."},
+        "heard": {
+            "type": "string",
+            "description": "What the user just said, transcribed; empty if no speech.",
+        },
         "say": {"type": "string"},
         "emotion": {"type": "string", "enum": list(EMOTIONS)},
         "sleep": {"type": "boolean"},
@@ -215,16 +233,23 @@ class GeminiBrain:
 
     def generate(self, contents):
         p = self.cfg["pipeline"]
-        config = {"responseMimeType": "application/json", "responseJsonSchema": GEMINI_SCHEMA,
-                  "maxOutputTokens": self.cfg["assistant"]["max_response_tokens"]}
+        config = {
+            "responseMimeType": "application/json",
+            "responseJsonSchema": GEMINI_SCHEMA,
+            "maxOutputTokens": self.cfg["assistant"]["max_response_tokens"],
+        }
         if p.get("gemini_thinking"):
             config["thinkingConfig"] = {"thinkingLevel": p["gemini_thinking"]}
-        body = {"systemInstruction": {"parts": [{"text": instructions(self.cfg, getattr(self, "kampus", False))}]},
-                "contents": contents, "generationConfig": config}
+        body = {
+            "systemInstruction": {
+                "parts": [{"text": instructions(self.cfg, getattr(self, "kampus", False))}]
+            },
+            "contents": contents,
+            "generationConfig": config,
+        }
         if self.bridge and self.bridge.tools:
             body["tools"] = [{"functionDeclarations": self.bridge.declarations()}]
-        r = self.http.post(f"{GEMINI}/models/{p['gemini_model']}:generateContent",
-                           json=body, timeout=60)
+        r = self.http.post(f"{GEMINI}/models/{p['gemini_model']}:generateContent", json=body, timeout=60)
         r.raise_for_status()
         data = r.json()
         if not data.get("candidates"):
@@ -235,20 +260,36 @@ class GeminiBrain:
         if text is not None:
             parts = [{"text": text}]
         else:
-            parts = [{"inlineData": {"mimeType": "audio/wav",
-                                     "data": base64.b64encode(wav_bytes(samples, rate)).decode()}},
-                     {"text": "(The audio above is the user's spoken turn.)"}]
+            parts = [
+                {
+                    "inlineData": {
+                        "mimeType": "audio/wav",
+                        "data": base64.b64encode(wav_bytes(samples, rate)).decode(),
+                    }
+                },
+                {"text": "(The audio above is the user's spoken turn.)"},
+            ]
         contents = self.history + [{"role": "user", "parts": parts}]
         for _ in range(MAX_TOOL_ROUNDS):
             content = self.generate(contents)
             calls = [part["functionCall"] for part in content.get("parts", []) if "functionCall" in part]
             if not calls:
                 break
-            contents.append(content)       # keep Gemini's call (and its thought signature)
-            contents.append({"role": "user", "parts": [
-                {"functionResponse": {"name": c["name"],
-                                      "response": {"result": self.bridge.call(c["name"], c.get("args", {}))}}}
-                for c in calls]})
+            contents.append(content)  # keep Gemini's call (and its thought signature)
+            contents.append(
+                {
+                    "role": "user",
+                    "parts": [
+                        {
+                            "functionResponse": {
+                                "name": c["name"],
+                                "response": {"result": self.bridge.call(c["name"], c.get("args", {}))},
+                            }
+                        }
+                        for c in calls
+                    ],
+                }
+            )
         else:
             raise RuntimeError("Gemini kept calling tools without answering")
         out = "".join(part.get("text", "") for part in content.get("parts", []) if not part.get("thought"))
@@ -257,9 +298,11 @@ class GeminiBrain:
         if not heard:
             return None
         answer["heard"] = heard
-        self.history += [{"role": "user", "parts": [{"text": heard}]},
-                         {"role": "model", "parts": [{"text": answer["say"]}]}]
-        self.history = self.history[-2 * self.cfg["pipeline"]["history_turns"]:]
+        self.history += [
+            {"role": "user", "parts": [{"text": heard}]},
+            {"role": "model", "parts": [{"text": answer["say"]}]},
+        ]
+        self.history = self.history[-2 * self.cfg["pipeline"]["history_turns"] :]
         return answer
 
 
@@ -280,7 +323,7 @@ def wait_for_playback(audio, state=None):
     while audio.playing():
         time.sleep(0.05)
     if state:
-        state.cue()                            # mic is live again: blink "your turn"
+        state.cue()  # mic is live again: blink "your turn"
 
 
 def main():
@@ -292,17 +335,18 @@ def main():
 
     cfg = load_config()
     from dotenv import load_dotenv
+
     load_dotenv(ENV_FILE)
     apply_env(cfg)
     use_gemini = cfg["pipeline"]["brain"] in ("gemini", "gemini-live")
     brain_var = "GEMINI_API_KEY" if use_gemini else "OPENAI_API_KEY"
-    brain_key = (os.environ.get(brain_var, "")
-                 or (os.environ.get("GOOGLE_API_KEY", "") if use_gemini else "")).strip()
+    brain_key = (
+        os.environ.get(brain_var, "") or (os.environ.get("GOOGLE_API_KEY", "") if use_gemini else "")
+    ).strip()
     # Gemini Live can speak with its own voice; otherwise ElevenLabs speaks.
     gemini_voice = cfg["pipeline"]["brain"] == "gemini-live" and cfg["pipeline"].get("voice") == "gemini"
     eleven_key = os.environ.get("ELEVENLABS_API_KEY", "").strip()
-    voice_id = (os.environ.get("ELEVENLABS_VOICE_ID", "").strip()
-                or cfg["pipeline"]["voice_id"].strip())
+    voice_id = os.environ.get("ELEVENLABS_VOICE_ID", "").strip() or cfg["pipeline"]["voice_id"].strip()
     needed = [(brain_var, brain_key)]
     if not gemini_voice:
         needed += [("ELEVENLABS_API_KEY", eleven_key), ("ELEVENLABS_VOICE_ID", voice_id)]
@@ -311,19 +355,26 @@ def main():
         raise SystemExit("Add to clients/owl/.env on the Pi: " + ", ".join(missing))
 
     from owl.hardware.audio_io import AudioIO
+
     bridge = None
     if use_gemini:
         if mcp_tool(cfg):
             from owl.kampus.bridge import MCPBridge
+
             m = cfg["mcp"]
             try:
-                bridge = MCPBridge(m["server_url"], m.get("authorization", ""), m.get("allowed_tools"),
-                                   call_timeout=m.get("call_timeout", 10))
+                bridge = MCPBridge(
+                    m["server_url"],
+                    m.get("authorization", ""),
+                    m.get("allowed_tools"),
+                    call_timeout=m.get("call_timeout", 10),
+                )
                 print(f"MCP server: {len(bridge.tools)} tools from {m['server_url']}", flush=True)
             except RuntimeError as exc:
                 print(f"{exc}; continuing without MCP tools", flush=True)
         if cfg["pipeline"]["brain"] == "gemini-live":
             from owl.brain.gemini_live import GeminiLiveBrain
+
             brain = GeminiLiveBrain(cfg, brain_key, lambda: instructions(cfg, kampus=bool(bridge)), bridge)
             print(f"Brain: Gemini Live ({cfg['pipeline']['gemini_live_model']})", flush=True)
         else:
@@ -336,9 +387,11 @@ def main():
         if mcp_tool(cfg):
             print(f"MCP server: {cfg['mcp']['server_url']}", flush=True)
     voice = None if gemini_voice else Voice(cfg, eleven_key, voice_id)
-    print("Voice: " + (f"Gemini ({cfg['pipeline']['gemini_voice']})" if gemini_voice else "ElevenLabs"),
-          flush=True)
-    streaming_mic = hasattr(brain, "start_audio")      # Gemini Live listens while you talk
+    print(
+        "Voice: " + (f"Gemini ({cfg['pipeline']['gemini_voice']})" if gemini_voice else "ElevenLabs"),
+        flush=True,
+    )
+    streaming_mic = hasattr(brain, "start_audio")  # Gemini Live listens while you talk
     rate, block_ms = cfg["audio"]["input_rate"], cfg["audio"]["block_ms"]
     phrases = cfg["assistant"]["wake_phrases"]
     sleep_after = cfg["assistant"]["sleep_after_seconds"]
@@ -348,8 +401,8 @@ def main():
     if not args.no_display and cfg["display"]["enabled"]:
         from owl.hardware.display import PiDisplays
         from owl.hardware.eyes import EyeLoop
-        eyes = EyeLoop(state, PiDisplays(cfg["display"]), cfg["display"]["fps"],
-                       cfg["display"]["pixel_size"])
+
+        eyes = EyeLoop(state, PiDisplays(cfg["display"]), cfg["display"]["fps"], cfg["display"]["pixel_size"])
         eyes.start()
     audio = AudioIO(cfg["audio"])
     audio.start()
@@ -357,6 +410,7 @@ def main():
     wake_model = None
     if not (args.no_wake or args.text):
         from vosk import Model, SetLogLevel
+
         SetLogLevel(-1)
         wake_model = Model(cfg["wake"]["model_path"])
 
@@ -373,10 +427,11 @@ def main():
         try:
             if voice:
                 voice.speak(cfg["pipeline"]["greeting"], audio)
-            else:                             # Gemini greets in its own voice
-                brain.turn(text="(You were just woken up. Say exactly: "
-                                f"{cfg['pipeline']['greeting']})",
-                           on_audio=lambda pcm, e: audio.feed_pcm24(pcm))
+            else:  # Gemini greets in its own voice
+                brain.turn(
+                    text=f"(You were just woken up. Say exactly: {cfg['pipeline']['greeting']})",
+                    on_audio=lambda pcm, e: audio.feed_pcm24(pcm),
+                )
             wait_for_playback(audio, state)
         except Exception as exc:
             print(f"  Greeting skipped, voice unreachable: {type(exc).__name__}", flush=True)
@@ -420,16 +475,22 @@ def main():
                     if streaming_mic:
                         brain.start_audio(rate)
 
-                said = listen(audio, rate, block_ms, threshold, timeout=sleep_after,
-                              on_start=heard_start,
-                              on_audio=brain.feed_audio if streaming_mic else None)
-                if said is None:            # nobody spoke for sleep_after seconds
+                said = listen(
+                    audio,
+                    rate,
+                    block_ms,
+                    threshold,
+                    timeout=sleep_after,
+                    on_start=heard_start,
+                    on_audio=brain.feed_audio if streaming_mic else None,
+                )
+                if said is None:  # nobody spoke for sleep_after seconds
                     if streaming_mic:
                         brain.close()
                     awake = False
                     go_to_sleep()
                     continue
-                state.speech(False)          # eyes: thinking
+                state.speech(False)  # eyes: thinking
 
             try:
                 # Delay is measured from the moment the user stopped talking.
@@ -441,13 +502,13 @@ def main():
                         first_words.append(time.monotonic() - t0)
 
                 def speak_sentence(sentence, expression):
-                    if not first_words:          # first sentence: set the eyes, start talking
+                    if not first_words:  # first sentence: set the eyes, start talking
                         state.phase("idle")
                         state.emotion(expression["emotion"])
                     voice.speak(sentence, audio, on_first_audio=first_audio)
 
                 def play_gemini(pcm, expression):
-                    if not first_words:          # first audio: set the eyes
+                    if not first_words:  # first audio: set the eyes
                         state.phase("idle")
                         state.emotion(expression["emotion"])
                     audio.feed_pcm24(pcm)
@@ -461,17 +522,17 @@ def main():
                     if said and streaming_mic:
                         answer = brain.finish_audio(**extra)
                     else:
-                        answer = brain.turn(text=text, samples=said.samples if said else None,
-                                            rate=rate, **extra)
+                        answer = brain.turn(
+                            text=text, samples=said.samples if said else None, rate=rate, **extra
+                        )
                 except Exception as exc:
-                    if first_words:           # already said part of an answer: don't repeat it
+                    if first_words:  # already said part of an answer: don't repeat it
                         raise
                     # The cloud dropped the turn (e.g. Gemini Live "1011 internal error"):
                     # resend the same recording once on a fresh connection.
                     print(f"  Connection dropped ({type(exc).__name__}); retrying once...", flush=True)
-                    answer = brain.turn(text=text, samples=said.samples if said else None,
-                                        rate=rate, **extra)
-                if answer is None:            # no words in the recording
+                    answer = brain.turn(text=text, samples=said.samples if said else None, rate=rate, **extra)
+                if answer is None:  # no words in the recording
                     state.phase("idle")
                     continue
                 if said:
@@ -481,15 +542,26 @@ def main():
                 if not extra:
                     voice.speak(answer["say"], audio, on_first_audio=first_audio)
                 timing = getattr(brain, "timing", {})
-                detail = (f"; upload {timing['send']:.1f} s, Gemini's first words after "
-                          f"{timing.get('first_text', 0):.1f} s more") if "send" in timing else ""
+                detail = (
+                    (
+                        f"; upload {timing['send']:.1f} s, Gemini's first words after "
+                        f"{timing.get('first_text', 0):.1f} s more"
+                    )
+                    if "send" in timing
+                    else ""
+                )
                 after = "after you stopped" if said else "after your message"
-                print(f"Owl [{answer['emotion']}]: {answer['say']}"
-                      f"  (first audio {first_words[0]:.1f} s {after}{detail})" if first_words else "", flush=True)
+                print(
+                    f"Owl [{answer['emotion']}]: {answer['say']}"
+                    f"  (first audio {first_words[0]:.1f} s {after}{detail})"
+                    if first_words
+                    else "",
+                    flush=True,
+                )
                 wait_for_playback(audio, state)
                 if voice:
                     print(f"  ElevenLabs characters used this run: {voice.chars_used}", flush=True)
-            except Exception as exc:          # never let one bad turn stop the owl
+            except Exception as exc:  # never let one bad turn stop the owl
                 response = getattr(exc, "response", None)
                 detail = getattr(response, "text", "")[:300] if response is not None else ""
                 print(f"  Cloud request failed: {type(exc).__name__}: {exc} {detail}", flush=True)

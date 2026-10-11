@@ -14,6 +14,7 @@ Wiring (shared SPI0 bus, separate CS / DC / RST per eye):
 Run:  python eyes_test.py          (Ctrl+C to stop)
       python eyes_test.py --one    (left eye only, for first wiring check)
 """
+
 import random
 import sys
 import time
@@ -34,19 +35,43 @@ if "--one" in sys.argv:
 
 # GC9A01 power-on sequence (vendor init, as used by Waveshare/Adafruit drivers).
 INIT = [
-    (0xEF, []), (0xEB, [0x14]), (0xFE, []), (0xEF, []), (0xEB, [0x14]),
-    (0x84, [0x40]), (0x85, [0xFF]), (0x86, [0xFF]), (0x87, [0xFF]),
-    (0x88, [0x0A]), (0x89, [0x21]), (0x8A, [0x00]), (0x8B, [0x80]),
-    (0x8C, [0x01]), (0x8D, [0x01]), (0x8E, [0xFF]), (0x8F, [0xFF]),
-    (0xB6, [0x00, 0x20]), (0x36, [0x08]), (0x3A, [0x05]),
-    (0x90, [0x08, 0x08, 0x08, 0x08]), (0xBD, [0x06]), (0xBC, [0x00]),
-    (0xFF, [0x60, 0x01, 0x04]), (0xC3, [0x13]), (0xC4, [0x13]), (0xC9, [0x22]),
-    (0xBE, [0x11]), (0xE1, [0x10, 0x0E]), (0xDF, [0x21, 0x0C, 0x02]),
+    (0xEF, []),
+    (0xEB, [0x14]),
+    (0xFE, []),
+    (0xEF, []),
+    (0xEB, [0x14]),
+    (0x84, [0x40]),
+    (0x85, [0xFF]),
+    (0x86, [0xFF]),
+    (0x87, [0xFF]),
+    (0x88, [0x0A]),
+    (0x89, [0x21]),
+    (0x8A, [0x00]),
+    (0x8B, [0x80]),
+    (0x8C, [0x01]),
+    (0x8D, [0x01]),
+    (0x8E, [0xFF]),
+    (0x8F, [0xFF]),
+    (0xB6, [0x00, 0x20]),
+    (0x36, [0x08]),
+    (0x3A, [0x05]),
+    (0x90, [0x08, 0x08, 0x08, 0x08]),
+    (0xBD, [0x06]),
+    (0xBC, [0x00]),
+    (0xFF, [0x60, 0x01, 0x04]),
+    (0xC3, [0x13]),
+    (0xC4, [0x13]),
+    (0xC9, [0x22]),
+    (0xBE, [0x11]),
+    (0xE1, [0x10, 0x0E]),
+    (0xDF, [0x21, 0x0C, 0x02]),
     (0xF0, [0x45, 0x09, 0x08, 0x08, 0x26, 0x2A]),
     (0xF1, [0x43, 0x70, 0x72, 0x36, 0x37, 0x6F]),
     (0xF2, [0x45, 0x09, 0x08, 0x08, 0x26, 0x2A]),
     (0xF3, [0x43, 0x70, 0x72, 0x36, 0x37, 0x6F]),
-    (0xED, [0x1B, 0x0B]), (0xAE, [0x77]), (0xCD, [0x63]),
+    (0xED, [0x1B, 0x0B]),
+    (0xAE, [0x77]),
+    (0xCD, [0x63]),
     (0x70, [0x07, 0x07, 0x04, 0x0E, 0x0F, 0x09, 0x07, 0x08, 0x03]),
     (0xE8, [0x34]),
     (0x62, [0x18, 0x0D, 0x71, 0xED, 0x70, 0x70, 0x18, 0x0F, 0x71, 0xEF, 0x70, 0x70]),
@@ -55,7 +80,9 @@ INIT = [
     (0x66, [0x3C, 0x00, 0xCD, 0x67, 0x45, 0x45, 0x10, 0x00, 0x00, 0x00]),
     (0x67, [0x00, 0x3C, 0x00, 0x00, 0x00, 0x01, 0x54, 0x10, 0x32, 0x98]),
     (0x74, [0x10, 0x85, 0x80, 0x00, 0x00, 0x4E, 0x00]),
-    (0x98, [0x3E, 0x07]), (0x35, []), (0x21, []),
+    (0x98, [0x3E, 0x07]),
+    (0x35, []),
+    (0x21, []),
 ]
 
 
@@ -86,9 +113,9 @@ class GC9A01:
             time.sleep(pause)
         for cmd, data in INIT:
             self.command(cmd, data)
-        self.command(0x11)            # sleep out
+        self.command(0x11)  # sleep out
         time.sleep(0.12)
-        self.command(0x29)            # display on
+        self.command(0x29)  # display on
         time.sleep(0.02)
 
     def command(self, cmd, data=()):
@@ -101,9 +128,9 @@ class GC9A01:
     def display(self, img):
         a = np.asarray(img, dtype=np.uint16)
         rgb565 = ((a[..., 0] & 0xF8) << 8) | ((a[..., 1] & 0xFC) << 3) | (a[..., 2] >> 3)
-        self.command(0x2A, [0, 0, 0, SIZE - 1])   # column range
-        self.command(0x2B, [0, 0, 0, SIZE - 1])   # row range
-        self.command(0x2C)                        # memory write
+        self.command(0x2A, [0, 0, 0, SIZE - 1])  # column range
+        self.command(0x2B, [0, 0, 0, SIZE - 1])  # row range
+        self.command(0x2C)  # memory write
         lgpio.gpio_write(self.chip, self.dc, 1)
         self.spi.writebytes2(rgb565.astype(">u2").tobytes())
 
@@ -120,15 +147,15 @@ def draw_eye(px, py, lid):
     img = Image.new("RGB", (SIZE, SIZE), "black")
     d = ImageDraw.Draw(img)
     c = SIZE // 2
-    d.ellipse((4, 4, SIZE - 4, SIZE - 4), fill=(235, 235, 235))          # sclera
+    d.ellipse((4, 4, SIZE - 4, SIZE - 4), fill=(235, 235, 235))  # sclera
     ix, iy = c + px, c + py
     d.ellipse((ix - 62, iy - 62, ix + 62, iy + 62), fill=(30, 120, 200))  # iris
-    d.ellipse((ix - 28, iy - 28, ix + 28, iy + 28), fill="black")         # pupil
-    d.ellipse((ix - 30, iy - 38, ix - 12, iy - 20), fill="white")         # glint
+    d.ellipse((ix - 28, iy - 28, ix + 28, iy + 28), fill="black")  # pupil
+    d.ellipse((ix - 30, iy - 38, ix - 12, iy - 20), fill="white")  # glint
     if lid > 0:
         h = int(c * lid)
-        d.rectangle((0, 0, SIZE, h), fill=(20, 20, 20))                   # upper lid
-        d.rectangle((0, SIZE - h, SIZE, SIZE), fill=(20, 20, 20))         # lower lid
+        d.rectangle((0, 0, SIZE, h), fill=(20, 20, 20))  # upper lid
+        d.rectangle((0, SIZE - h, SIZE, SIZE), fill=(20, 20, 20))  # lower lid
     return img
 
 
@@ -153,7 +180,7 @@ def main():
         if blink_start is None and now >= next_blink:
             blink_start = now
         if blink_start is not None:
-            t = (now - blink_start) / 0.25          # 250 ms blink
+            t = (now - blink_start) / 0.25  # 250 ms blink
             if t >= 1:
                 blink_start = None
                 next_blink = now + random.uniform(2, 6)

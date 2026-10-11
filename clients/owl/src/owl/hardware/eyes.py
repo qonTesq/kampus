@@ -1,4 +1,5 @@
 """Original yellow-crescent owl renderer; no camera or network access here."""
+
 import random
 import threading
 import time
@@ -8,37 +9,42 @@ from PIL import Image
 
 YELLOW = (255, 224, 24)
 WHITE = (255, 255, 255)
-MONEY = (0b00100, 0b01111, 0b10100, 0b10100, 0b01110,
-         0b00101, 0b00101, 0b11110, 0b00100)
+MONEY = (0b00100, 0b01111, 0b10100, 0b10100, 0b01110, 0b00101, 0b00101, 0b11110, 0b00100)
 
-def render_eye(eye, emotion="normal", openness=1.0, gaze=(0, 0),
-               energy=0.0, pixel_size=4):
+
+def render_eye(eye, emotion="normal", openness=1.0, gaze=(0, 0), energy=0.0, pixel_size=4):
     if pixel_size not in (1, 2, 3, 4, 5, 6, 8):
         raise ValueError("pixel_size must divide 240")
     n = 240 // pixel_size
-    axis = (np.arange(n) + .5) * pixel_size - 120
+    axis = (np.arange(n) + 0.5) * pixel_size - 120
     x, y = np.meshgrid(axis, axis)
     result = np.zeros((n, n, 3), dtype=np.uint8)
     if emotion == "sleeping":
-        outer = (x / 78)**2 + ((y + 12) / 22)**2 <= 1
-        inner = (x / 75)**2 + ((y + 17) / 22)**2 <= 1
+        outer = (x / 78) ** 2 + ((y + 12) / 22) ** 2 <= 1
+        inner = (x / 75) ** 2 + ((y + 17) / 22) ** 2 <= 1
         result[outer & ~inner & (y >= -2)] = YELLOW
     else:
         height = 62
-        if emotion == "sleepy": height = 30
-        if emotion == "surprised": height = 68
-        if emotion == "confused": height = 66 if eye == 0 else 35
-        if emotion == "explaining": height = 59 + round(3 * energy)
+        if emotion == "sleepy":
+            height = 30
+        if emotion == "surprised":
+            height = 68
+        if emotion == "confused":
+            height = 66 if eye == 0 else 35
+        if emotion == "explaining":
+            height = 59 + round(3 * energy)
         height = max(2, height * max(0, min(1, openness)))
         sy = y * 62 / height
-        inner = (x / 87)**2 + (sy / 53)**2 <= 1
-        if openness > .04:
+        inner = (x / 87) ** 2 + (sy / 53) ** 2 <= 1
+        if openness > 0.04:
             if emotion == "happy":
-                arc = (x / 80)**2 + (sy / 29)**2 <= 1
-                cut = (x / 74)**2 + ((sy - 13) / 28)**2 <= 1
+                arc = (x / 80) ** 2 + (sy / 29) ** 2 <= 1
+                cut = (x / 74) ** 2 + ((sy - 13) / 28) ** 2 <= 1
                 result[arc & ~cut] = YELLOW
             elif emotion == "love":
-                lobes = (((x + 27) / 27)**2 + ((sy + 10) / 33)**2 <= 1) | (((x - 27) / 27)**2 + ((sy + 10) / 33)**2 <= 1)
+                lobes = (((x + 27) / 27) ** 2 + ((sy + 10) / 33) ** 2 <= 1) | (
+                    ((x - 27) / 27) ** 2 + ((sy + 10) / 33) ** 2 <= 1
+                )
                 tip = (np.abs(x) <= 55 * (43 - sy) / 53) & (sy >= -10) & (sy <= 43)
                 result[inner & ((lobes & (sy < -10)) | tip)] = YELLOW
             elif emotion == "money":
@@ -47,7 +53,7 @@ def render_eye(eye, emotion="normal", openness=1.0, gaze=(0, 0),
                 mask = np.zeros((n, n), dtype=bool)
                 for row, bits in enumerate(MONEY):
                     for col in range(5):
-                        if bits & (1 << (4-col)):
+                        if bits & (1 << (4 - col)):
                             mask |= (gy == row) & (gx == col)
                 result[mask] = YELLOW
             else:
@@ -58,12 +64,13 @@ def render_eye(eye, emotion="normal", openness=1.0, gaze=(0, 0),
                 px, py = direction * 14 + gaze[0], -20 + gaze[1]
                 pw, ph = 75, 59
                 if emotion == "surprised":
-                    px, py, pw, ph = gaze[0], gaze[1]-3, 57, 45
-                pupil = ((x-px)/pw)**2 + ((sy-py)/ph)**2 <= 1
+                    px, py, pw, ph = gaze[0], gaze[1] - 3, 57, 45
+                pupil = ((x - px) / pw) ** 2 + ((sy - py) / ph) ** 2 <= 1
                 result[visible & ~pupil] = YELLOW
-                shine = ((x-(px-direction*12))/10)**2 + ((sy-(py-8))/12)**2 <= 1
+                shine = ((x - (px - direction * 12)) / 10) ** 2 + ((sy - (py - 8)) / 12) ** 2 <= 1
                 result[visible & pupil & shine] = WHITE
     return Image.fromarray(result).resize((240, 240), Image.Resampling.NEAREST)
+
 
 class Animator:
     def __init__(self, seed=None):
@@ -86,7 +93,7 @@ class Animator:
         if desired != self.target:
             self.target = desired
             self.blink_start = now
-        if snapshot.cue != self.last_cue:      # "your turn": mic just reopened
+        if snapshot.cue != self.last_cue:  # "your turn": mic just reopened
             self.last_cue = snapshot.cue
             if self.blink_start is None and self.emotion != "sleeping":
                 self.blink_start = now
@@ -95,23 +102,29 @@ class Animator:
         opening = 1.0
         if self.blink_start is not None:
             elapsed = now - self.blink_start
-            if elapsed < .16: opening = 1 - elapsed / .16
-            elif elapsed < .24: opening = 0
-            elif elapsed < .48: opening = (elapsed-.24)/.24
+            if elapsed < 0.16:
+                opening = 1 - elapsed / 0.16
+            elif elapsed < 0.24:
+                opening = 0
+            elif elapsed < 0.48:
+                opening = (elapsed - 0.24) / 0.24
             else:
                 self.blink_start = None
                 self.next_blink = now + self.rng.uniform(2.8, 5)
-            if elapsed >= .16: self.emotion = self.target
+            if elapsed >= 0.16:
+                self.emotion = self.target
             opening = opening * opening * (3 - 2 * opening)
         if now >= self.next_gaze and self.blink_start is None:
             self.from_gaze = self.gaze.copy()
             self.to_gaze = np.array([self.rng.uniform(-9, 9), self.rng.uniform(-5, 5)])
-            if snapshot.phase == "listening": self.to_gaze *= .25
+            if snapshot.phase == "listening":
+                self.to_gaze *= 0.25
             self.gaze_start = now
             self.next_gaze = now + self.rng.uniform(1.5, 3.5)
-        p = min(1, max(0, (now - self.gaze_start)/.45))
-        self.gaze = self.from_gaze + (self.to_gaze-self.from_gaze) * p*p*(3-2*p)
+        p = min(1, max(0, (now - self.gaze_start) / 0.45))
+        self.gaze = self.from_gaze + (self.to_gaze - self.from_gaze) * p * p * (3 - 2 * p)
         return self.emotion, opening, tuple(self.gaze), snapshot.level
+
 
 class EyeLoop:
     def __init__(self, state, sink, fps=25, pixel_size=4):
@@ -122,7 +135,8 @@ class EyeLoop:
         self.error = None
         self.thread = threading.Thread(target=self._run, name="owl-eyes", daemon=True)
 
-    def start(self): self.thread.start()
+    def start(self):
+        self.thread.start()
 
     def _run(self):
         animator = Animator()
@@ -132,7 +146,7 @@ class EyeLoop:
                 pose = animator.pose(self.state.snapshot(), start)
                 frames = [render_eye(i, *pose, pixel_size=self.pixel_size) for i in range(2)]
                 self.sink.show(frames)
-                self.stop_event.wait(max(0, self.period-(time.monotonic()-start)))
+                self.stop_event.wait(max(0, self.period - (time.monotonic() - start)))
         except Exception as exc:
             self.error = exc
 

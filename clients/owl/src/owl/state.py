@@ -1,9 +1,11 @@
 """Small, independently testable conversation state machine."""
+
 import time
 from dataclasses import dataclass, replace
 from threading import Lock
 
 EMOTIONS = ("normal", "happy", "sleepy", "surprised", "angry", "confused", "love", "money", "explaining")
+
 
 @dataclass
 class Snapshot:
@@ -12,7 +14,8 @@ class Snapshot:
     last_human: float = 0.0
     user_speaking: bool = False
     level: float = 0.0
-    cue: float = 0.0   # time of the last "your turn" cue (mic reopened)
+    cue: float = 0.0  # time of the last "your turn" cue (mic reopened)
+
 
 class OwlState:
     def __init__(self, timeout=300, clock=time.monotonic):
@@ -62,5 +65,9 @@ class OwlState:
 
     def should_sleep(self, busy=False):
         s = self.snapshot()
-        return (s.phase != "sleeping" and not busy and not s.user_speaking
-                and self.clock() - s.last_human >= self.timeout)
+        return (
+            s.phase != "sleeping"
+            and not busy
+            and not s.user_speaking
+            and self.clock() - s.last_human >= self.timeout
+        )

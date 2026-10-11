@@ -1,11 +1,12 @@
 """Loading config/config.toml and the .env overrides."""
+
 import os
 import tomllib
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2]          # clients/owl
+ROOT = Path(__file__).resolve().parents[2]  # clients/owl
 EXAMPLE_CONFIG = ROOT / "config" / "config.example.toml"
-LOCAL_CONFIG = ROOT / "config" / "config.toml"      # untracked copy of the example
+LOCAL_CONFIG = ROOT / "config" / "config.toml"  # untracked copy of the example
 ENV_FILE = ROOT / ".env"
 
 
@@ -15,7 +16,8 @@ def default_config():
 
 
 def load_config(path=None):
-    with open(path or default_config(), "rb") as handle: cfg = tomllib.load(handle)
+    with open(path or default_config(), "rb") as handle:
+        cfg = tomllib.load(handle)
     if cfg["assistant"]["sleep_after_seconds"] <= 0:
         raise ValueError("sleep_after_seconds must be positive")
     if not cfg["assistant"]["wake_phrases"]:
@@ -30,7 +32,9 @@ def load_config(path=None):
         raise ValueError("Use one or two output channels")
     if not 0 <= cfg["audio"]["mic_channel"] < cfg["audio"]["input_channels"]:
         raise ValueError("mic_channel must exist in input_channels")
-    pins = [cfg["display"][p] for p in ("left_dc_gpio", "right_dc_gpio", "left_reset_gpio", "right_reset_gpio")]
+    pins = [
+        cfg["display"][p] for p in ("left_dc_gpio", "right_dc_gpio", "left_reset_gpio", "right_reset_gpio")
+    ]
     if len(set(pins)) != 4 or any(p in (7, 8, 9, 10, 11) for p in pins):
         raise ValueError("DC/reset pins must be distinct and not use the SPI0 pins")
     if cfg["display"]["left_ce"] == cfg["display"]["right_ce"]:
@@ -41,6 +45,7 @@ def load_config(path=None):
     model = Path(cfg["wake"]["model_path"])
     cfg["wake"]["model_path"] = str(model if model.is_absolute() else ROOT / model)
     return cfg
+
 
 def apply_env(cfg):
     """Settings in .env (or the environment) override config.toml."""
