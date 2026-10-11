@@ -41,7 +41,7 @@ find_study_room SHALL use configured LibCal settings and valid time/capacity fil
 
 ### Requirement: Two-call sandbox booking
 
-book_study_room SHALL declare Public, write=false, readOnlyHint=true and destructiveHint=false, accept room_id, location_id, start and end with no action or user_id, and return state=proposed, the room/slot proposal, confirmation_id, expires_at, sandbox=true and submitted=false. It SHALL require effective student role but no rooms:book scope and SHALL NOT touch a LibCal write endpoint. An unknown location, or a room that the location's directory does not list, SHALL be invalid_arguments saying which is unknown and pointing to find_study_room; "not free" SHALL be reserved for a listed room whose slot is taken. confirm_booking SHALL declare Public, write=true, readOnlyHint=false and destructiveHint=true, require effective student role and rooms:book scope, and accept only confirmation_id, rejecting room/time overrides and any other fields. It SHALL return state=confirmed, receipt_id, sandbox=true and submitted=false, and SHALL never make a real booking write. Both SHALL use structuredContent matching their separate outputSchema.
+book_study_room SHALL declare Public, write=false, readOnlyHint=true and destructiveHint=false, accept room_id, location_id, start and end with no action or user_id, and return state=proposed, the room/slot proposal, confirmation_id, expires_at, sandbox=true and submitted=false. It SHALL require effective student role but no rooms:book scope and SHALL NOT touch a LibCal write endpoint.
 
 #### Scenario: Guest attempts booking
 
@@ -52,6 +52,19 @@ book_study_room SHALL declare Public, write=false, readOnlyHint=true and destruc
 
 - **WHEN** a permitted student calls book_study_room for an available slot and later calls confirm_booking with rooms:book scope
 - **THEN** the first response is proposed and the second says sandbox=true and submitted=false
+
+### Requirement: Unknown rooms and locations
+
+An unknown location, or a room that the location's directory does not list, SHALL be invalid_arguments saying which is unknown and pointing to find_study_room; "not free" SHALL be reserved for a listed room whose slot is taken.
+
+#### Scenario: Wrong room or location ID
+
+- **WHEN** book_study_room names a room the location does not list, or a location that is not configured
+- **THEN** it returns invalid_arguments saying the room or location is unknown and suggesting find_study_room, never "not free"
+
+### Requirement: Sandbox booking confirmation
+
+confirm_booking SHALL declare Public, write=true, readOnlyHint=false and destructiveHint=true, require effective student role and rooms:book scope, and accept only confirmation_id, rejecting room/time overrides and any other fields. It SHALL return state=confirmed, receipt_id, sandbox=true and submitted=false, and SHALL never make a real booking write. Both booking tools SHALL use structuredContent matching their separate outputSchema.
 
 #### Scenario: Confirmation input cannot change the proposal
 
@@ -68,14 +81,9 @@ book_study_room SHALL declare Public, write=false, readOnlyHint=true and destruc
 - **WHEN** a permitted caller invokes booking on a production build
 - **THEN** the schema is visible but the result is unsupported_source and no mock or upstream write executes
 
-#### Scenario: Wrong room or location ID
-
-- **WHEN** book_study_room names a room the location does not list, or a location that is not configured
-- **THEN** it returns invalid_arguments saying the room or location is unknown and suggesting find_study_room, never "not free"
-
 ### Requirement: Confirmation is bound and reauthorized
 
-Confirmation IDs SHALL be unpredictable, single-use, scoped to school, subject, azp and current device binding where applicable, expire after 120 seconds and be discarded on restart. confirm_booking SHALL recheck policy, effective student role, write scope, identity, current binding generation, expiry and fresh availability. Fresh availability SHALL come from an upstream read that was in progress or started during that confirmation; concurrent confirmations MAY share one such read, but a completed read SHALL NOT be reused by a later confirmation.
+Confirmation IDs SHALL be unpredictable, single-use, scoped to school, subject, azp and current device binding where applicable, expire after 120 seconds and be discarded on restart. confirm_booking SHALL recheck policy, effective student role, write scope, identity, current binding generation, expiry and fresh availability.
 
 #### Scenario: Replay or identity swap
 
@@ -86,6 +94,10 @@ Confirmation IDs SHALL be unpredictable, single-use, scoped to school, subject, 
 
 - **WHEN** a binding expires or policy denies booking after a proposal
 - **THEN** confirmation fails even if the confirmation ID has not otherwise expired
+
+### Requirement: Fresh availability at confirmation
+
+Fresh availability SHALL come from an upstream read that was in progress or started during that confirmation; concurrent confirmations MAY share one such read, but a completed read SHALL NOT be reused by a later confirmation.
 
 #### Scenario: Upstream unavailable at confirm
 
