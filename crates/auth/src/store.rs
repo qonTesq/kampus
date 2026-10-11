@@ -1,6 +1,5 @@
-//! In-memory broker state behind a small trait (the seam for a persistent
-//! store; `MemoryStore` is the only implementation). Every collection has a
-//! TTL and a fixed capacity. When one is full, new unauthenticated work is
+//! In-memory broker state. Every collection has a TTL and a fixed
+//! capacity. When one is full, new unauthenticated work is
 //! refused; live grants and refresh families are never evicted. Locks are
 //! short and never held across I/O.
 
@@ -153,47 +152,6 @@ const MAX_RETIRED: usize = 2048;
 /// How long a redeemed code's tombstone outlives the code.
 const TOMBSTONE_SECONDS: i64 = 600;
 
-/// Broker state.
-pub(crate) trait Store: Send + Sync + fmt::Debug {
-    fn insert_pending(&self, id: String, pending: Pending) -> Result<(), Full>;
-    fn pending(&self, id: &str, now: i64) -> Option<Pending>;
-    fn take_pending(&self, id: &str, now: i64) -> Option<Pending>;
-
-    fn insert_upstream(&self, state: String, login: UpstreamLogin) -> Result<(), Full>;
-    fn take_upstream(&self, state: &str, now: i64) -> Option<UpstreamLogin>;
-
-    fn insert_session(&self, id: String, session: Session) -> Result<(), Full>;
-    fn session(&self, id: &str, now: i64) -> Option<Session>;
-
-    fn insert_code(&self, hash: String, code: Code) -> Result<(), Full>;
-    /// Single use: a live code becomes a tombstone.
-    fn redeem_code(&self, hash: &str, now: i64) -> Redemption;
-    /// Record the family a redemption created, for reuse revocation.
-    fn bind_code_family(&self, hash: &str, family: &str);
-
-    /// Insert the grant for `key`, or return the existing one.
-    fn upsert_grant(&self, key: GrantKey, label: String, now: i64) -> Result<Grant, Full>;
-    fn grant(&self, key: &GrantKey) -> Option<Grant>;
-    fn grants_for(&self, subject: &str) -> Vec<Grant>;
-    /// Delete a grant of `subject` and all its families; `None` on a miss.
-    fn revoke_grant(&self, subject: &str, grant_id: &str) -> Option<Grant>;
-
-    fn insert_family(&self, family: Family) -> Result<(), Full>;
-    /// The live family whose current token hash is `hash`.
-    fn family_by_token(&self, hash: &str, now: i64) -> Option<Family>;
-    /// Rotate `presented` to `next`; a retired token revokes the family.
-    fn rotate(&self, presented: &str, next: String, now: i64) -> Rotation;
-    fn revoke_family(&self, family_id: &str);
-    /// If `hash` is a retired token, revoke its family and return true.
-    fn revoke_if_retired(&self, hash: &str) -> bool;
-
-    fn purge(&self, now: i64);
-
-    /// Pending authorizations held (tests check memory stays bounded).
-    #[cfg(test)]
-    fn pending_count(&self) -> usize;
-}
-
 #[derive(Debug, Default)]
 struct Grants {
     by_id: HashMap<String, Grant>,
@@ -254,27 +212,25 @@ impl MemoryStore {
             grants: Mutex::default(),
         }
     }
-}
 
-impl Store for MemoryStore {
-    fn insert_pending(&self, id: String, pending: Pending) -> Result<(), Full> {
+    pub(crate) fn insert_pending(&self, id: String, pending: Pending) -> Result<(), Full> {
         insert_bounded(&mut lock(&self.pending), self.capacity.pending, id, pending)
     }
 
-    fn pending(&self, id: &str, now: i64) -> Option<Pending> {
+    pub(crate) fn pending(&self, id: &str, now: i64) -> Option<Pending> {
         lock(&self.pending)
             .get(id)
             .filter(|p| p.expires_at > now)
             .cloned()
     }
 
-    fn take_pending(&self, id: &str, now: i64) -> Option<Pending> {
+    pub(crate) fn take_pending(&self, id: &str, now: i64) -> Option<Pending> {
         lock(&self.pending)
             .remove(id)
             .filter(|p| p.expires_at > now)
     }
 
-    fn insert_upstream(&self, state: String, login: UpstreamLogin) -> Result<(), Full> {
+    pub(crate) fn insert_upstream(&self, state: String, login: UpstreamLogin) -> Result<(), Full> {
         insert_bounded(
             &mut lock(&self.upstream),
             self.capacity.upstream,
@@ -283,13 +239,13 @@ impl Store for MemoryStore {
         )
     }
 
-    fn take_upstream(&self, state: &str, now: i64) -> Option<UpstreamLogin> {
+    pub(crate) fn take_upstream(&self, state: &str, now: i64) -> Option<UpstreamLogin> {
         lock(&self.upstream)
             .remove(state)
             .filter(|u| u.expires_at > now)
     }
 
-    fn insert_session(&self, id: String, session: Session) -> Result<(), Full> {
+    pub(crate) fn insert_session(&self, id: String, session: Session) -> Result<(), Full> {
         insert_bounded(
             &mut lock(&self.sessions),
             self.capacity.sessions,
@@ -298,14 +254,14 @@ impl Store for MemoryStore {
         )
     }
 
-    fn session(&self, id: &str, now: i64) -> Option<Session> {
+    pub(crate) fn session(&self, id: &str, now: i64) -> Option<Session> {
         lock(&self.sessions)
             .get(id)
             .filter(|s| s.expires_at > now)
             .cloned()
     }
 
-    fn insert_code(&self, hash: String, code: Code) -> Result<(), Full> {
+    pub(crate) fn insert_code(&self, hash: String, code: Code) -> Result<(), Full> {
         insert_bounded(
             &mut lock(&self.codes),
             self.capacity.codes,
@@ -314,7 +270,8 @@ impl Store for MemoryStore {
         )
     }
 
-    fn redeem_code(&self, hash: &str, now: i64) -> Redemption {
+    /// Single use: a live code becomes a tombstone.
+    pub(crate) fn redeem_code(&self, hash: &str, now: i64) -> Redemption {
         let mut codes = lock(&self.codes);
         match codes.get(hash).cloned() {
             Some(CodeSlot::Live(code)) => {
@@ -336,13 +293,15 @@ impl Store for MemoryStore {
         }
     }
 
-    fn bind_code_family(&self, hash: &str, family: &str) {
+    /// Record the family a redemption created, for reuse revocation.
+    pub(crate) fn bind_code_family(&self, hash: &str, family: &str) {
         if let Some(CodeSlot::Used { family: slot, .. }) = lock(&self.codes).get_mut(hash) {
             *slot = Some(family.to_owned());
         }
     }
 
-    fn upsert_grant(&self, key: GrantKey, label: String, now: i64) -> Result<Grant, Full> {
+    /// Insert the grant for `key`, or return the existing one.
+    pub(crate) fn upsert_grant(&self, key: GrantKey, label: String, now: i64) -> Result<Grant, Full> {
         let mut g = lock(&self.grants);
         if let Some(existing) = g.by_key.get(&key).and_then(|id| g.by_id.get(id)) {
             return Ok(existing.clone());
@@ -362,12 +321,12 @@ impl Store for MemoryStore {
         Ok(grant)
     }
 
-    fn grant(&self, key: &GrantKey) -> Option<Grant> {
+    pub(crate) fn grant(&self, key: &GrantKey) -> Option<Grant> {
         let g = lock(&self.grants);
         g.by_key.get(key).and_then(|id| g.by_id.get(id)).cloned()
     }
 
-    fn grants_for(&self, subject: &str) -> Vec<Grant> {
+    pub(crate) fn grants_for(&self, subject: &str) -> Vec<Grant> {
         let mut grants: Vec<Grant> = lock(&self.grants)
             .by_id
             .values()
@@ -378,7 +337,8 @@ impl Store for MemoryStore {
         grants
     }
 
-    fn revoke_grant(&self, subject: &str, grant_id: &str) -> Option<Grant> {
+    /// Delete a grant of `subject` and all its families; `None` on a miss.
+    pub(crate) fn revoke_grant(&self, subject: &str, grant_id: &str) -> Option<Grant> {
         let mut g = lock(&self.grants);
         let grant = g
             .by_id
@@ -399,7 +359,7 @@ impl Store for MemoryStore {
         Some(grant)
     }
 
-    fn insert_family(&self, family: Family) -> Result<(), Full> {
+    pub(crate) fn insert_family(&self, family: Family) -> Result<(), Full> {
         let mut g = lock(&self.grants);
         if g.families.len() >= self.capacity.families {
             return Err(Full);
@@ -410,7 +370,8 @@ impl Store for MemoryStore {
         Ok(())
     }
 
-    fn family_by_token(&self, hash: &str, now: i64) -> Option<Family> {
+    /// The live family whose current token hash is `hash`.
+    pub(crate) fn family_by_token(&self, hash: &str, now: i64) -> Option<Family> {
         let g = lock(&self.grants);
         match g.tokens.get(hash) {
             Some((id, true)) => g
@@ -422,7 +383,8 @@ impl Store for MemoryStore {
         }
     }
 
-    fn rotate(&self, presented: &str, next: String, now: i64) -> Rotation {
+    /// Rotate `presented` to `next`; a retired token revokes the family.
+    pub(crate) fn rotate(&self, presented: &str, next: String, now: i64) -> Rotation {
         let mut g = lock(&self.grants);
         let Some((id, current)) = g.tokens.get(presented).cloned() else {
             return Rotation::Invalid;
@@ -458,11 +420,12 @@ impl Store for MemoryStore {
         }
     }
 
-    fn revoke_family(&self, family_id: &str) {
+    pub(crate) fn revoke_family(&self, family_id: &str) {
         lock(&self.grants).drop_family(family_id);
     }
 
-    fn revoke_if_retired(&self, hash: &str) -> bool {
+    /// If `hash` is a retired token, revoke its family and return true.
+    pub(crate) fn revoke_if_retired(&self, hash: &str) -> bool {
         let mut g = lock(&self.grants);
         match g.tokens.get(hash).cloned() {
             Some((id, false)) => {
@@ -474,11 +437,12 @@ impl Store for MemoryStore {
     }
 
     #[cfg(test)]
-    fn pending_count(&self) -> usize {
+    /// Pending authorizations held (tests check memory stays bounded).
+    pub(crate) fn pending_count(&self) -> usize {
         lock(&self.pending).len()
     }
 
-    fn purge(&self, now: i64) {
+    pub(crate) fn purge(&self, now: i64) {
         lock(&self.pending).retain(|_, p| p.expires_at > now);
         lock(&self.upstream).retain(|_, u| u.expires_at > now);
         lock(&self.sessions).retain(|_, s| s.expires_at > now);

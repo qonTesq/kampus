@@ -5,8 +5,8 @@
 //! * [`config`]: `school.yaml` / `policy.yaml` schemas and startup validation.
 //! * [`output`]: sanitizing and bounded projection of tool results.
 //! * [`runtime`]: public cache, rate limiting and upstream request defaults.
-//! * [`dispatch`], [`auth`], [`policy`], [`audit`], [`admin`]: owned by the
-//!   auth-policy-audit change. Foundation ships a fail-closed dispatcher only.
+//! * [`dispatch`], [`auth`], [`policy`], [`audit`], [`admin`]: the call
+//!   pipeline, token verification, policy, the audit log and the local admin page.
 
 pub mod admin;
 pub mod audit;

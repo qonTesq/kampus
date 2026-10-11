@@ -1,5 +1,5 @@
 //! Policy evaluation implementing [`crate::contracts::Authorizer`] over
-//! [`crate::config::PolicyConfig`]. OWNED BY auth-policy-audit.
+//! [`crate::config::PolicyConfig`].
 //!
 //! Evaluated per call, before any cache or provider access, against the
 //! current policy revision. Built-in guards run first (they cannot be relaxed
@@ -246,11 +246,6 @@ pub fn client_class(policy: &PolicyConfig, principal: &Principal) -> ClientClass
         }
         _ => ClientClass::Other,
     }
-}
-
-/// Whether the caller is an approved workspace client.
-pub fn is_approved_client(policy: &PolicyConfig, principal: &Principal) -> bool {
-    client_class(policy, principal) == ClientClass::Approved
 }
 
 fn matches(

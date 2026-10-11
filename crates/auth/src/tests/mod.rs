@@ -25,7 +25,7 @@ use kampus_core::contracts::Role;
 use serde_json::Value;
 
 use crate::store::Capacity;
-use crate::{Broker, BrokerOptions, ClientAddress};
+use crate::{Broker, ClientAddress};
 
 pub(crate) const SUBJECT_KEY: &str =
     "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff";
@@ -298,9 +298,7 @@ impl Harness {
         let broker = Broker::build(
             &school,
             &secret,
-            BrokerOptions {
-                clock: Some(Arc::new(move || clock.load(Ordering::SeqCst))),
-            },
+            Arc::new(move || clock.load(Ordering::SeqCst)),
             capacity,
         )
         .unwrap();

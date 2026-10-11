@@ -16,7 +16,7 @@ pub use cache::{CacheKey, Cached, PublicCache};
 pub use deadline::{deadline, with_deadline};
 pub use limit::{HostLimiter, RateLimiter};
 pub use upstream::{
-    BoundedGet, UpstreamError, UpstreamResponse, read_bounded, status_error, upstream_client,
+    BoundedGet, UpstreamError, UpstreamResponse, read_bounded, status_error,
     upstream_client_builder,
 };
 

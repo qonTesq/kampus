@@ -15,7 +15,7 @@ use kampus_core::auth::{AuthSettings, Authenticator, KeySource};
 use kampus_core::config::{ConfigError, Env, PolicyConfig, SchoolConfig};
 use kampus_core::contracts::{AuditError, ModuleInit, Operation, RegistryError, ToolRegistry};
 use kampus_core::dispatch::{CallerLimits, Dispatcher, Security};
-use kampus_core::policy::{PolicyEngine, PolicyRevision};
+use kampus_core::policy::PolicyEngine;
 use kampus_core::runtime::SharedRuntime;
 use rmcp::model::ProtocolVersion;
 use rmcp::transport::streamable_http_server::session::local::LocalSessionManager;
@@ -28,7 +28,7 @@ use crate::session::SessionOwners;
 
 /// Served MCP revisions: current stateless `2026-07-28` plus legacy
 /// `2025-11-25` sessions (rmcp `legacy_session_mode`).
-pub const SUPPORTED_PROTOCOL_VERSIONS: &[ProtocolVersion] =
+pub(crate) const SUPPORTED_PROTOCOL_VERSIONS: &[ProtocolVersion] =
     &[ProtocolVersion::V_2025_11_25, ProtocolVersion::V_2026_07_28];
 
 #[derive(Debug, thiserror::Error)]
@@ -108,26 +108,14 @@ pub struct App {
     devices: Arc<kampus_device::DeviceBindings>,
     admin: Arc<kampus_core::admin::Admin>,
     init: ModuleInit,
-    policy: Arc<PolicyEngine>,
     audit: Arc<JsonlAudit>,
     dispatcher: Arc<Dispatcher>,
     auth: Arc<Authenticator>,
-    policy_path: Option<PathBuf>,
     #[cfg(feature = "broker")]
     broker: Option<kampus_auth::Broker>,
 }
 
 impl App {
-    /// Validate both files, register every module and check the policy
-    /// against the registered tools. Nothing listens yet.
-    pub fn build(
-        school: SchoolConfig,
-        policy: PolicyConfig,
-        env: &Env<'_>,
-    ) -> Result<Self, AppError> {
-        Self::build_with(school, policy, env, AppOptions::default())
-    }
-
     /// Validate both files, register every module and check the policy
     /// against the registered tools, activating nothing: no audit log is
     /// opened or pruned, nothing listens and no sandbox service starts.
@@ -144,8 +132,10 @@ impl App {
         })
     }
 
-    /// [`App::build`] with explicit runtime inputs (tests pass local keys
-    /// and a temporary audit path).
+    /// Validate both files, register every module and check the policy
+    /// against the registered tools, then activate: open the audit log and
+    /// build the broker, devices and admin. Nothing listens yet. Tests pass
+    /// local keys and a temporary audit path through `options`.
     pub fn build_with(
         school: SchoolConfig,
         policy: PolicyConfig,
@@ -205,13 +195,12 @@ impl App {
             Arc::new(kampus_device::SystemClock::default()),
         )?;
         security.identity = Some(Arc::clone(&devices) as _);
-        let policy = Arc::clone(&security.policy);
         let admin = Arc::new(kampus_core::admin::Admin::new(
-            Arc::clone(&policy),
+            Arc::clone(&security.policy),
             Arc::clone(&audit),
             Arc::clone(&init.school),
             known_tools,
-            options.policy_path.clone(),
+            options.policy_path,
         )?);
         let dispatcher = Arc::new(Dispatcher::with_security(
             school_id,
@@ -222,11 +211,9 @@ impl App {
             devices,
             admin,
             init,
-            policy,
             audit,
             dispatcher,
             auth,
-            policy_path: options.policy_path,
             #[cfg(feature = "broker")]
             broker,
         })
@@ -258,28 +245,6 @@ impl App {
                     crate::client::client_addr,
                 )),
         )
-    }
-
-    pub fn school(&self) -> &SchoolConfig {
-        &self.init.school
-    }
-
-    /// The active policy revision (swapped atomically by the admin page).
-    pub fn policy(&self) -> Arc<PolicyRevision> {
-        self.policy.current()
-    }
-
-    /// Where policy edits are persisted, if saving is enabled.
-    pub fn policy_path(&self) -> Option<&std::path::Path> {
-        self.policy_path.as_deref()
-    }
-
-    pub fn tool_names(&self) -> Vec<String> {
-        self.dispatcher
-            .registry()
-            .tool_names()
-            .map(str::to_owned)
-            .collect()
     }
 
     /// Separate local router; never merge this into the public MCP router.

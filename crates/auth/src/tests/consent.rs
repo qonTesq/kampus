@@ -32,7 +32,6 @@ fn no_code(reply: &Reply) {
 
 #[test]
 fn step_up_is_a_second_grant_key() {
-    use crate::store::Store as _;
     let store = crate::store::MemoryStore::new(crate::store::Capacity::DEFAULT);
     let key = |scopes: &[&str]| GrantKey {
         subject: A.into(),

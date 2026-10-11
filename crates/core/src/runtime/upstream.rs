@@ -234,10 +234,3 @@ pub fn upstream_client_builder() -> reqwest::ClientBuilder {
         .redirect(reqwest::redirect::Policy::limited(3))
         .user_agent(concat!("kampus/", env!("CARGO_PKG_VERSION")))
 }
-
-/// A default upstream client.
-pub fn upstream_client() -> Result<reqwest::Client, ToolError> {
-    upstream_client_builder()
-        .build()
-        .map_err(|_| ToolError::configuration_error())
-}
