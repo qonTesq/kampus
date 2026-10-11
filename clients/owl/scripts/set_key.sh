@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Save one key into .env without showing it on screen.
-#   ssh -t hienle@<pi-address> ~/kampus/owl-pi/set_key.sh GEMINI_API_KEY
-#   ssh -t hienle@<pi-address> ~/kampus/owl-pi/set_key.sh MCP_AUTHORIZATION   (kampus token, no "Bearer")
-cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
+#   ssh -t <user>@<pi-address> ~/kampus/clients/owl/scripts/set_key.sh GEMINI_API_KEY
+#   ssh -t <user>@<pi-address> ~/kampus/clients/owl/scripts/set_key.sh MCP_AUTHORIZATION   (kampus token, no "Bearer")
+cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."      # clients/owl, where .env lives
 name="${1:-}"
 case "$name" in
   GEMINI_API_KEY|ELEVENLABS_API_KEY|OPENAI_API_KEY|MCP_AUTHORIZATION) ;;

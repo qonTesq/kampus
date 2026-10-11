@@ -11,8 +11,8 @@ Wiring (shared SPI0 bus, separate CS / DC / RST per eye):
   RST         | GPIO27 (pin 13)     | GPIO22 (pin 15)
   BL (if any) | 3.3V                | 3.3V
 
-Run:  python eyes_test.py          (Ctrl+C to stop)
-      python eyes_test.py --one    (left eye only, for first wiring check)
+Run from clients/owl:  uv run python scripts/eyes_test.py          (Ctrl+C to stop)
+                       uv run python scripts/eyes_test.py --one    (left eye only, first wiring check)
 """
 
 import random

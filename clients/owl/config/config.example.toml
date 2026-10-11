@@ -18,7 +18,7 @@ max_response_tokens = 900
 barge_in = false
 
 [mcp]
-# Remote MCP server the owl can call (Realtime API, main.py). Empty = no MCP.
+# Remote MCP server the owl can call (Realtime API, owl-realtime). Empty = no MCP.
 # MCP_SERVER_URL / MCP_AUTHORIZATION / MCP_ALLOWED_TOOLS in .env override these;
 # keep tokens in .env only.
 server_label = "kampus"
@@ -30,7 +30,7 @@ allowed_tools = ["find_study_room", "next_departures", "library_hours", "my_dead
 call_timeout = 10
 
 [pipeline]
-# Used by voice_pipeline.py: AI brain + ElevenLabs voice.
+# Used by the owl command (brain/pipeline.py): AI brain + ElevenLabs voice.
 # brain = "gemini-live" : Gemini Live hears + thinks, ElevenLabs speaks (GEMINI_API_KEY)
 #         "gemini"      : Gemini Flash-Lite, one request per turn        (GEMINI_API_KEY)
 #         "openai"      : ChatGPT                                         (OPENAI_API_KEY)
@@ -64,7 +64,7 @@ greeting = "Hoo! I'm awake."
 model_path = "models/vosk-model-small-en-us-0.15"
 
 [audio]
-# Run: python main.py --list-audio
+# Run: uv run owl-realtime --list-audio
 # Use an integer device ID or a distinctive device name; -1 = system default.
 input_device = -1
 output_device = -1

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Save the kampus MCP token into .env without showing it.
-#   ssh -t hienle@172.20.10.8 ~/kampus/owl-pi/set_token.sh
-cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
+#   ssh -t <user>@<pi-address> ~/kampus/clients/owl/scripts/set_token.sh
+cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."      # clients/owl, where .env lives
 read -rsp "Paste the kampus token (without Bearer), then press Enter: " token
 echo
 token="${token#Bearer }"

@@ -1,37 +1,48 @@
 #!/usr/bin/env bash
-# One-time setup of the owl on a freshly flashed Raspberry Pi OS card.
-# Run on the Pi from the owl-pi folder (it asks for your Pi password once):
-#   ssh -t hienle@<pi-address> "cd ~/kampus/owl-pi && bash setup_fresh_pi.sh"
+# One-time setup of the owl on a freshly flashed Raspberry Pi OS (64-bit, trixie) card.
+# Run on the Pi (it asks for your Pi password once):
+#   ssh -t <user>@<pi-address> "bash ~/kampus/clients/owl/scripts/setup_pi.sh"
 set -euo pipefail
-cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
+cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."      # clients/owl
+if [[ "$(uname -s)" != "Linux" ]]; then
+  echo "Run this on the Raspberry Pi, not Windows." >&2
+  exit 1
+fi
 say() { echo; echo "==> $*"; }
 
-say "System packages (audio, screens, Python) - asks for your Pi password"
+say "System packages (audio, screens, camera, Python) - asks for your Pi password"
 sudo apt-get update -q
 sudo apt-get install -y -q python3-venv python3-dev python3-numpy python3-pil python3-lgpio \
-  python3-gpiozero python3-spidev libportaudio2 portaudio19-dev pipewire-alsa curl
+  python3-gpiozero python3-spidev python3-opencv libportaudio2 portaudio19-dev pipewire-alsa curl
 
 say "Turn on SPI for the eye screens"
 sudo raspi-config nonint do_spi 0
 
+say "uv (Python project manager)"
+if ! command -v uv >/dev/null; then
+  curl -LsSf https://astral.sh/uv/install.sh | sh
+  export PATH="$HOME/.local/bin:$PATH"
+fi
+
 say "Python environment"
-python3 -m venv --system-site-packages .venv
-.venv/bin/pip install -q --upgrade pip
-.venv/bin/pip install -q -r requirements.txt
+# System site packages give the venv Raspberry Pi OS's lgpio (GPIO) and OpenCV (camera).
+uv venv --allow-existing --system-site-packages --python /usr/bin/python3 .venv
+uv sync --locked --python /usr/bin/python3
 
 say "Offline wake-word model"
-.venv/bin/python main.py --download-wake-model
+uv run --no-sync owl-realtime --download-wake-model
 
-say "Key file"
+say "Key and config files"
 if [ ! -f .env ]; then cp .env.example .env; fi
 chmod 600 .env
-sed -i 's/\r$//' run_owl.sh set_token.sh
-chmod +x run_owl.sh set_token.sh
+if [ ! -f config/config.toml ]; then cp config/config.example.toml config/config.toml; fi
+sed -i 's/\r$//' scripts/*.sh
+chmod +x scripts/*.sh
 
 say "Checks"
-.venv/bin/python -m unittest discover -s tests 2>&1 | tail -1
+uv run --no-sync pytest -q 2>&1 | tail -1
 ls /dev/spidev0.0 >/dev/null 2>&1 && echo "SPI ready" || echo "SPI turns on after a reboot"
 
 echo
-echo "Done. Next: add GEMINI_API_KEY to .env, run ./set_token.sh for the kampus token,"
-echo "pair the JBL, then reboot once:  sudo reboot"
+echo "Done. Next: scripts/set_key.sh GEMINI_API_KEY, scripts/set_token.sh for the kampus token,"
+echo "pair the Bluetooth speaker, then reboot once:  sudo reboot"
