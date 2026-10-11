@@ -1,0 +1,11 @@
+numpy>=1.24,<3
+Pillow>=10,<13
+sounddevice>=0.5,<1
+soxr>=0.5,<2
+vosk>=0.3.45,<0.4
+websockets>=14,<18
+python-dotenv>=1,<2
+spidev>=3.6,<4; sys_platform == 'linux'
+gpiozero>=2,<3; sys_platform == 'linux'
+requests>=2.31,<3
+mcp>=1.9,<2

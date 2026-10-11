@@ -1,0 +1,105 @@
+# Raspberry Pi 5, two GC9A01 240x240 displays, USB microphone,
+# USB camera (optional), and a Bluetooth speaker selected in Raspberry Pi OS.
+
+[assistant]
+name = "Owl"
+language = "English"      # default; the owl replies in the language it is spoken to
+creator = "I was made by a group of three humble students from Saint Joseph's University."
+technology = "I run on a Raspberry Pi 5 with two round screens for eyes and a webcam microphone. I think and talk with Google Gemini Live, my voice work was built with ElevenLabs too, and I get live campus info like study rooms, trains and library hours from the kampus MCP server."
+# If you switch [pipeline] voice to "elevenlabs", say so here, e.g. "...and speak with an ElevenLabs voice."
+wake_phrases = ["hey owl", "hello owl"]
+sleep_after_seconds = 300
+allow_cloud_audio = true
+model = "gpt-realtime-2.1"
+voice = "marin"
+max_response_tokens = 900
+# Let the user interrupt the owl mid-reply. Leave false with a Bluetooth speaker
+# and webcam mic: without echo cancellation the owl hears itself and stops.
+barge_in = false
+
+[mcp]
+# Remote MCP server the owl can call (Realtime API, main.py). Empty = no MCP.
+# MCP_SERVER_URL / MCP_AUTHORIZATION / MCP_ALLOWED_TOOLS in .env override these;
+# keep tokens in .env only.
+server_label = "kampus"
+server_url = ""
+server_description = "Kampus campus information"
+# Demo tools only (no course search or booking). my_deadlines is refused on purpose.
+allowed_tools = ["find_study_room", "next_departures", "library_hours", "my_deadlines"]
+# Seconds before a tool call counts as "couldn't reach the campus system".
+call_timeout = 10
+
+[pipeline]
+# Used by voice_pipeline.py: AI brain + ElevenLabs voice.
+# brain = "gemini-live" : Gemini Live hears + thinks, ElevenLabs speaks (GEMINI_API_KEY)
+#         "gemini"      : Gemini Flash-Lite, one request per turn        (GEMINI_API_KEY)
+#         "openai"      : ChatGPT                                         (OPENAI_API_KEY)
+brain = "gemini-live"
+gemini_live_model = "gemini-3.8-live"
+# Who speaks: "gemini" = Gemini Live's own voice (fastest, no ElevenLabs credit)
+#             "elevenlabs" = ElevenLabs re-speaks Gemini's words (slower)
+voice = "gemini"
+# Gemini built-in voice, e.g. Puck, Kore, Charon, Aoede, Fenrir, Leda, Orus, Zephyr
+gemini_voice = "Puck"
+# Less thinking = faster first words. gemini-3.8-live refuses "minimal" and "low", so "" (default).
+gemini_live_thinking = ""
+# Fastest, lowest-cost Gemini; check your free-tier limits in Google AI Studio.
+gemini_model = "gemini-3.5-flash-lite"
+# Less thinking = faster replies. "" leaves Gemini's default.
+gemini_thinking = "low"
+history_turns = 6
+chat_model = "gpt-6-luna"
+transcribe_model = "gpt-4o-mini-transcribe"
+# Flash is ElevenLabs' fastest model and costs half the credits per character.
+tts_model = "eleven_flash_v2_5"
+# ElevenLabs streaming latency optimisation, 0 (off) to 4 (fastest).
+tts_latency = 3
+# ElevenLabs voice ID from the Voices page. ELEVENLABS_VOICE_ID in .env overrides this.
+voice_id = "EXAVITQu4vr4xnSDxMaL"   # "Sarah", a built-in voice (free-plan API accounts can only use built-in voices)
+# Short replies save ElevenLabs credits and sound more natural.
+max_reply_words = 40
+greeting = "Hoo! I'm awake."
+
+[wake]
+model_path = "models/vosk-model-small-en-us-0.15"
+
+[audio]
+# Run: python main.py --list-audio
+# Use an integer device ID or a distinctive device name; -1 = system default.
+input_device = -1
+output_device = -1
+input_rate = 48000
+output_rate = 48000
+input_channels = 1
+output_channels = 2
+mic_channel = 0
+block_ms = 20
+# Increase if you hear the assistant answer its own Bluetooth speaker.
+echo_guard_seconds = 0.8
+volume = 0.8
+
+[display]
+enabled = true
+spi_bus = 0
+left_ce = 0
+right_ce = 1
+# BCM GPIO numbering, not physical header pin numbers.
+left_dc_gpio = 25
+right_dc_gpio = 24
+left_reset_gpio = 27
+right_reset_gpio = 22
+spi_hz = 24000000
+fps = 25
+pixel_size = 4
+left_rotation = 0
+right_rotation = 0
+# RGB/BGR bit for most GC9A01 modules. Try false if yellow is the wrong color.
+bgr = true
+invert = true
+
+[camera]
+# Enable only when you want spoken visual requests to send a photo to OpenAI.
+enabled = false
+device = 0
+width = 640
+height = 480
