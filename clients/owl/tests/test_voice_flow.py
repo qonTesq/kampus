@@ -1,13 +1,12 @@
 """Exercise voice event ordering without microphones, network, or API credit."""
 import base64
 import json
-from pathlib import Path
 import unittest
 from unittest.mock import patch
 
-from main import load_config
-from realtime_voice import VoiceSession
-from state import OwlState
+from owl.brain.realtime import VoiceSession
+from owl.config import EXAMPLE_CONFIG, apply_env, load_config
+from owl.state import OwlState
 
 
 class Socket:
@@ -39,7 +38,7 @@ def planned(emotion="love", camera=False):
 
 class VoiceFlowTests(unittest.IsolatedAsyncioTestCase):
     def session(self, events):
-        cfg = load_config(Path(__file__).resolve().parents[1] / "config.toml")
+        cfg = load_config(EXAMPLE_CONFIG)
         state = OwlState(300)
         state.wake()
         session = VoiceSession(cfg, state, Audio(), None)
@@ -72,7 +71,7 @@ class VoiceFlowTests(unittest.IsolatedAsyncioTestCase):
     async def test_disabled_camera_never_captures_or_sends_image(self):
         session = self.session([planned(camera=True)])
         session.stage = "planning"
-        with patch("realtime_voice.capture_camera", side_effect=AssertionError("Must not capture")):
+        with patch("owl.brain.realtime.capture_camera", side_effect=AssertionError("Must not capture")):
             await session.receive()
         items = [e["item"] for e in session.ws.sent if e["type"] == "conversation.item.create"]
         self.assertEqual(len(items), 1)
@@ -82,7 +81,7 @@ class VoiceFlowTests(unittest.IsolatedAsyncioTestCase):
         session = self.session([planned(camera=True)])
         session.cfg["camera"]["enabled"] = True
         session.stage = "planning"
-        with patch("realtime_voice.capture_camera", return_value="data:image/jpeg;base64,TEST") as capture:
+        with patch("owl.brain.realtime.capture_camera", return_value="data:image/jpeg;base64,TEST") as capture:
             await session.receive()
         capture.assert_called_once()
         events = session.ws.sent
@@ -152,8 +151,7 @@ class VoiceFlowTests(unittest.IsolatedAsyncioTestCase):
 
 class EnvOverrideTests(unittest.TestCase):
     def test_env_overrides_config(self):
-        from main import apply_env
-        cfg = load_config(Path(__file__).resolve().parents[1] / "config.toml")
+        cfg = load_config(EXAMPLE_CONFIG)
         env = {"OPENAI_REALTIME_MODEL": "gpt-test", "AUDIO_INPUT_DEVICE": "3",
                "AUDIO_OUTPUT_DEVICE": "JBL Go 3", "MCP_SERVER_URL": "https://mcp.test/mcp",
                "MCP_AUTHORIZATION": "tok", "MCP_ALLOWED_TOOLS": "a, b"}
@@ -166,8 +164,8 @@ class EnvOverrideTests(unittest.TestCase):
         self.assertEqual(cfg["mcp"]["allowed_tools"], ["a", "b"])
 
     def test_no_mcp_server_means_no_mcp_tool(self):
-        from realtime_voice import session_settings
-        cfg = load_config(Path(__file__).resolve().parents[1] / "config.toml")
+        from owl.brain.realtime import session_settings
+        cfg = load_config(EXAMPLE_CONFIG)
         self.assertEqual([t["type"] for t in session_settings(cfg)["tools"]], ["function"])
 
 

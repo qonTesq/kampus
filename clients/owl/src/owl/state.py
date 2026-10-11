@@ -1,7 +1,7 @@
 """Small, independently testable conversation state machine."""
+import time
 from dataclasses import dataclass, replace
 from threading import Lock
-import time
 
 EMOTIONS = ("normal", "happy", "sleepy", "surprised", "angry", "confused", "love", "money", "explaining")
 

@@ -2,10 +2,11 @@
 
 Initialization sequence adapted from Adafruit_CircuitPython_GC9A01A:
 Copyright (c) 2021 Tyler Crumpton; (c) 2025 Tim C for Adafruit Industries.
-MIT license; see THIRD_PARTY_LICENSE.txt.
+MIT license; see clients/owl/THIRD_PARTY_LICENSE.txt.
 """
 import os
 import time
+
 import numpy as np
 
 INIT = bytes.fromhex('''

@@ -1,16 +1,16 @@
 import json
-from pathlib import Path
-import sys
 import unittest
 from unittest.mock import Mock
+
 import numpy as np
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from state import OwlState, EMOTIONS
-from eyes import render_eye, Animator
-from display import INIT, rgb565, PiDisplays
-from main import phrase_matches, load_config
-from realtime_voice import session_settings
+from owl.brain.realtime import session_settings
+from owl.brain.wake import phrase_matches
+from owl.config import EXAMPLE_CONFIG, load_config
+from owl.hardware.display import INIT, PiDisplays, rgb565
+from owl.hardware.eyes import Animator, render_eye
+from owl.state import EMOTIONS, OwlState
+
 
 class Clock:
     def __init__(self): self.now = 0
@@ -118,7 +118,7 @@ class ProtocolTests(unittest.TestCase):
         self.assertFalse(phrase_matches("hello world", ["hey owl"]))
 
     def test_config_and_session_schema(self):
-        cfg = load_config(Path(__file__).resolve().parents[1] / "config.toml")
+        cfg = load_config(EXAMPLE_CONFIG)
         self.assertEqual(cfg["assistant"]["sleep_after_seconds"], 300)
         self.assertEqual(cfg["display"]["left_dc_gpio"], 25)
         self.assertEqual(cfg["display"]["right_dc_gpio"], 24)

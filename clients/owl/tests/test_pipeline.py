@@ -1,17 +1,15 @@
 """ChatGPT + ElevenLabs pipeline, with MCP, without network or API credit."""
 import json
-from pathlib import Path
-import sys
 import unittest
+from typing import ClassVar
 from unittest.mock import patch
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import requests
 
-from main import load_config
-from voice_pipeline import Brain, Voice, parse_tagged
-
-CONFIG = Path(__file__).resolve().parents[1] / "config.toml"
+from owl.brain.pipeline import Brain, parse_tagged
+from owl.config import EXAMPLE_CONFIG as CONFIG
+from owl.config import load_config
+from owl.voice.elevenlabs import Voice
 
 
 class Resp:
@@ -76,9 +74,11 @@ class BrainTests(unittest.TestCase):
     def test_without_mcp_no_tools_and_errors_are_not_retried(self):
         sent = []
         brain = Brain(config(mcp=False), "key")
-        with patch.object(brain.http, "post", side_effect=lambda url, **kw: (sent.append(kw["json"]), Resp(400, {}))[1]):
-            with self.assertRaises(requests.HTTPError):
-                brain.reply("hi")
+        with (
+            patch.object(brain.http, "post", side_effect=lambda url, **kw: (sent.append(kw["json"]), Resp(400, {}))[1]),
+            self.assertRaises(requests.HTTPError),
+        ):
+            brain.reply("hi")
         self.assertEqual(len(sent), 1)
         self.assertNotIn("tools", sent[0])
 
@@ -102,14 +102,14 @@ def gemini_reply(obj):
 
 class FakeTool:
     name, description = "next_event", "Next campus event"
-    inputSchema = {"type": "object", "properties": {"topic": {"type": "string"}}}
+    inputSchema: ClassVar[dict] = {"type": "object", "properties": {"topic": {"type": "string"}}}
 
 
 class FakeBridge:
-    tools = [FakeTool()]
+    tools: ClassVar[list] = [FakeTool()]
 
     def declarations(self):
-        from mcp_bridge import gemini_schema
+        from owl.kampus.bridge import gemini_schema
         return [{"name": t.name, "description": t.description,
                  "parametersJsonSchema": gemini_schema(t.inputSchema)} for t in self.tools]
 
@@ -122,7 +122,7 @@ class FakeBridge:
 
 class GeminiBrainTests(unittest.TestCase):
     def brain(self, bridge=None):
-        from voice_pipeline import GeminiBrain
+        from owl.brain.pipeline import GeminiBrain
         cfg = config(mcp=False)
         return GeminiBrain(cfg, "gkey", bridge)
 
@@ -180,9 +180,11 @@ class GeminiBrainTests(unittest.TestCase):
 
     def test_blocked_answer_is_an_error(self):
         brain = self.brain()
-        with patch.object(brain.http, "post", return_value=Resp(js={"promptFeedback": {"blockReason": "SAFETY"}})):
-            with self.assertRaisesRegex(RuntimeError, "no answer"):
-                brain.turn(text="hi")
+        with (
+            patch.object(brain.http, "post", return_value=Resp(js={"promptFeedback": {"blockReason": "SAFETY"}})),
+            self.assertRaisesRegex(RuntimeError, "no answer"),
+        ):
+            brain.turn(text="hi")
 
 
 class VoiceTests(unittest.TestCase):

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Talking owl: an AI brain (Gemini or ChatGPT) with an ElevenLabs voice.
 
 One conversation turn:
@@ -8,42 +7,43 @@ One conversation turn:
   -> reply + eye expression -> ElevenLabs voice -> JBL speaker
 
 MCP tools: ChatGPT calls the MCP server itself; for Gemini, the Pi calls it
-through mcp_bridge.py (Gemini's API has no remote-MCP support yet).
+through kampus/bridge.py (Gemini's API has no remote-MCP support yet).
 
 The owl sleeps (closed eyes, nothing sent to the cloud) until it hears
 "Hey Owl" / "Hello Owl" locally, and goes back to sleep after
 assistant.sleep_after_seconds without speech or when you say goodbye.
 
-Keys live only in .env on the Pi (pipeline.brain in config.toml picks the brain):
+Keys live only in clients/owl/.env (pipeline.brain in config.toml picks the brain):
   GEMINI_API_KEY=... or OPENAI_API_KEY=...     ELEVENLABS_API_KEY=...
 
-  python voice_pipeline.py              # full owl
-  python voice_pipeline.py --no-wake    # skip the wake phrase, start awake
-  python voice_pipeline.py --text       # type instead of speaking (tests brain + voice)
-  python voice_pipeline.py --no-display # without the eye screens
+  owl                # full owl
+  owl --no-wake      # skip the wake phrase, start awake
+  owl --text         # type instead of speaking (tests brain + voice)
+  owl --no-display   # without the eye screens
 """
 import argparse
-from datetime import datetime
-from zoneinfo import ZoneInfo
 import base64
 import io
 import json
-import re
 import os
+import re
 import time
 import wave
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
-import numpy as np
 import requests
 
-from main import ROOT, apply_env, load_config, phrase_matches
-from realtime_voice import mcp_tool
-from state import EMOTIONS, OwlState
-from turns import calibrate, listen
+from owl.brain.turns import calibrate, listen
+from owl.brain.wake import heard_wake_phrase
+from owl.config import ENV_FILE, apply_env, load_config
+from owl.kampus.prompt import KAMPUS_RULES
+from owl.kampus.remote import mcp_tool
+from owl.state import EMOTIONS, OwlState
+from owl.voice.elevenlabs import Voice
 
 OPENAI = "https://api.openai.com/v1"
 GEMINI = "https://generativelanguage.googleapis.com/v1beta"
-ELEVENLABS = "https://api.elevenlabs.io/v1"
 
 REPLY_SCHEMA = {
     "type": "object",
@@ -55,16 +55,6 @@ REPLY_SCHEMA = {
     "required": ["say", "emotion", "sleep"],
     "additionalProperties": False,
 }
-
-
-KAMPUS_RULES = """
-Use the kampus tools for study rooms, trains and the B subway (for Cecil B. Moore, ask
-northbound or southbound) and library hours. Times are Eastern. If a tool returns
-permission_denied, say: 'That's personal, so open it in your school's approved assistant.
-I'm a public helper.' Never make up times or personal data. You can't book rooms.
-Whenever a study room is mentioned (even 'book' or 'get me room 3'), call find_study_room and
-say what's free; only then mention that you can't book it.
-If a tool fails or can't be reached, say you couldn't reach the campus system."""
 
 
 def instructions(cfg, kampus=False):
@@ -286,53 +276,6 @@ def parse_tagged(out):
     return {"say": say, "emotion": emotion, "sleep": "sleep" in tags}
 
 
-class Voice:
-    """ElevenLabs text-to-speech, streamed straight into the speaker."""
-
-    def __init__(self, cfg, key, voice_id):
-        self.cfg = cfg
-        self.voice_id = voice_id
-        self.http = requests.Session()
-        self.http.headers["xi-api-key"] = key
-        self.chars_used = 0
-
-    def speak(self, text, audio, on_first_audio=None):
-        # pcm_24000 = raw 16-bit mono at 24 kHz, exactly what AudioIO.feed_pcm24 plays.
-        params = {"output_format": "pcm_24000"}
-        if self.cfg["pipeline"].get("tts_latency"):
-            params["optimize_streaming_latency"] = self.cfg["pipeline"]["tts_latency"]
-        for attempt in (1, 2):               # one quick retry if the hotspot hiccups
-            try:
-                r = self.http.post(f"{ELEVENLABS}/text-to-speech/{self.voice_id}/stream",
-                                   params=params, stream=True, timeout=(5, 20),
-                                   json={"text": text, "model_id": self.cfg["pipeline"]["tts_model"]})
-                break
-            except requests.ConnectionError:
-                if attempt == 2:
-                    raise
-        r.raise_for_status()
-        leftover = b""
-        for chunk in r.iter_content(4800):
-            chunk = leftover + chunk
-            cut = len(chunk) - len(chunk) % 2
-            leftover = chunk[cut:]
-            if cut:
-                audio.feed_pcm24(chunk[:cut])
-                if on_first_audio:
-                    on_first_audio()
-                    on_first_audio = None
-        self.chars_used += len(text)
-
-
-def heard_wake_phrase(model, samples, rate, phrases):
-    """Run the offline Vosk model on one utterance and look for the wake phrase."""
-    import soxr
-    from vosk import KaldiRecognizer
-    rec = KaldiRecognizer(model, 16000, json.dumps(phrases + ["[unk]"]))
-    rec.AcceptWaveform(soxr.resample(samples, rate, 16000).astype("<i2").tobytes())
-    return phrase_matches(json.loads(rec.FinalResult()).get("text", ""), phrases)
-
-
 def wait_for_playback(audio, state=None):
     while audio.playing():
         time.sleep(0.05)
@@ -347,9 +290,9 @@ def main():
     parser.add_argument("--no-display", action="store_true", help="run without the eye screens")
     args = parser.parse_args()
 
-    cfg = load_config(ROOT / "config.toml")
+    cfg = load_config()
     from dotenv import load_dotenv
-    load_dotenv(ROOT / ".env")
+    load_dotenv(ENV_FILE)
     apply_env(cfg)
     use_gemini = cfg["pipeline"]["brain"] in ("gemini", "gemini-live")
     brain_var = "GEMINI_API_KEY" if use_gemini else "OPENAI_API_KEY"
@@ -365,13 +308,13 @@ def main():
         needed += [("ELEVENLABS_API_KEY", eleven_key), ("ELEVENLABS_VOICE_ID", voice_id)]
     missing = [n for n, v in needed if not v]
     if missing:
-        raise SystemExit("Add to .env on the Pi: " + ", ".join(missing))
+        raise SystemExit("Add to clients/owl/.env on the Pi: " + ", ".join(missing))
 
-    from audio_io import AudioIO
+    from owl.hardware.audio_io import AudioIO
     bridge = None
     if use_gemini:
         if mcp_tool(cfg):
-            from mcp_bridge import MCPBridge
+            from owl.kampus.bridge import MCPBridge
             m = cfg["mcp"]
             try:
                 bridge = MCPBridge(m["server_url"], m.get("authorization", ""), m.get("allowed_tools"),
@@ -380,7 +323,7 @@ def main():
             except RuntimeError as exc:
                 print(f"{exc}; continuing without MCP tools", flush=True)
         if cfg["pipeline"]["brain"] == "gemini-live":
-            from gemini_live import GeminiLiveBrain
+            from owl.brain.gemini_live import GeminiLiveBrain
             brain = GeminiLiveBrain(cfg, brain_key, lambda: instructions(cfg, kampus=bool(bridge)), bridge)
             print(f"Brain: Gemini Live ({cfg['pipeline']['gemini_live_model']})", flush=True)
         else:
@@ -403,8 +346,8 @@ def main():
     state = OwlState(sleep_after)
     eyes = None
     if not args.no_display and cfg["display"]["enabled"]:
-        from display import PiDisplays
-        from eyes import EyeLoop
+        from owl.hardware.display import PiDisplays
+        from owl.hardware.eyes import EyeLoop
         eyes = EyeLoop(state, PiDisplays(cfg["display"]), cfg["display"]["fps"],
                        cfg["display"]["pixel_size"])
         eyes.start()

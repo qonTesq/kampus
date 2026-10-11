@@ -26,8 +26,8 @@ from PIL import Image, ImageDraw
 SIZE = 240
 SPI_HZ = 40_000_000
 EYES = [
-    dict(device=0, dc=25, rst=27),
-    dict(device=1, dc=24, rst=22),
+    {"device": 0, "dc": 25, "rst": 27},
+    {"device": 1, "dc": 24, "rst": 22},
 ]
 if "--one" in sys.argv:
     EYES = EYES[:1]

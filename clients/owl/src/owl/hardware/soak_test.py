@@ -1,12 +1,11 @@
-#!/usr/bin/env python3
 """Phase 5 soak test: eyes + mic + speaker running together, no cloud.
 
 The eyes cycle expressions and turn "surprised" while the mic hears a loud
 sound; a short chime plays on the speaker every 20 s. Every 30 s it prints
 eye fps, mic level, audio glitch counters, CPU temperature and throttling.
 
-  python soak_test.py              # 10 minutes
-  python soak_test.py --minutes 2
+  owl-soak-test                    # 10 minutes
+  owl-soak-test --minutes 2
 """
 import argparse
 import subprocess
@@ -15,18 +14,18 @@ import tomllib
 
 import numpy as np
 
-from audio_io import AudioIO
-from display import PiDisplays
-from eyes import EyeLoop
-from main import ROOT
-from state import OwlState
+from owl.config import default_config
+from owl.hardware.audio_io import AudioIO
+from owl.hardware.display import PiDisplays
+from owl.hardware.eyes import EyeLoop
+from owl.state import OwlState
 
 EXPRESSIONS = ("normal", "happy", "explaining", "love", "sleepy", "confused")
 LOUD = 3000          # int16 RMS that counts as "the mic heard something"
 
 
 def vcgencmd(*args):
-    out = subprocess.run(["vcgencmd", *args], capture_output=True, text=True).stdout
+    out = subprocess.run(["vcgencmd", *args], check=False, capture_output=True, text=True).stdout
     return out.strip().split("=", 1)[-1]
 
 
@@ -40,7 +39,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--minutes", type=float, default=10)
     args = parser.parse_args()
-    with open(ROOT / "config.toml", "rb") as f:
+    with open(default_config(), "rb") as f:
         cfg = tomllib.load(f)
 
     state = OwlState(timeout=10**6)

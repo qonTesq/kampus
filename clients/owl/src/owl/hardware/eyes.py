@@ -1,8 +1,8 @@
 """Original yellow-crescent owl renderer; no camera or network access here."""
-import math
 import random
 import threading
 import time
+
 import numpy as np
 from PIL import Image
 

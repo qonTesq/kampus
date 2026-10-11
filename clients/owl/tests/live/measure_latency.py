@@ -6,25 +6,23 @@ including the silence the turn detector waits for. The delay reported is from
 the end of the question to the first ElevenLabs audio of the answer.
 Nothing is played on the speaker. Costs a few hundred ElevenLabs characters.
 
-  python tests/measure_latency.py [rounds]
+  uv run python tests/live/measure_latency.py [rounds]
 """
-from pathlib import Path
 import os
 import sys
 import time
 
 import numpy as np
 import soxr
-
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
-os.chdir(ROOT)
 from dotenv import load_dotenv
-load_dotenv(".env")
-from main import apply_env, load_config
-from gemini_live import GeminiLiveBrain
-from turns import SILENCE_END
-from voice_pipeline import Voice, instructions
+
+from owl.brain.gemini_live import GeminiLiveBrain
+from owl.brain.pipeline import instructions
+from owl.brain.turns import SILENCE_END
+from owl.config import ENV_FILE, apply_env, load_config
+from owl.voice.elevenlabs import Voice
+
+load_dotenv(ENV_FILE)
 
 QUESTIONS = ["What is a fun fact about owls?", "Tell me a short joke.", "How are you today?"]
 
@@ -39,7 +37,7 @@ class Sink:
 
 def main():
     rounds = int(sys.argv[1]) if len(sys.argv) > 1 else 3
-    cfg = apply_env(load_config(ROOT / "config.toml"))
+    cfg = apply_env(load_config())
     voice = Voice(cfg, os.environ["ELEVENLABS_API_KEY"].strip(),
                   os.environ.get("ELEVENLABS_VOICE_ID", "").strip() or cfg["pipeline"]["voice_id"])
     brain = GeminiLiveBrain(cfg, os.environ["GEMINI_API_KEY"].strip(), instructions(cfg))

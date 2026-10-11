@@ -1,18 +1,14 @@
 """Kampus MCP integration pieces, offline."""
 import asyncio
 import json
-from pathlib import Path
-import sys
 import time
 import types
 import unittest
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from main import load_config
-from mcp_bridge import MCPBridge, UNREACHABLE, gemini_schema
-from voice_pipeline import instructions
-
-CONFIG = Path(__file__).resolve().parents[1] / "config.toml"
+from owl.brain.pipeline import instructions
+from owl.config import EXAMPLE_CONFIG as CONFIG
+from owl.config import load_config
+from owl.kampus.bridge import UNREACHABLE, MCPBridge, gemini_schema
 
 
 def bridge_with(session, call_timeout=10):

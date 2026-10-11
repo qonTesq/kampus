@@ -1,18 +1,15 @@
 """Gemini Live brain protocol, with a fake WebSocket (no network, no credit)."""
 import base64
 import json
-from pathlib import Path
-import sys
 import unittest
+from typing import ClassVar
 from unittest.mock import patch
 
 import numpy as np
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from gemini_live import GeminiLiveBrain
-from main import load_config
-
-CONFIG = Path(__file__).resolve().parents[1] / "config.toml"
+from owl.brain.gemini_live import GeminiLiveBrain
+from owl.config import EXAMPLE_CONFIG as CONFIG
+from owl.config import load_config
 
 
 class FakeSocket:
@@ -46,14 +43,14 @@ SETUP = [{"setupComplete": {}}]
 
 class FakeTool:
     name, description = "next_event", "Next campus event"
-    inputSchema = {"type": "object", "properties": {"topic": {"type": "string"}}}
+    inputSchema: ClassVar[dict] = {"type": "object", "properties": {"topic": {"type": "string"}}}
 
 
 class FakeBridge:
-    tools = [FakeTool()]
+    tools: ClassVar[list] = [FakeTool()]
 
     def declarations(self):
-        from mcp_bridge import gemini_schema
+        from owl.kampus.bridge import gemini_schema
         return [{"name": t.name, "description": t.description,
                  "parametersJsonSchema": gemini_schema(t.inputSchema)} for t in self.tools]
     def __init__(self): self.calls = []
@@ -249,9 +246,8 @@ class GeminiLiveTests(unittest.TestCase):
 
     def test_broken_session_is_closed_and_error_raised(self):
         brain = self.brain([[SETUP, []]])                        # server never finishes the turn
-        with patch("gemini_live.TURN_TIMEOUT", 0.2):
-            with self.assertRaises(TimeoutError):
-                brain.turn(text="hello")
+        with patch("owl.brain.gemini_live.TURN_TIMEOUT", 0.2), self.assertRaises(TimeoutError):
+            brain.turn(text="hello")
         self.assertIsNone(brain.ws)
 
 

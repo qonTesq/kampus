@@ -1,11 +1,11 @@
 """Local turn detection: find where someone starts and stops speaking.
 
-Shared by echo_test.py and voice_pipeline.py. Energy-based (no cloud):
+Shared by hardware/echo_test.py and brain/pipeline.py. Energy-based (no cloud):
 speech starts once MIN_SPEECH of loud audio lands within ONSET_WINDOW, so taps,
 clicks and echo tails are ignored; it ends after SILENCE_END of quiet.
 """
-from dataclasses import dataclass
 import time
+from dataclasses import dataclass
 
 import numpy as np
 

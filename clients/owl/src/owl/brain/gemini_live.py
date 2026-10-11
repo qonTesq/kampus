@@ -1,4 +1,4 @@
-"""Gemini Live brain for the ElevenLabs-voiced owl (voice_pipeline.py).
+"""Gemini Live brain for the ElevenLabs-voiced owl (pipeline.py).
 
 Gemini 3.8 Live is a native-audio model: it only answers with its own voice.
 The owl wants the ElevenLabs voice, so this brain uses Live for hearing and
@@ -9,7 +9,7 @@ text is then spoken by ElevenLabs.
 Turn-taking stays local (turns.py), so Gemini's own voice-activity detection is
 switched off and each turn is framed with activityStart / activityEnd. The eye
 expression comes from a set_expression function call; MCP tools, if any, run
-on the Pi through mcp_bridge.py.
+on the Pi through kampus/bridge.py.
 
 One WebSocket session is kept open while the owl is awake. Live sessions are
 limited to 15 minutes of audio, so it reconnects before that and replays the
@@ -19,11 +19,12 @@ import base64
 import json
 import re
 import time
+from typing import ClassVar
 
 import numpy as np
 import soxr
 
-from state import EMOTIONS
+from owl.state import EMOTIONS
 
 LIVE_URL = ("wss://generativelanguage.googleapis.com/ws/"
             "google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent")
@@ -56,7 +57,7 @@ Always call set_expression at the start of each reply, then answer out loud."""
 class GeminiLiveBrain:
     streams = True               # can hand over the reply sentence by sentence
 
-    timing = {}                  # seconds spent sending the turn / until Gemini's first words
+    timing: ClassVar[dict] = {}  # seconds spent sending the turn / until Gemini's first words
 
     def __init__(self, cfg, key, instructions, bridge=None, connect=None):
         self.cfg, self.key, self.instructions, self.bridge = cfg, key, instructions, bridge

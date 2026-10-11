@@ -1,105 +1,31 @@
-#!/usr/bin/env python3
-"""Run on Raspberry Pi OS 64-bit with Python 3.11+.
+"""The OpenAI Realtime owl, plus the eye demo and audio/wake-model utilities.
+
+Run on Raspberry Pi OS 64-bit with Python 3.11+.
 
 Examples:
-  python main.py --list-audio
-  python main.py --demo
-  python main.py --contact-sheet eyes.png
-  python main.py --download-wake-model
-  python main.py
+  owl-realtime --list-audio
+  owl-realtime --demo
+  owl-realtime --contact-sheet eyes.png
+  owl-realtime --download-wake-model
+  owl-realtime
 """
 import argparse
 import asyncio
 import json
 import logging
 import os
-from pathlib import Path
-import re
 import sys
 import time
-import tomllib
+from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent
+from owl.brain.wake import download_model, phrase_matches
+from owl.config import ENV_FILE, apply_env, default_config, load_config
 
-def load_config(path):
-    with open(path, "rb") as handle: cfg = tomllib.load(handle)
-    if cfg["assistant"]["sleep_after_seconds"] <= 0:
-        raise ValueError("sleep_after_seconds must be positive")
-    if not cfg["assistant"]["wake_phrases"]:
-        raise ValueError("At least one wake phrase is required")
-    if not 1 <= cfg["display"]["fps"] <= 60:
-        raise ValueError("display fps must be between 1 and 60")
-    if cfg["display"]["pixel_size"] not in (1, 2, 3, 4, 5, 6, 8):
-        raise ValueError("pixel_size must be 1, 2, 3, 4, 5, 6 or 8")
-    if not 0 < cfg["audio"]["volume"] <= 1:
-        raise ValueError("audio volume must be between 0 and 1")
-    if cfg["audio"]["output_channels"] not in (1, 2):
-        raise ValueError("Use one or two output channels")
-    if not 0 <= cfg["audio"]["mic_channel"] < cfg["audio"]["input_channels"]:
-        raise ValueError("mic_channel must exist in input_channels")
-    pins = [cfg["display"][p] for p in ("left_dc_gpio", "right_dc_gpio", "left_reset_gpio", "right_reset_gpio")]
-    if len(set(pins)) != 4 or any(p in (7, 8, 9, 10, 11) for p in pins):
-        raise ValueError("DC/reset pins must be distinct and not use the SPI0 pins")
-    if cfg["display"]["left_ce"] == cfg["display"]["right_ce"]:
-        raise ValueError("Screens need different chip-select lines")
-    for name in ("left_rotation", "right_rotation"):
-        if cfg["display"][name] not in (0, 90, 180, 270):
-            raise ValueError("Display rotation must be 0, 90, 180 or 270")
-    model = Path(cfg["wake"]["model_path"])
-    cfg["wake"]["model_path"] = str(model if model.is_absolute() else ROOT / model)
-    return cfg
-
-def apply_env(cfg):
-    """Settings in .env (or the environment) override config.toml."""
-    env = {k: v.strip() for k, v in os.environ.items()}
-    if env.get("OPENAI_REALTIME_MODEL"):
-        cfg["assistant"]["model"] = env["OPENAI_REALTIME_MODEL"]
-    for name, key in (("AUDIO_INPUT_DEVICE", "input_device"), ("AUDIO_OUTPUT_DEVICE", "output_device")):
-        if env.get(name):
-            value = env[name]
-            cfg["audio"][key] = int(value) if value.lstrip("-").isdigit() else value
-    mcp = cfg.setdefault("mcp", {})
-    for name, key in (("MCP_SERVER_URL", "server_url"), ("MCP_AUTHORIZATION", "authorization")):
-        if env.get(name):
-            mcp[key] = env[name]
-    if env.get("MCP_ALLOWED_TOOLS"):
-        mcp["allowed_tools"] = [t.strip() for t in env["MCP_ALLOWED_TOOLS"].split(",") if t.strip()]
-    return cfg
-
-def phrase_matches(text, phrases):
-    words = " " + " ".join(re.findall(r"[\w']+", text.casefold())) + " "
-    return any(" " + " ".join(re.findall(r"[\w']+", p.casefold())) + " " in words for p in phrases)
-
-def download_model(cfg):
-    from urllib.request import urlretrieve
-    import tempfile
-    import zipfile
-    destination = Path(cfg["wake"]["model_path"])
-    expected = "vosk-model-small-en-us-0.15"
-    if destination.name != expected:
-        raise ValueError("This helper downloads only the default English model; see README for other languages")
-    if destination.exists():
-        print("Wake model already exists:", destination)
-        return
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    print("Downloading the official Vosk small English model (about 40 MB)...")
-    with tempfile.TemporaryDirectory() as temp:
-        archive = Path(temp) / "model.zip"
-        urlretrieve("https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip", archive)
-        with zipfile.ZipFile(archive) as package:
-            root = destination.parent.resolve()
-            for member in package.infolist():
-                target = (root / member.filename).resolve()
-                if not target.is_relative_to(root) or member.filename.split('/')[0] != expected:
-                    raise ValueError("Unexpected model archive path")
-                if ((member.external_attr >> 16) & 0o170000) == 0o120000:
-                    raise ValueError("Model archive must not contain symbolic links")
-            package.extractall(root)
-    print("Installed wake model:", destination)
 
 def contact_sheet(path, pixel_size):
     from PIL import Image, ImageDraw
-    from eyes import render_eye
+
+    from owl.hardware.eyes import render_eye
     emotions = ["normal", "happy", "sleeping", "sleepy", "surprised", "angry", "confused", "love", "money", "explaining"]
     sheet = Image.new("RGB", (1000, 5*285), (20, 22, 28))
     draw = ImageDraw.Draw(sheet)
@@ -113,12 +39,13 @@ def contact_sheet(path, pixel_size):
 
 async def run_voice(cfg, state, audio, eyes):
     import soxr
-    from vosk import Model, KaldiRecognizer, SetLogLevel
-    from realtime_voice import VoiceSession
+    from vosk import KaldiRecognizer, Model, SetLogLevel
+
+    from owl.brain.realtime import VoiceSession
     SetLogLevel(-1)
     model_path = Path(cfg["wake"]["model_path"])
     if not model_path.is_dir():
-        raise RuntimeError("Wake model missing. Run: python main.py --download-wake-model")
+        raise RuntimeError("Wake model missing. Run: owl-realtime --download-wake-model")
     model = Model(str(model_path))
     phrases = cfg["assistant"]["wake_phrases"]
     grammar = json.dumps(phrases + ["[unk]"])
@@ -157,7 +84,7 @@ async def run_voice(cfg, state, audio, eyes):
 
 def main():
     parser = argparse.ArgumentParser(description="Talking owl for Raspberry Pi 5")
-    parser.add_argument("--config", default=str(ROOT / "config.toml"))
+    parser.add_argument("--config", default=str(default_config()))
     parser.add_argument("--list-audio", action="store_true")
     parser.add_argument("--download-wake-model", action="store_true")
     parser.add_argument("--contact-sheet", metavar="PNG")
@@ -167,7 +94,7 @@ def main():
     args = parser.parse_args()
     cfg = load_config(args.config)
     from dotenv import load_dotenv
-    load_dotenv(ROOT / ".env")
+    load_dotenv(ENV_FILE)
     apply_env(cfg)
     if args.list_audio:
         import sounddevice as sd
@@ -179,10 +106,11 @@ def main():
     if args.contact_sheet:
         contact_sheet(args.contact_sheet, cfg["display"]["pixel_size"]); return
     if args.audio_test:
+        import numpy as np
         import sounddevice as sd
         import soxr
-        import numpy as np
-        from audio_io import device_value
+
+        from owl.hardware.audio_io import device_value
         a = cfg["audio"]
         print("Recording three seconds locally. Say something now...")
         recording = sd.rec(round(a["input_rate"]*3), samplerate=a["input_rate"], channels=a["input_channels"],
@@ -201,10 +129,10 @@ def main():
         if not os.environ.get("OPENAI_API_KEY", "").strip():
             raise RuntimeError("Copy .env.example to .env and add your API key locally, or use --demo")
         if not Path(cfg["wake"]["model_path"]).is_dir():
-            raise RuntimeError("Run python main.py --download-wake-model first")
-    from state import OwlState, EMOTIONS
-    from eyes import EyeLoop
-    from display import PiDisplays, NullDisplays
+            raise RuntimeError("Run owl-realtime --download-wake-model first")
+    from owl.hardware.display import NullDisplays, PiDisplays
+    from owl.hardware.eyes import EyeLoop
+    from owl.state import EMOTIONS, OwlState
     state = OwlState(cfg["assistant"]["sleep_after_seconds"])
     sink = NullDisplays() if args.no_display or not cfg["display"]["enabled"] else PiDisplays(cfg["display"])
     eyes = EyeLoop(state, sink, cfg["display"]["fps"], cfg["display"]["pixel_size"])
@@ -222,7 +150,7 @@ def main():
                     print(emotion)
                     time.sleep(4)
         else:
-            from audio_io import AudioIO
+            from owl.hardware.audio_io import AudioIO
             audio = AudioIO(cfg["audio"])
             audio.start()
             asyncio.run(run_voice(cfg, state, audio, eyes))
@@ -230,10 +158,14 @@ def main():
         if audio: audio.close()
         eyes.close()
 
-if __name__ == "__main__":
+def run():
     logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
     try: main()
     except KeyboardInterrupt: print("\nOwl stopped.")
     except Exception as exc:
         logging.error("%s", exc)
         sys.exit(1)
+
+
+if __name__ == "__main__":
+    run()

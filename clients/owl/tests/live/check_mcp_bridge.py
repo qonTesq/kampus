@@ -1,17 +1,13 @@
-"""Live check of mcp_bridge.py against a throwaway local MCP server.
+"""Live check of owl.kampus.bridge against a throwaway local MCP server.
 
 Starts a tiny MCP server on 127.0.0.1:8765 (streamable HTTP, bearer-token
 protected), connects the bridge, lists tools, and calls one. No cloud.
 
-  python tests/check_mcp_bridge.py
+  uv run python tests/live/check_mcp_bridge.py
 """
-from pathlib import Path
 import subprocess
 import sys
 import time
-
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
 
 SERVER = r'''
 from mcp.server.fastmcp import FastMCP
@@ -47,7 +43,7 @@ def main():
     server = subprocess.Popen([sys.executable, "-c", SERVER])
     try:
         time.sleep(3)
-        from mcp_bridge import MCPBridge
+        from owl.kampus.bridge import MCPBridge
         url = "http://127.0.0.1:8765/mcp"
         try:
             MCPBridge(url, "wrong-token", timeout=10)

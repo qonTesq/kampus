@@ -6,7 +6,9 @@ is replying. No claim of acoustic echo cancellation or voice barge-in.
 import queue
 import threading
 import time
+
 import numpy as np
+
 
 def device_value(value):
     return None if value in (-1, "", None) else value

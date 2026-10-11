@@ -45,14 +45,16 @@ class MCPBridge:
         from mcp.client.streamable_http import streamablehttp_client
         self.stop_event = asyncio.Event()
         try:
-            async with streamablehttp_client(self.url, headers=self.headers) as (read, write, _):
-                async with ClientSession(read, write) as session:
-                    await session.initialize()
-                    listed = (await session.list_tools()).tools
-                    self.tools = [t for t in listed if not self.allowed or t.name in self.allowed]
-                    self.session = session
-                    self.ready.set()
-                    await self.stop_event.wait()
+            async with (
+                streamablehttp_client(self.url, headers=self.headers) as (read, write, _),
+                ClientSession(read, write) as session,
+            ):
+                await session.initialize()
+                listed = (await session.list_tools()).tools
+                self.tools = [t for t in listed if not self.allowed or t.name in self.allowed]
+                self.session = session
+                self.ready.set()
+                await self.stop_event.wait()
         except Exception as exc:
             self.error = exc
             self.ready.set()

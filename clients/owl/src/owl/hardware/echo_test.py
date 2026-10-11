@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Voice echo test: speak to the mic, hear it back 3 s after you stop. No cloud.
 
 Checks the whole local turn-taking path the owl relies on: detect speech start,
@@ -6,8 +5,8 @@ detect the end of speech, wait, then play on the speaker. The eyes show the
 phase: normal = waiting, surprised = hearing you, explaining = waiting to reply,
 happy = playing back.
 
-  python echo_test.py                  # 5 turns, 3 s reply delay
-  python echo_test.py --turns 3 --delay 3 --no-display
+  owl-echo-test                        # 5 turns, 3 s reply delay
+  owl-echo-test --turns 3 --delay 3 --no-display
 """
 import argparse
 import time
@@ -16,10 +15,10 @@ import tomllib
 import numpy as np
 import soxr
 
-from audio_io import AudioIO
-from main import ROOT
-from state import OwlState
-from turns import calibrate, listen, rms
+from owl.brain.turns import calibrate, listen, rms
+from owl.config import default_config
+from owl.hardware.audio_io import AudioIO
+from owl.state import OwlState
 
 TARGET_RMS = 6000     # replay loudness (int16 RMS) before the config volume
 
@@ -33,7 +32,7 @@ def main():
                         help="estimated Bluetooth speaker delay, subtracted from --delay")
     parser.add_argument("--no-display", action="store_true")
     args = parser.parse_args()
-    with open(ROOT / "config.toml", "rb") as f:
+    with open(default_config(), "rb") as f:
         cfg = tomllib.load(f)
     rate = cfg["audio"]["input_rate"]
 
@@ -42,8 +41,8 @@ def main():
     state.phase("idle")
     eyes = None
     if not args.no_display:
-        from display import PiDisplays
-        from eyes import EyeLoop
+        from owl.hardware.display import PiDisplays
+        from owl.hardware.eyes import EyeLoop
         eyes = EyeLoop(state, PiDisplays(cfg["display"]), cfg["display"]["fps"],
                        cfg["display"]["pixel_size"])
         eyes.start()

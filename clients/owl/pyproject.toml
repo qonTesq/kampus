@@ -1,0 +1,54 @@
+[project]
+name = "kampus-owl"
+version = "0.1.0"
+description = "Owl: the talking campus mascot, a voice client for Kampus on a Raspberry Pi 5"
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.11"
+dependencies = [
+    "numpy>=1.24,<3",
+    "Pillow>=10,<13",
+    "sounddevice>=0.5,<1",
+    "soxr>=0.5,<2",
+    "vosk>=0.3.45,<0.4",
+    "websockets>=14,<18",
+    "python-dotenv>=1,<2",
+    "spidev>=3.6,<4; sys_platform == 'linux'",
+    "gpiozero>=2,<3; sys_platform == 'linux'",
+    "requests>=2.31,<3",
+    "mcp>=1.9,<2",
+]
+
+[project.scripts]
+owl = "owl.brain.pipeline:main"
+owl-realtime = "owl.main:run"
+owl-echo-test = "owl.hardware.echo_test:main"
+owl-soak-test = "owl.hardware.soak_test:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "ruff>=0.13",
+]
+
+[build-system]
+requires = ["uv_build>=0.13,<0.14"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "owl"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"
+
+[tool.ruff.lint]
+ignore = [
+    "BLE001",  # the owl keeps running through any cloud, network or device error by design
+    "S110",    # best-effort cleanup of sockets, SPI and GPIO handles on shutdown
+    "B023",    # per-turn callbacks are defined and called within the same loop iteration
+    "LOG015",  # small command-line programs log through the root logger
+]
