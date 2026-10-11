@@ -91,7 +91,7 @@ On 2026-09-26, America/New_York, the human project owner instructed foundation t
 
 **2026-09-30:** the project owner approved the reliability-fixes change, which adds optional `school.yaml` `server.trusted_proxy`, the optional `policy.yaml` admission limits, and a call deadline that covers the whole call. All are additive; existing configurations load unchanged. `contracts/` types are unchanged.
 
-**2026-10-01:** the project owner approved every sign-off item of the `standard-token-profile` change (`openspec/changes/standard-token-profile/design.md`, "Sign-off"):
+**2026-10-01:** the project owner approved every sign-off item of the `standard-token-profile` change (`openspec/changes/archive/2026-10-02-standard-token-profile/design.md`, "Sign-off"):
 
 - S1: `auth.audience` is removed; the token audience is exactly `server.resource_url`, with no aliases.
 - S2: `auth.roles_claim` defaults to `roles`.
@@ -101,7 +101,7 @@ On 2026-09-26, America/New_York, the human project owner instructed foundation t
 - S6: the final sweep pattern for the removed bundled IdP is the word-bounded one recorded in the change's design (section 8), so recorded SEPTA trip IDs and lockfile checksums don't match it.
 - S7: the `openspec/config.yaml` context is rewritten to the broker decision.
 
-**2026-10-01:** the project owner approved every sign-off item of the `auth-broker` change (`openspec/changes/auth-broker/design.md`, "Sign-off"):
+**2026-10-01:** the project owner approved every sign-off item of the `auth-broker` change (`openspec/changes/archive/2026-10-10-auth-broker/design.md`, "Sign-off"):
 
 - S1: the optional `school.yaml` `auth.broker` section and its validation rules (field reference below).
 - S2: the `broker` cargo feature on `kampus` (`sandbox` also enables the broker's sandbox parts). The demo build is `--features sandbox,broker`, and the gate adds a clippy and test run with `--features kampus/sandbox,kampus/broker`.

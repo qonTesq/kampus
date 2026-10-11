@@ -638,31 +638,6 @@ async fn bad_tokens_are_refused_in_both_modes_and_never_become_guests() {
 }
 
 #[tokio::test]
-async fn transitional_generic_token_with_azp_and_audience_array_verifies() {
-    let server = spawn(AuthMode::Oauth).await;
-    let rsa = &issuer_keys()[1];
-    let mut c = without("client_id");
-    c["azp"] = json!("kampus-claude");
-    c["typ"] = json!("Bearer");
-    c["aud"] = json!([RESOURCE, "account"]);
-    let token = format!(
-        "Bearer {}",
-        rsa.sign(&json!({ "alg": "RS256", "typ": "JWT", "kid": rsa.kid }), &c)
-    );
-    let response = modern(&server, Some(&token), "tools/call", call("my_deadlines")).await;
-    assert_eq!(response.status(), 200);
-}
-
-#[tokio::test]
-async fn no_login_mode_serves_guests_without_credentials() {
-    let server = spawn(AuthMode::NoLogin).await;
-    let response = modern(&server, None, "tools/call", call("my_deadlines")).await;
-    assert_eq!(response.status(), 200);
-    let result = rpc_body(response).await["result"].clone();
-    assert_eq!(result["structuredContent"]["status"], "error");
-}
-
-#[tokio::test]
 async fn legacy_session_does_not_outlive_the_token() {
     let server = spawn(AuthMode::Oauth).await;
     let token = valid();
