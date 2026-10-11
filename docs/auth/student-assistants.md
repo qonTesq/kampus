@@ -26,7 +26,7 @@ Kampus then asks whether to allow that assistant. The page names the assistant b
 
 Choose **Allow**. You go back to your assistant, connected. If you choose **Deny**, nothing is shared and the assistant isn't connected.
 
-You won't be asked again on the same assistant unless it asks for more permissions or you disconnect it. Your assistant renews its access in the background, so you shouldn't have to sign in every day.
+You won't be asked again on the same assistant unless it asks for more permissions (it then has two entries on the connections page) or you disconnect it. Your assistant renews its access in the background, so you shouldn't have to sign in every day.
 
 ## 4. Try a public question
 

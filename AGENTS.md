@@ -94,9 +94,7 @@ Small, focused commits on your branch. Imperative subject of at most 72 characte
 Everything above is about the Rust server. Two other areas live here, each with its own instructions and CI:
 
 - `clients/owl/`: the Python voice client for the Raspberry Pi mascot. Read `clients/owl/AGENTS.md`.
-- `hardware/owl/`: CAD, print files, wiring and the parts list (large files via Git LFS).
-
-- `hardware/owl/`: read `hardware/owl/AGENTS.md`.
+- `hardware/owl/`: CAD, print files, wiring and the parts list (large files via Git LFS). Read `hardware/owl/AGENTS.md`.
 
 Ownership is in `.github/CODEOWNERS`. The server's Rust rules don't apply to these folders; the rules on secrets, privacy and commits do.
 

@@ -15,7 +15,7 @@ auth:
   # calls get 401. Add one per docs/auth/broker.md and school-idp.md.
   issuer: http://127.0.0.1:8092/auth
 # No courses: SJU's public class schedule is Banner 8 HTML, not the Banner 9
-# SSB JSON the banner adapter reads (openspec/changes/sju-parity/design.md).
+# SSB JSON the banner adapter reads (openspec/changes/archive/2026-10-10-sju-parity/design.md).
 # deadlines has no source here (no canvas section; production builds never
 # have one): it answers unsupported_source. Demo profile: README.md.
 modules: [rooms, transit, library_hours, deadlines]

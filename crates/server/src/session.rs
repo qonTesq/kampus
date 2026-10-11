@@ -2,7 +2,7 @@
 //! exists, and its GET (stream, resume) and DELETE paths never reach the
 //! dispatcher. This layer, between authentication and rmcp, makes a session
 //! usable only by the verified identity that owns it and never replays
-//! buffered results. Design: `openspec/changes/security-hardening/design.md`.
+//! buffered results. Design: `openspec/changes/archive/2026-09-28-security-hardening/design.md`.
 
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, PoisonError};

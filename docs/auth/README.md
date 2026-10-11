@@ -127,9 +127,6 @@ Built-in refusal IDs (they can't be relaxed by `policy.yaml`): `builtin:confiden
 JSONL lives at `data/audit/<school_id>.jsonl`, or the `--audit` path. Set the per-school salt environment variable (for example `KAMPUS_TEMPLE_AUDIT_SALT`) to a strong random secret before startup; a missing or empty salt fails startup. Subject hashes use HMAC-SHA256, truncated to 128 bits and domain-separated by school ID. Guests use the fixed `guest` marker. Rows are durably written by a bounded batching writer before data is released; an append failure returns `audit_unavailable` without the payload.
 
 Rows contain only `timestamp`, `school_id`, `user_hash`, `client_id`, `tool`, `data_class`, `decision`, `rule`, `latency_ms` and `policy_version`. A provider failure still records the allow decision. Authentication failures log only a fixed safe reason, never an unverified identity. Unknown tools are protocol errors and have no audit row. Retention is `policy.audit.retention_hours` (24 h by default), enforced at startup and hourly.
-
-**Upgrading from the `azp` key:** rows written before this release use the key `azp`, which the new reader treats as malformed and prunes. Move the old file aside before restarting (`data/audit/<school>.jsonl` → `<school>.pre-upgrade.jsonl`) and keep it for its 24 h retention window.
-
 ## Local admin
 
 `kampus serve` starts a separate listener at `server.admin_listen` (seeded as http://127.0.0.1:8081/). Never proxy it. Exact loopback Host checks apply, and POST requires a matching Origin plus a random per-process CSRF token. The public MCP router has no admin routes. Responses aren't cached, and the page forbids framing.
