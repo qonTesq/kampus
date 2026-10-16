@@ -34,7 +34,7 @@ Universities can't simply let AI assistants into their systems either: student r
 
 - The school's **approved** assistant (for example its Claude workspace) can read a signed-in student's deadlines.
 - Another assistant, with the same student signed in, is **refused** unless the school's policy allows students' own assistants (a switch the school controls).
-- A **talking owl** (a Raspberry Pi kiosk) connects as a public device: it answers campus questions but never touches personal data.
+- The **talking owl** ([below](#the-owl)) connects as a public device: it answers campus questions out loud but never touches personal data.
 
 Every decision lands in an audit log that records which feature was used and when, **never what was asked or answered**, with student IDs hashed.
 
@@ -67,6 +67,16 @@ flowchart LR
 | Saint Joseph's University | [`schools/sju/`](schools/sju) | Rooms, transit and library hours live; a [demo profile](schools/sju/README.md) with sign-in through SJU's Google accounts, synthetic deadlines and simulated booking. Courses not yet: SJU runs Banner 8. |
 
 Both run from the same binary; only the two config files differ.
+
+## The owl
+
+The owl is a talking campus mascot: a Raspberry Pi 5 inside a 3D-printed shell, with two round-screen eyes, a microphone and a Bluetooth speaker. Anyone can walk up and ask about study rooms, trains or library hours.
+
+- **Private while it sleeps:** it listens on the Pi for "Hey Owl" with an offline wake-phrase model, and nothing goes to the cloud until it wakes.
+- **Talks through Gemini Live,** with an expression on its eyes for every answer, and calls Kampus over MCP with its own device credential.
+- **Public by design:** a refused personal question (`permission_denied`) is a normal answer: "That's personal, so open it in your school's approved assistant."
+
+The client is a Python [uv](https://docs.astral.sh/uv/) project in [`clients/owl/`](clients/owl/README.md), the Pi setup and demo-day guides are in [`deploy/owl-pi/`](deploy/owl-pi/README.md), and the wiring and parts list are in [`hardware/owl/`](hardware/owl/README.md). The CAD and print files are still to come.
 
 Adding a school means writing a `school.yaml` and a `policy.yaml`. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
@@ -128,9 +138,9 @@ adapters/*             vendor adapters: libcal, banner, transit, hours, canvas
 modules/*              one folder per capability: module.yaml + a small crate
 schools/<id>/          school.yaml and policy.yaml per school
 fixtures/              recorded real responses used by tests
-clients/owl/           the talking mascot (Python, Raspberry Pi)
-hardware/owl/          the mascot's CAD, print files, wiring and parts list
-deploy/                the one-command trial, Caddy and Cloudflare Tunnel notes, and the owl's Pi setup
+clients/owl/           the talking owl client (Python, uv, Raspberry Pi)
+hardware/owl/          the owl's wiring, parts list and (soon) CAD and print files
+deploy/                the one-command trial, Caddy and Cloudflare Tunnel notes, and the owl's Pi guides
 openspec/              the living specification and the change history
 docs/                  contracts, auth, transit, device API, research
 ```
@@ -160,6 +170,7 @@ Kampus started as an OwlHacks 2026 project and is now a working showcase, not pr
 Next up:
 - SJU course search (a Banner 8 adapter)
 - Real Canvas and LibCal access with credentials a school issues
+- The owl renewing its own Kampus token (device tokens expire), plus its CAD and print files
 - A published-timetable fallback for Regional Rail, so late-night trips still get an answer
 - Dining, events and building information
 - The security and accessibility review a university would require
