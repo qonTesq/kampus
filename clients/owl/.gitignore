@@ -4,6 +4,7 @@ config/config.toml
 
 # Python
 .venv/
+venv/
 __pycache__/
 *.pyc
 .pytest_cache/
@@ -11,3 +12,7 @@ __pycache__/
 
 # Large local assets (download them with scripts/setup_pi.sh)
 models/
+
+# Recordings and SD-card images never belong in the repo
+*.wav
+*.img

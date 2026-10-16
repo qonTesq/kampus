@@ -168,6 +168,7 @@ Next up:
 
 - [Research report](docs/research/campus-ai-connector-report.md): the original plan and the research behind it
 - [Contracts](docs/contracts/README.md) · [Auth](docs/auth/README.md) · [Add Kampus to your assistant](docs/auth/student-assistants.md) · [Transit](docs/transit/README.md) · [Device API](docs/device-api/README.md)
+- The owl: [client](clients/owl/README.md) · [running it on the Pi](deploy/owl-pi/README.md) · [hardware and wiring](hardware/owl/README.md)
 
 ## License
 
