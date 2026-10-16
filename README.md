@@ -10,8 +10,6 @@ Kampus is an open-source [MCP](https://modelcontextprotocol.io) server that conn
 ![Rust 1.99](https://img.shields.io/badge/rust-1.99-orange.svg)
 ![MCP 2026-07-28 + 2025-11-25](https://img.shields.io/badge/MCP-2026--07--28%20%2B%202025--11--25-purple.svg)
 
----
-
 ## Why
 
 Deadlines live in Canvas, study rooms on the library's booking site, trains in the SEPTA app, courses in Banner. Students already ask an AI assistant about everything, and none of those assistants know anything about their campus.
